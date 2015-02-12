@@ -32,7 +32,6 @@ int main(int argc, char *argv[])
 	kseq_t *seq;
 	int l;
 	
-	priority_queue<Hash> minHashes;
 	map < Hash, vector<Locus> > lociByHash;
 	
 	if (argc == 1)
@@ -58,23 +57,22 @@ int main(int argc, char *argv[])
 			MurmurHash3_x86_32(seq->seq.s + i, kmer, seed, &hash);
 			printf("   Hash at pos %d:\t%u\n", i, hash);
 			
-			if ( lociByHash.count(hash) == 0 && ( minHashes.size() < mins || hash < minHashes.top() ) )
+			if
+			(
+				lociByHash.count(hash) == 0 &&
+				( lociByHash.size() < mins || hash < lociByHash.rbegin()->first )
+			)
 			{
-				minHashes.push(hash);
 				lociByHash[hash]; // insert empty vector
-				//printf("PUSH %u, %d\n", hash, lociByHash.count(hash));
-			
-				if ( minHashes.size() > mins )
+				
+				if ( lociByHash.size() > mins )
 				{
-					//printf("POP  %u\n", minHashes.top());
-					lociByHash.erase(minHashes.top());
-					minHashes.pop();
+					lociByHash.erase(--lociByHash.end());
 				}
 			}
 			
 			if ( lociByHash.count(hash) )
 			{
-				//printf("adding to %u...\n", hash);
 				lociByHash[hash].push_back(Locus(count, i));
 			}
 		}
