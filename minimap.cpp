@@ -3,7 +3,8 @@
 #include "kseq.h"
 #include "MurmurHash3.h"
 #include <map>
-#include <queue>
+#include <vector>
+#include <unordered_map>
 
 using namespace::std;
 
@@ -13,7 +14,7 @@ const static int kmer = 4;
 const static int seed = 42; // TODO: better seed???
 const static int mins = 5;
 
-typedef uint32_t Hash;
+typedef uint32_t hash_t;
 
 struct Locus
 {
@@ -26,13 +27,16 @@ struct Locus
 	uint32_t position;
 };
 
+typedef map < hash_t, vector<Locus> > LociByHash_map;
+typedef unordered_map < hash_t, vector<Locus> > LociByHash_umap;
+
 int main(int argc, char *argv[])
 {
 	gzFile fp;
 	kseq_t *seq;
 	int l;
 	
-	map < Hash, vector<Locus> > lociByHash;
+	LociByHash_umap lociByHashGlobal;
 	
 	if (argc == 1)
 	{
@@ -46,6 +50,8 @@ int main(int argc, char *argv[])
 	
 	while ((l = kseq_read(seq)) >= 0)
 	{
+		LociByHash_map lociByHashLocal;
+		
 		printf("name: %s\n", seq->name.s);
 		if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
 		printf("seq: %s\n", seq->seq.s);
@@ -53,31 +59,50 @@ int main(int argc, char *argv[])
 		
 		for ( int i = 0; i < seq->seq.l - kmer + 1; i++ )
 		{
-			Hash hash;
+			hash_t hash;
 			MurmurHash3_x86_32(seq->seq.s + i, kmer, seed, &hash);
 			printf("   Hash at pos %d:\t%u\n", i, hash);
 			
 			if
 			(
-				lociByHash.count(hash) == 0 &&
-				( lociByHash.size() < mins || hash < lociByHash.rbegin()->first )
+				lociByHashLocal.count(hash) == 0 &&
+				(
+					lociByHashLocal.size() < mins ||
+					hash < lociByHashLocal.rbegin()->first
+				)
 			)
 			{
-				lociByHash[hash]; // insert empty vector
+				lociByHashLocal.insert(pair<hash_t, vector<Locus> >(hash, vector<Locus>())); // insert empty vector
 				
-				if ( lociByHash.size() > mins )
+				if ( lociByHashLocal.size() > mins )
 				{
-					lociByHash.erase(--lociByHash.end());
+					lociByHashLocal.erase(--lociByHashLocal.end());
 				}
 			}
 			
-			if ( lociByHash.count(hash) )
+			if ( lociByHashLocal.count(hash) )
 			{
-				lociByHash[hash].push_back(Locus(count, i));
+				lociByHashLocal[hash].push_back(Locus(count, i));
 			}
 		}
 		
 		printf("\n");
+		
+		for ( LociByHash_map::iterator i = lociByHashLocal.begin(); i != lociByHashLocal.end(); i++ )
+		{
+			printf("Hash %u:\n", i->first);
+		
+			for ( int j = 0; j < i->second.size(); j++ )
+			{
+				printf("   Seq: %d\tPos: %d\n", i->second.at(j).sequence, i->second.at(j).position);
+			}
+			
+			const vector<Locus> & lociLocal = i->second;
+			vector<Locus> & lociGlobal = lociByHashGlobal[i->first]; // creates if needed
+			
+			lociGlobal.insert(lociGlobal.end(), lociLocal.begin(), lociLocal.end());
+		}
+		
 		count++;
 	}
 	
@@ -87,7 +112,7 @@ int main(int argc, char *argv[])
 	
 	printf("\n");
 	
-	for ( map< Hash, vector<Locus> >::iterator i = lociByHash.begin(); i != lociByHash.end(); i++ )
+	for ( LociByHash_umap::iterator i = lociByHashGlobal.begin(); i != lociByHashGlobal.end(); i++ )
 	{
 		printf("Hash %u:\n", i->first);
 		
