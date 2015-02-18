@@ -40,10 +40,11 @@ public:
 		float getArgumentAsNumber(float min = 0, float max = 0) const;
 	};
 	
-	Command(std::string nameNew, std::string descriptionNew)
+	Command(std::string nameNew, std::string descriptionNew, std::string argumentStringNew)
 		:
 		name(nameNew),
-		description(descriptionNew)
+		description(descriptionNew),
+		argumentString(argumentStringNew)
 		{}
 	virtual ~Command() {};
 	
@@ -54,6 +55,7 @@ public:
 	
 	std::string name;
 	std::string description;
+	std::string argumentString;
 	
 protected:
 

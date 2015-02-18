@@ -47,7 +47,7 @@ void Command::addOption(string name, Option option)
 
 void Command::print() const
 {
-	cout << endl << "minimap " << name << " [options] args ..." << endl << endl;
+	cout << endl << "minimap " << name << " [options] " << argumentString << endl << endl;
 	cout << description << endl << endl;
 	cout << "Options:" << endl << endl;
 	
@@ -63,11 +63,18 @@ void Command::print() const
 				cout << "<number>";
 				break;
 			case Option::File:
-				cout << "<file>";
+				cout << "<file>  ";
 				break;
 		}
 		
-		cout << '\t' << i->second.description << endl;
+		cout << '\t' << i->second.description;
+		
+		if ( i->second.type != Option::Boolean )
+		{
+			cout << " [" << i->second.argument << ']';
+		}
+		
+		cout << endl;
 	}
 	
 	cout << endl;
