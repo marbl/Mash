@@ -19,13 +19,23 @@ void CommandList::addCommand(Command * command)
 
 void CommandList::print()
 {
+	cout << endl << "minimap";
+	
 	for ( map<string, Command *>::iterator i = commands.begin(); i != commands.end(); i++ )
 	{
-		cout << i->first << '\t' << i->second->description << endl;
+		cout << '\t' << i->first << '\t' << i->second->description << endl;
 	}
+	
+	cout << endl;
 }
 
 int CommandList::run(int argc, const char ** argv)
 {
+	if ( argc < 2 || commands.count(argv[1]) == 0 )
+	{
+		print();
+		return 0;
+	}
+	
 	return commands.at(argv[1])->run(argc - 2, argv + 2);
 }

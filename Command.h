@@ -9,8 +9,10 @@ class Command
 {
 public:
 	
-	struct Option
+	class Option
 	{
+	public:
+	
 		enum Type
 		{
 			Boolean,
@@ -34,6 +36,8 @@ public:
 			argument(argumentDefault),
 			active(false)
 			{}
+		
+		float getArgumentAsNumber(float min = 0, float max = 0) const;
 	};
 	
 	Command(std::string nameNew, std::string descriptionNew)
@@ -44,7 +48,7 @@ public:
 	virtual ~Command() {};
 	
 	void addOption(std::string name, Option option);
-	void print();
+	void print() const;
 	virtual int run() const = 0;
 	int run(int argc, const char ** argv);
 	

@@ -31,6 +31,12 @@ typedef unordered_map < hash_t, vector<Locus> > LociByHash_umap;
 
 int CommandIndex::run() const
 {
+	if ( arguments.size() == 0 )
+	{
+		print();
+		return 0;
+	}
+	
 	cout << "kmer size: " << options.at("kmer").argument << endl;
 	
 	gzFile fp;
@@ -43,9 +49,9 @@ int CommandIndex::run() const
 	seq = kseq_init(fp);
 	int count = 0;
 	
-	int kmer = atoi(options.at("kmer").argument.c_str());
-	int factor = atoi(options.at("factor").argument.c_str());
-	int mins = atoi(options.at("hashes").argument.c_str());
+	int kmer = options.at("kmer").getArgumentAsNumber();
+	int factor = options.at("factor").getArgumentAsNumber();
+	int mins = options.at("hashes").getArgumentAsNumber();
 	
 	while ((l = kseq_read(seq)) >= 0)
 	{
@@ -56,7 +62,7 @@ int CommandIndex::run() const
 		printf("seq: %s\n", seq->seq.s);
 		if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
 		
-		int stride = factor; // TODO: ???
+		int stride = factor; // TODO: conversion?
 		
 		for ( int i = 0; i < seq->seq.l - kmer + 1; i += stride )
 		{
