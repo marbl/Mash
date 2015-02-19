@@ -7,12 +7,9 @@ class CommandIndex : public Command
 {
 public:
 
-	CommandIndex(std::string nameNew, std::string descriptionNew, std::string argumentStringNew)
-		:
-		Command(nameNew, descriptionNew, argumentStringNew)
-		{}
+	CommandIndex();
 	
-	int run() const;
+	int run() const; // override
 };
 
 #endif

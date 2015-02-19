@@ -63,7 +63,7 @@ void Command::print() const
 				cout << "<number>";
 				break;
 			case Option::File:
-				cout << "<file>  ";
+				cout << "<path>  ";
 				break;
 		}
 		

@@ -7,6 +7,15 @@
 
 class Command
 {
+
+// A base class for handling command line parsing and usage messages. Specific
+// commands can be implemented by subclassing and overriding the run() method.
+// The run() method will be called by this base class from run(argc, argv) once
+// it has parsed options, which can be accessed from the 'options' map using the
+// name strings given when adding them (not 'identifier', which is its parsing
+// name to appear after the '-'). Arguments (i.e. operands given after the
+// options on the command line) will be available in the 'arguments' vector.
+
 public:
 	
 	class Option
@@ -40,12 +49,6 @@ public:
 		float getArgumentAsNumber(float min = 0, float max = 0) const;
 	};
 	
-	Command(std::string nameNew, std::string descriptionNew, std::string argumentStringNew)
-		:
-		name(nameNew),
-		description(descriptionNew),
-		argumentString(argumentStringNew)
-		{}
 	virtual ~Command() {};
 	
 	void addOption(std::string name, Option option);
