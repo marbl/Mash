@@ -38,5 +38,6 @@ struct MinHash
 	
 	referenceList @0 : ReferenceList;
 	hashTable @1 : HashTable;
-	compressionFactor @2 : Float32;
+	kmerSize @2 : UInt32;
+	compressionFactor @3 : Float32;
 }

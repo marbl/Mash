@@ -131,6 +131,16 @@ int Index::initFromCapnp(const char * file)
 		}
 	}
 	
+	kmerSize = reader.getKmerSize();
+	compressionFactor = reader.getCompressionFactor();
+	
+	cout << "Len\tMins\tName/Comment " << endl << endl;
+	
+	for ( int i = 0; i < references.size(); i++ )
+	{
+		cout << references[i].length << '\t' << int(references[i].length / compressionFactor) << '\t' << references[i].name << ' ' << references[i].comment << endl;
+	}
+	
 	printf("\nCombined hash table:\n\n");
 	
 	for ( LociByHash_umap::iterator i = lociByHash.begin(); i != lociByHash.end(); i++ )
@@ -148,8 +158,11 @@ int Index::initFromCapnp(const char * file)
 	return 0;
 }
 
-int Index::initFromSequence(const char * file, int kmer, int mins, int stride)
+int Index::initFromSequence(const char * file, int kmerSizeNew, float compressionFactorNew)
 {
+	kmerSize = kmerSizeNew;
+	compressionFactor = compressionFactorNew;
+	
 	gzFile fp;
 	kseq_t *seq;
 	int l;
@@ -167,8 +180,16 @@ int Index::initFromSequence(const char * file, int kmer, int mins, int stride)
 		printf("seq: %s\n", seq->seq.s);
 		if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
 		
-		references.resize(references.size() + 1);
+		int mins = l / compressionFactor;
 		
+		if ( mins < 1 )
+		{
+			mins = 1;
+		}
+		
+		cout << "mins: " << mins << endl << endl;
+		
+		references.resize(references.size() + 1);
 		references[references.size() - 1].name = seq->name.s;
 		
 		if ( seq->comment.l > 0 )
@@ -178,10 +199,10 @@ int Index::initFromSequence(const char * file, int kmer, int mins, int stride)
 		
 		references[references.size() - 1].length = l;
 		
-		for ( int i = 0; i < seq->seq.l - kmer + 1; i += stride )
+		for ( int i = 0; i < seq->seq.l - kmerSize + 1; i++ )
 		{
 			hash_t hash;
-			MurmurHash3_x86_32(seq->seq.s + i, kmer, seed, &hash);
+			MurmurHash3_x86_32(seq->seq.s + i, kmerSize, seed, &hash);
 			printf("   Hash at pos %d:\t%u\n", i, hash);
 			
 			if
@@ -223,6 +244,8 @@ int Index::initFromSequence(const char * file, int kmer, int mins, int stride)
 			
 			lociGlobal.insert(lociGlobal.end(), lociLocal.begin(), lociLocal.end());
 		}
+		
+		cout << endl;
 		
 		count++;
 	}
@@ -347,6 +370,9 @@ int Index::writeToCapnp(const char * file) const
 			lociBuilder[j].setPosition(loci[j].position);
 		}
 	}
+	
+	builder.setKmerSize(kmerSize);
+	builder.setCompressionFactor(compressionFactor);
 	
 	writeMessageToFd(fds[1], message);
 	close(fds[1]);

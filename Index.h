@@ -38,13 +38,15 @@ public:
 	typedef std::unordered_map < Index::hash_t, std::vector<Index::Locus> > LociByHash_umap;
 
 	int initFromCapnp(const char * file);
-	int initFromSequence(const char * file, int kmer, int mins, int stride);
+	int initFromSequence(const char * file, int kmerSizeNew, float compressionFactorNew);
 	int writeToCapnp(const char * file) const;
 	
 private:
 	
 	std::vector<Reference> references;
 	LociByHash_umap lociByHash;
+	int kmerSize;
+	float compressionFactor;
 };
 
 int def(int fdSource, int fdDest, int level);
