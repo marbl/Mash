@@ -7,12 +7,12 @@ CommandFind::CommandFind()
 	description = "Compare query sequences to a reference index";
 	argumentString = "index.mash fast(a|q)[.gz] ...";
 	
-	//addOption("kmer", Option(Option::Number, "k", "Kmer size", "11"));
+	addOption("help", Option(Option::Boolean, "h", "Help", ""));
 }
 
 int CommandFind::run() const
 {
-	if ( arguments.size() < 2 )
+	if ( arguments.size() < 2 || options.at("help").active )
 	{
 		print();
 		return 0;

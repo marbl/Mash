@@ -115,7 +115,11 @@ int Command::run(int argc, const char ** argv)
 			
 			Option & option = options.at(optionNamesByIdentifier.at(argv[i] + 1));
 			
-			if ( option.type != Option::Boolean )
+			if ( option.type == Option::Boolean )
+			{
+				option.active = true;
+			}
+			else
 			{
 				i++;
 				

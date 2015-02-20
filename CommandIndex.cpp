@@ -9,6 +9,7 @@ CommandIndex::CommandIndex()
 	description = "Create a reference index";
 	argumentString = "fast(a|q)[.gz] ...";
 	
+	addOption("help", Option(Option::Boolean, "h", "Help", ""));
 	addOption("kmer", Option(Option::Number, "k", "Kmer size", "11"));
 	addOption("factor", Option(Option::Number, "c", "Compression factor", "100"));
 	addOption("prefix", Option(Option::File, "p", "Output prefix (first input file used if unspecified). The suffix '.mash' will be appended.", ""));
@@ -16,7 +17,7 @@ CommandIndex::CommandIndex()
 
 int CommandIndex::run() const
 {
-	if ( arguments.size() == 0 )
+	if ( arguments.size() == 0 || options.at("help").active )
 	{
 		print();
 		return 0;
