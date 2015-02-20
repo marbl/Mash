@@ -27,7 +27,7 @@ int CommandIndex::run() const
 	
 	Index index;
 	
-	index.initFromSequence(arguments[0].c_str(), kmer, factor);
+	index.initFromSequence(arguments, kmer, factor);
 	index.writeToCapnp((arguments[0] + ".mash").c_str());
 	
 	return 0;

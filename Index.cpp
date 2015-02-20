@@ -158,101 +158,107 @@ int Index::initFromCapnp(const char * file)
 	return 0;
 }
 
-int Index::initFromSequence(const char * file, int kmerSizeNew, float compressionFactorNew)
+int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float compressionFactorNew)
 {
 	kmerSize = kmerSizeNew;
 	compressionFactor = compressionFactorNew;
 	
-	gzFile fp;
-	kseq_t *seq;
 	int l;
-	
-	fp = gzopen(file, "r");
-	seq = kseq_init(fp);
 	int count = 0;
 	
-	while ((l = kseq_read(seq)) >= 0)
+	for ( int i = 0; i < files.size(); i++ )
 	{
-		LociByHash_map lociByHashLocal;
+		gzFile fp = gzopen(files[i].c_str(), "r");
+		kseq_t *seq = kseq_init(fp);
 		
-		printf("name: %s\n", seq->name.s);
-		if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
-		printf("seq: %s\n", seq->seq.s);
-		if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
-		
-		int mins = l / compressionFactor;
-		
-		if ( mins < 1 )
+		while ((l = kseq_read(seq)) >= 0)
 		{
-			mins = 1;
-		}
+			LociByHash_map lociByHashLocal;
 		
-		cout << "mins: " << mins << endl << endl;
+			printf("name: %s\n", seq->name.s);
+			if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
+			printf("seq: %s\n", seq->seq.s);
+			if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
 		
-		references.resize(references.size() + 1);
-		references[references.size() - 1].name = seq->name.s;
+			int mins = l / compressionFactor;
 		
-		if ( seq->comment.l > 0 )
-		{
-			references[references.size() - 1].comment = seq->comment.s;
-		}
-		
-		references[references.size() - 1].length = l;
-		
-		for ( int i = 0; i < seq->seq.l - kmerSize + 1; i++ )
-		{
-			hash_t hash;
-			MurmurHash3_x86_32(seq->seq.s + i, kmerSize, seed, &hash);
-			printf("   Hash at pos %d:\t%u\n", i, hash);
-			
-			if
-			(
-				lociByHashLocal.count(hash) == 0 &&
-				(
-					lociByHashLocal.size() < mins ||
-					hash < lociByHashLocal.rbegin()->first
-				)
-			)
+			if ( mins < 1 )
 			{
-				lociByHashLocal.insert(pair<hash_t, vector<Locus> >(hash, vector<Locus>())); // insert empty vector
-				
-				if ( lociByHashLocal.size() > mins )
+				mins = 1;
+			}
+		
+			cout << "mins: " << mins << endl << endl;
+		
+			references.resize(references.size() + 1);
+			references[references.size() - 1].name = seq->name.s;
+		
+			if ( seq->comment.l > 0 )
+			{
+				references[references.size() - 1].comment = seq->comment.s;
+			}
+		
+			references[references.size() - 1].length = l;
+		
+			for ( int i = 0; i < seq->seq.l - kmerSize + 1; i++ )
+			{
+				hash_t hash;
+				MurmurHash3_x86_32(seq->seq.s + i, kmerSize, seed, &hash);
+				printf("   Hash at pos %d:\t%u\n", i, hash);
+			
+				if
+				(
+					lociByHashLocal.count(hash) == 0 &&
+					(
+						lociByHashLocal.size() < mins ||
+						hash < lociByHashLocal.rbegin()->first
+					)
+				)
 				{
-					lociByHashLocal.erase(--lociByHashLocal.end());
+					lociByHashLocal.insert(pair<hash_t, vector<Locus> >(hash, vector<Locus>())); // insert empty vector
+				
+					if ( lociByHashLocal.size() > mins )
+					{
+						lociByHashLocal.erase(--lociByHashLocal.end());
+					}
+				}
+			
+				if ( lociByHashLocal.count(hash) )
+				{
+					lociByHashLocal[hash].push_back(Locus(count, i));
 				}
 			}
-			
-			if ( lociByHashLocal.count(hash) )
+		
+			printf("\n");
+		
+			for ( LociByHash_map::iterator i = lociByHashLocal.begin(); i != lociByHashLocal.end(); i++ )
 			{
-				lociByHashLocal[hash].push_back(Locus(count, i));
-			}
-		}
+				printf("Hash %u:\n", i->first);
 		
-		printf("\n");
-		
-		for ( LociByHash_map::iterator i = lociByHashLocal.begin(); i != lociByHashLocal.end(); i++ )
-		{
-			printf("Hash %u:\n", i->first);
-		
-			for ( int j = 0; j < i->second.size(); j++ )
-			{
-				printf("   Seq: %d\tPos: %d\n", i->second.at(j).sequence, i->second.at(j).position);
-			}
+				for ( int j = 0; j < i->second.size(); j++ )
+				{
+					printf("   Seq: %d\tPos: %d\n", i->second.at(j).sequence, i->second.at(j).position);
+				}
 			
-			const vector<Locus> & lociLocal = i->second;
-			vector<Locus> & lociGlobal = lociByHash[i->first]; // creates if needed
+				const vector<Locus> & lociLocal = i->second;
+				vector<Locus> & lociGlobal = lociByHash[i->first]; // creates if needed
 			
-			lociGlobal.insert(lociGlobal.end(), lociLocal.begin(), lociLocal.end());
+				lociGlobal.insert(lociGlobal.end(), lociLocal.begin(), lociLocal.end());
+			}
+		
+			cout << endl;
+		
+			count++;
 		}
-		
-		cout << endl;
-		
-		count++;
-	}
 	
-	if ( l != -1 ) printf("ERROR: return value: %d\n", l);
-	kseq_destroy(seq);
-	gzclose(fp);
+		if ( l != -1 )
+		{
+			printf("ERROR: return value: %d\n", l);
+			return 1;
+		}
+		
+		kseq_destroy(seq);
+		gzclose(fp);
+	}
 	
 	printf("\nCombined hash table:\n\n");
 	
