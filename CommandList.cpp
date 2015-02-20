@@ -19,14 +19,29 @@ void CommandList::addCommand(Command * command)
 
 void CommandList::print()
 {
-	cout << endl << "minimap";
+	cout << endl << "Usage:" << endl << endl;
+	cout << "   minimap <command> [options] [arguments ...]" << endl << endl;
+	cout << "Commands:" << endl << endl;
+	
+	int lengthMax = 0;
 	
 	for ( map<string, Command *>::iterator i = commands.begin(); i != commands.end(); i++ )
 	{
-		cout << '\t' << i->first << '\t' << i->second->description << endl;
+		if ( i->first.length() > lengthMax )
+		{
+			lengthMax = i->first.length();
+		}
 	}
 	
-	cout << endl;
+	vector<vector<string>> columns(2);
+	
+	for ( map<string, Command *>::iterator i = commands.begin(); i != commands.end(); i++ )
+	{
+		columns[0].push_back(i->first);
+		columns[1].push_back(i->second->description);
+	}
+	
+	printColumns(columns);
 }
 
 int CommandList::run(int argc, const char ** argv)

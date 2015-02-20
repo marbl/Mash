@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sys/ioctl.h>
 
 #include "Command.h"
 
@@ -47,37 +48,57 @@ void Command::addOption(string name, Option option)
 
 void Command::print() const
 {
-	cout << endl << "minimap " << name << " [options] " << argumentString << endl << endl;
-	cout << description << endl << endl;
+	cout << endl << "Usage:" << endl << endl;
+	cout << "   minimap " << name << " [options] " << argumentString << endl << endl;
+	cout << "Description:" << endl << endl;
+	cout << "   " << description << endl << endl;
+	
+	if ( options.size() == 0 )
+	{
+		return;
+	}
+	
 	cout << "Options:" << endl << endl;
+	
+	vector<vector<string>> columns(4);
+	
+	columns[0].push_back("Option");
+	columns[1].push_back("Argument");
+	columns[2].push_back("Default");
+	columns[3].push_back("Description");
 	
 	for ( map<string, Option>::const_iterator i = options.begin(); i != options.end(); i++ )
 	{
-		cout << "-" << i->second.identifier << '\t';
+		columns[0].push_back("-" + i->second.identifier);
+		
+		string type;
 		
 		switch ( i->second.type )
 		{
 			case Option::Boolean:
 				break;
 			case Option::Number:
-				cout << "<number>";
+				type = "<number>";
 				break;
 			case Option::File:
-				cout << "<path>  ";
+				type = "<path>  ";
 				break;
 		}
 		
-		cout << '\t' << i->second.description;
+		columns[1].push_back(type);
+		
+		string defaultString;
 		
 		if ( i->second.type != Option::Boolean )
 		{
-			cout << " [" << i->second.argument << ']';
+			defaultString = "[" + i->second.argument + "]";
 		}
 		
-		cout << endl;
+		columns[2].push_back(defaultString);
+		columns[3].push_back(i->second.description);
 	}
 	
-	cout << endl;
+	printColumns(columns);
 }
 
 int Command::run(int argc, const char ** argv)
@@ -114,4 +135,97 @@ int Command::run(int argc, const char ** argv)
 	}
 	
 	return run();
+}
+
+void printColumns(vector<vector<string>> columns, int indent, int spacing)
+{
+	struct winsize w;
+	ioctl(0, TIOCGWINSZ, &w);
+	
+	vector<int> lengthMaxes(columns.size(), 0);
+	
+	for ( int i = 0; i < columns.size(); i++ )
+	{
+		for ( int j = 0; j < columns[i].size(); j++ )
+		{
+			if ( columns[i][j].length() > lengthMaxes[i] )
+			{
+				lengthMaxes[i] = columns[i][j].length();
+			}
+		}
+	}
+	
+	for ( int i = 0; i < columns[0].size(); i++ )
+	{
+		int offset = 0;
+		int offsetTarget = indent;
+		
+		for ( int j = 0; j < columns.size(); j++ )
+		{
+			for ( int k = offset; k < offsetTarget; k++ )
+			{
+				cout << ' ';
+			}
+			
+			int index = 0;
+			const string & text = columns[j][i];
+			
+			do
+			{
+				int length = text.length() - index;
+				
+				if ( length + offsetTarget > w.ws_col )
+				{
+					length = w.ws_col - offsetTarget;
+				
+					while ( text[index + length] != ' ' && length > 0 )
+					{
+						length--;
+					}
+				}
+				
+				if ( length == 0 )
+				{
+					length = w.ws_col - offsetTarget;
+				}
+				
+				if ( index > 0 )
+				{
+					cout << endl;
+					
+					for ( int k = 0; k < offsetTarget; k++ )
+					{
+						cout << ' ';
+					}
+				}
+				
+				cout << text.substr(index, length);
+				index += length;
+				
+				while ( index < text.length() && text[index] == ' ' )
+				{
+					index++;
+				}
+			}
+			while ( index < text.length() );
+			
+			offset = offsetTarget + columns[j][i].length();
+			
+			if ( offsetTarget + lengthMaxes[j] + spacing > w.ws_col - 5 )
+			{
+				if ( j < columns.size() - 1 )
+				{
+					cout << endl;
+				}
+				
+				offset = 0;
+			}
+			else
+			{
+				offsetTarget += lengthMaxes[j] + spacing;
+			}
+		}
+		
+		cout << endl << endl;
+	}
 }

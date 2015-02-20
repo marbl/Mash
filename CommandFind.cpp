@@ -12,6 +12,12 @@ CommandFind::CommandFind()
 
 int CommandFind::run() const
 {
+	if ( arguments.size() < 2 )
+	{
+		print();
+		return 0;
+	}
+	
 	Index index;
 	
 	index.initFromCapnp(arguments[0].c_str());
