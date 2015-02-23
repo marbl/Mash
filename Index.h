@@ -13,40 +13,40 @@ static const int capnpHeaderLength = strlen(capnpHeader);
 class Index
 {
 public:
-	
-	struct Locus
-	{
-		Locus(uint32_t sequenceNew, uint32_t positionNew) :
-			sequence(sequenceNew),
-			position(positionNew)
-			{}
+    
+    struct Locus
+    {
+        Locus(uint32_t sequenceNew, uint32_t positionNew) :
+            sequence(sequenceNew),
+            position(positionNew)
+            {}
 
-		uint32_t sequence;
-		uint32_t position;
-	};
-	
-	struct Reference
-	{
-		// no sequence for now
-		
-		std::string name;
-		std::string comment;
-		uint32_t length;
-	};
-	
-	typedef uint32_t hash_t;
-	typedef std::unordered_map < Index::hash_t, std::vector<Index::Locus> > LociByHash_umap;
+        uint32_t sequence;
+        uint32_t position;
+    };
+    
+    struct Reference
+    {
+        // no sequence for now
+        
+        std::string name;
+        std::string comment;
+        uint32_t length;
+    };
+    
+    typedef uint32_t hash_t;
+    typedef std::unordered_map < Index::hash_t, std::vector<Index::Locus> > LociByHash_umap;
 
-	int initFromCapnp(const char * file);
-	int initFromSequence(const std::vector<std::string> & files, int kmerSizeNew, float compressionFactorNew);
-	int writeToCapnp(const char * file) const;
-	
+    int initFromCapnp(const char * file);
+    int initFromSequence(const std::vector<std::string> & files, int kmerSizeNew, float compressionFactorNew);
+    int writeToCapnp(const char * file) const;
+    
 private:
-	
-	std::vector<Reference> references;
-	LociByHash_umap lociByHash;
-	int kmerSize;
-	float compressionFactor;
+    
+    std::vector<Reference> references;
+    LociByHash_umap lociByHash;
+    int kmerSize;
+    float compressionFactor;
 };
 
 int def(int fdSource, int fdDest, int level);

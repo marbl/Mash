@@ -7,9 +7,9 @@ class CommandFind : public Command
 {
 public:
 
-	CommandFind();
-	
-	int run() const; // override
+    CommandFind();
+    
+    int run() const; // override
 };
 
 #endif

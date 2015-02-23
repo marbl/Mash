@@ -17,57 +17,57 @@ class Command
 // options on the command line) will be available in the 'arguments' vector.
 
 public:
-	
-	class Option
-	{
-	public:
-	
-		enum Type
-		{
-			Boolean,
-			Number,
-			File
-		}
-		type;
-		
-		std::string identifier;
-		std::string description;
-		std::string argument;
-		
-		bool active;
-		
-		Option() {}
-		Option(Type typeNew, std::string identifierNew, std::string descriptionNew, std::string argumentDefault = "")
-			:
-			type(typeNew),
-			identifier(identifierNew),
-			description(descriptionNew),
-			argument(argumentDefault),
-			active(false)
-			{}
-		
-		float getArgumentAsNumber(float min = 0, float max = 0) const;
-	};
-	
-	virtual ~Command() {};
-	
-	void addOption(std::string name, Option option);
-	void print() const;
-	virtual int run() const = 0;
-	int run(int argc, const char ** argv);
-	
-	std::string name;
-	std::string description;
-	std::string argumentString;
-	
+    
+    class Option
+    {
+    public:
+    
+        enum Type
+        {
+            Boolean,
+            Number,
+            File
+        }
+        type;
+        
+        std::string identifier;
+        std::string description;
+        std::string argument;
+        
+        bool active;
+        
+        Option() {}
+        Option(Type typeNew, std::string identifierNew, std::string descriptionNew, std::string argumentDefault = "")
+            :
+            type(typeNew),
+            identifier(identifierNew),
+            description(descriptionNew),
+            argument(argumentDefault),
+            active(false)
+            {}
+        
+        float getArgumentAsNumber(float min = 0, float max = 0) const;
+    };
+    
+    virtual ~Command() {};
+    
+    void addOption(std::string name, Option option);
+    void print() const;
+    virtual int run() const = 0;
+    int run(int argc, const char ** argv);
+    
+    std::string name;
+    std::string description;
+    std::string argumentString;
+    
 protected:
 
-	std::map<std::string, Option> options;
-	std::vector<std::string> arguments;
-	
+    std::map<std::string, Option> options;
+    std::vector<std::string> arguments;
+    
 private:
-	
-	std::map<std::string, std::string> optionNamesByIdentifier;
+    
+    std::map<std::string, std::string> optionNamesByIdentifier;
 };
 
 void printColumns(std::vector<std::vector<std::string>> columns, int indent = 3, int spacing = 3);

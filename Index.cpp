@@ -19,371 +19,371 @@ typedef map < Index::hash_t, vector<Index::Locus> > LociByHash_map;
 
 int Index::initFromCapnp(const char * file)
 {
-	// use a pipe to decompress input to Cap'n Proto
-	
-	int fds[2];
-	int piped = pipe(fds);
-	
-	if ( piped < 0 )
-	{
-		cerr << "ERROR: could not open pipe for decompression\n";
-		return 1;
-	}
-	
-	int forked = fork();
-	
-	if ( forked < 0 )
-	{
-		cerr << "ERROR: could not fork for decompression" << endl;
-		return 1;
-	}
-	
-	if ( forked == 0 )
-	{
-		// read from zipped fd and write to pipe
-		
-		close(fds[0]); // other process's end of pipe
-		
-		int fd = open(file, O_RDONLY);
-		
-		if ( fd < 0 )
-		{
-			cerr << "ERROR: could not open " << file << " for reading." << endl;
-			exit(1);
-		}
-		
-		char buffer[1024];
-		
-		read(fd, buffer, capnpHeaderLength);
-		buffer[capnpHeaderLength] = 0;
-		
-		if ( strcmp(buffer, capnpHeader) != 0 )
-		{
-			cerr << "ERROR: '" << file << "' does not look like an index" << endl;
-			exit(1);
-		}
-		
-		int ret = inf(fd, fds[1]);
-		if (ret != Z_OK) zerr(ret);
-		close(fd);
-		exit(ret);
-		
-		gzFile fileIn = gzopen(file, "rb");
-		
-		int bytesRead;
-		
-		// eat header
-		//
-		gzread(fileIn, buffer, capnpHeaderLength);
-		
-		printf("header: %s\n", buffer);
-		while ( (bytesRead = gzread(fileIn, buffer, sizeof(buffer))) > 0)
-		{
-			printf("uncompressed: %s\n", buffer);
-			write(fds[1], buffer, bytesRead);
-		}
-		
-		gzclose(fileIn);
-		close(fds[1]);
-		exit(0);
-	}
-	
-	// read from pipe
-	
-	close(fds[1]); // other process's end of pipe
-	
-	capnp::ReaderOptions readerOptions;
-	
-	readerOptions.traversalLimitInWords = 1000000000000;
-	readerOptions.nestingLimit = 1000000;
-	
-	capnp::StreamFdMessageReader message(fds[0], readerOptions);
-	capnp::MinHash::Reader reader = message.getRoot<capnp::MinHash>();
-	
-	capnp::MinHash::ReferenceList::Reader referenceListReader = reader.getReferenceList();
-	
-	capnp::List<capnp::MinHash::ReferenceList::Reference>::Reader referencesReader = referenceListReader.getReferences();
-	references.resize(referencesReader.size());
-	
-	for ( int i = 0; i < references.size(); i++ )
-	{
-		capnp::MinHash::ReferenceList::Reference::Reader referenceReader = referencesReader[i];
-		
-		references[i].name = referenceReader.getName();
-		references[i].comment = referenceReader.getComment();
-		references[i].length = referenceReader.getLength();
-	}
-	
-	capnp::MinHash::HashTable::Reader hashTableReader = reader.getHashTable();
-	capnp::List<capnp::MinHash::HashTable::HashBin>::Reader hashBinsReader = hashTableReader.getHashBins();
-	
-	for ( int i = 0; i < hashBinsReader.size(); i++ )
-	{
-		capnp::MinHash::HashTable::HashBin::Reader hashBinReader = hashBinsReader[i];
-		
-		vector<Locus> & loci = lociByHash[hashBinReader.getHash()];
-		
-		capnp::List<capnp::MinHash::HashTable::HashBin::Locus>::Reader lociReader = hashBinReader.getLoci();
-		
-		for ( int j = 0; j < lociReader.size(); j++ )
-		{
-			loci.push_back(Locus(lociReader[j].getSequence(), lociReader[j].getPosition()));
-		}
-	}
-	
-	kmerSize = reader.getKmerSize();
-	compressionFactor = reader.getCompressionFactor();
-	
-	cout << "Len\tMins\tName/Comment " << endl << endl;
-	
-	for ( int i = 0; i < references.size(); i++ )
-	{
-		cout << references[i].length << '\t' << int(references[i].length / compressionFactor) << '\t' << references[i].name << ' ' << references[i].comment << endl;
-	}
-	
-	printf("\nCombined hash table:\n\n");
-	
-	for ( LociByHash_umap::iterator i = lociByHash.begin(); i != lociByHash.end(); i++ )
-	{
-		printf("Hash %u:\n", i->first);
-		
-		for ( int j = 0; j < i->second.size(); j++ )
-		{
-			printf("   Seq: %d\tPos: %d\n", i->second.at(j).sequence, i->second.at(j).position);
-		}
-	}
-	
-	close(fds[0]);
-	
-	return 0;
+    // use a pipe to decompress input to Cap'n Proto
+    
+    int fds[2];
+    int piped = pipe(fds);
+    
+    if ( piped < 0 )
+    {
+        cerr << "ERROR: could not open pipe for decompression\n";
+        return 1;
+    }
+    
+    int forked = fork();
+    
+    if ( forked < 0 )
+    {
+        cerr << "ERROR: could not fork for decompression" << endl;
+        return 1;
+    }
+    
+    if ( forked == 0 )
+    {
+        // read from zipped fd and write to pipe
+        
+        close(fds[0]); // other process's end of pipe
+        
+        int fd = open(file, O_RDONLY);
+        
+        if ( fd < 0 )
+        {
+            cerr << "ERROR: could not open " << file << " for reading." << endl;
+            exit(1);
+        }
+        
+        char buffer[1024];
+        
+        read(fd, buffer, capnpHeaderLength);
+        buffer[capnpHeaderLength] = 0;
+        
+        if ( strcmp(buffer, capnpHeader) != 0 )
+        {
+            cerr << "ERROR: '" << file << "' does not look like an index" << endl;
+            exit(1);
+        }
+        
+        int ret = inf(fd, fds[1]);
+        if (ret != Z_OK) zerr(ret);
+        close(fd);
+        exit(ret);
+        
+        gzFile fileIn = gzopen(file, "rb");
+        
+        int bytesRead;
+        
+        // eat header
+        //
+        gzread(fileIn, buffer, capnpHeaderLength);
+        
+        printf("header: %s\n", buffer);
+        while ( (bytesRead = gzread(fileIn, buffer, sizeof(buffer))) > 0)
+        {
+            printf("uncompressed: %s\n", buffer);
+            write(fds[1], buffer, bytesRead);
+        }
+        
+        gzclose(fileIn);
+        close(fds[1]);
+        exit(0);
+    }
+    
+    // read from pipe
+    
+    close(fds[1]); // other process's end of pipe
+    
+    capnp::ReaderOptions readerOptions;
+    
+    readerOptions.traversalLimitInWords = 1000000000000;
+    readerOptions.nestingLimit = 1000000;
+    
+    capnp::StreamFdMessageReader message(fds[0], readerOptions);
+    capnp::MinHash::Reader reader = message.getRoot<capnp::MinHash>();
+    
+    capnp::MinHash::ReferenceList::Reader referenceListReader = reader.getReferenceList();
+    
+    capnp::List<capnp::MinHash::ReferenceList::Reference>::Reader referencesReader = referenceListReader.getReferences();
+    references.resize(referencesReader.size());
+    
+    for ( int i = 0; i < references.size(); i++ )
+    {
+        capnp::MinHash::ReferenceList::Reference::Reader referenceReader = referencesReader[i];
+        
+        references[i].name = referenceReader.getName();
+        references[i].comment = referenceReader.getComment();
+        references[i].length = referenceReader.getLength();
+    }
+    
+    capnp::MinHash::HashTable::Reader hashTableReader = reader.getHashTable();
+    capnp::List<capnp::MinHash::HashTable::HashBin>::Reader hashBinsReader = hashTableReader.getHashBins();
+    
+    for ( int i = 0; i < hashBinsReader.size(); i++ )
+    {
+        capnp::MinHash::HashTable::HashBin::Reader hashBinReader = hashBinsReader[i];
+        
+        vector<Locus> & loci = lociByHash[hashBinReader.getHash()];
+        
+        capnp::List<capnp::MinHash::HashTable::HashBin::Locus>::Reader lociReader = hashBinReader.getLoci();
+        
+        for ( int j = 0; j < lociReader.size(); j++ )
+        {
+            loci.push_back(Locus(lociReader[j].getSequence(), lociReader[j].getPosition()));
+        }
+    }
+    
+    kmerSize = reader.getKmerSize();
+    compressionFactor = reader.getCompressionFactor();
+    
+    cout << "Len\tMins\tName/Comment " << endl << endl;
+    
+    for ( int i = 0; i < references.size(); i++ )
+    {
+        cout << references[i].length << '\t' << int(references[i].length / compressionFactor) << '\t' << references[i].name << ' ' << references[i].comment << endl;
+    }
+    
+    printf("\nCombined hash table:\n\n");
+    
+    for ( LociByHash_umap::iterator i = lociByHash.begin(); i != lociByHash.end(); i++ )
+    {
+        printf("Hash %u:\n", i->first);
+        
+        for ( int j = 0; j < i->second.size(); j++ )
+        {
+            printf("   Seq: %d\tPos: %d\n", i->second.at(j).sequence, i->second.at(j).position);
+        }
+    }
+    
+    close(fds[0]);
+    
+    return 0;
 }
 
 int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float compressionFactorNew)
 {
-	kmerSize = kmerSizeNew;
-	compressionFactor = compressionFactorNew;
-	
-	int l;
-	int count = 0;
-	
-	for ( int i = 0; i < files.size(); i++ )
-	{
-		gzFile fp = gzopen(files[i].c_str(), "r");
-		kseq_t *seq = kseq_init(fp);
-		
-		while ((l = kseq_read(seq)) >= 0)
-		{
-			LociByHash_map lociByHashLocal;
-		
-			printf("name: %s\n", seq->name.s);
-			if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
-			printf("seq: %s\n", seq->seq.s);
-			if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
-		
-			int mins = l / compressionFactor;
-		
-			if ( mins < 1 )
-			{
-				mins = 1;
-			}
-		
-			cout << "mins: " << mins << endl << endl;
-		
-			references.resize(references.size() + 1);
-			references[references.size() - 1].name = seq->name.s;
-		
-			if ( seq->comment.l > 0 )
-			{
-				references[references.size() - 1].comment = seq->comment.s;
-			}
-		
-			references[references.size() - 1].length = l;
-		
-			for ( int i = 0; i < seq->seq.l - kmerSize + 1; i++ )
-			{
-				hash_t hash;
-				MurmurHash3_x86_32(seq->seq.s + i, kmerSize, seed, &hash);
-				printf("   Hash at pos %d:\t%u\n", i, hash);
-			
-				if
-				(
-					lociByHashLocal.count(hash) == 0 &&
-					(
-						lociByHashLocal.size() < mins ||
-						hash < lociByHashLocal.rbegin()->first
-					)
-				)
-				{
-					lociByHashLocal.insert(pair<hash_t, vector<Locus> >(hash, vector<Locus>())); // insert empty vector
-				
-					if ( lociByHashLocal.size() > mins )
-					{
-						lociByHashLocal.erase(--lociByHashLocal.end());
-					}
-				}
-			
-				if ( lociByHashLocal.count(hash) )
-				{
-					lociByHashLocal[hash].push_back(Locus(count, i));
-				}
-			}
-		
-			printf("\n");
-		
-			for ( LociByHash_map::iterator i = lociByHashLocal.begin(); i != lociByHashLocal.end(); i++ )
-			{
-				printf("Hash %u:\n", i->first);
-		
-				for ( int j = 0; j < i->second.size(); j++ )
-				{
-					printf("   Seq: %d\tPos: %d\n", i->second.at(j).sequence, i->second.at(j).position);
-				}
-			
-				const vector<Locus> & lociLocal = i->second;
-				vector<Locus> & lociGlobal = lociByHash[i->first]; // creates if needed
-			
-				lociGlobal.insert(lociGlobal.end(), lociLocal.begin(), lociLocal.end());
-			}
-		
-			cout << endl;
-		
-			count++;
-		}
-	
-		if ( l != -1 )
-		{
-			printf("ERROR: return value: %d\n", l);
-			return 1;
-		}
-		
-		kseq_destroy(seq);
-		gzclose(fp);
-	}
-	
-	printf("\nCombined hash table:\n\n");
-	
-	for ( LociByHash_umap::iterator i = lociByHash.begin(); i != lociByHash.end(); i++ )
-	{
-		printf("Hash %u:\n", i->first);
-		
-		for ( int j = 0; j < i->second.size(); j++ )
-		{
-			printf("   Seq: %d\tPos: %d\n", i->second.at(j).sequence, i->second.at(j).position);
-		}
-	}
-	
-	return 0;
+    kmerSize = kmerSizeNew;
+    compressionFactor = compressionFactorNew;
+    
+    int l;
+    int count = 0;
+    
+    for ( int i = 0; i < files.size(); i++ )
+    {
+        gzFile fp = gzopen(files[i].c_str(), "r");
+        kseq_t *seq = kseq_init(fp);
+        
+        while ((l = kseq_read(seq)) >= 0)
+        {
+            LociByHash_map lociByHashLocal;
+        
+            printf("name: %s\n", seq->name.s);
+            if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
+            printf("seq: %s\n", seq->seq.s);
+            if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
+        
+            int mins = l / compressionFactor;
+        
+            if ( mins < 1 )
+            {
+                mins = 1;
+            }
+        
+            cout << "mins: " << mins << endl << endl;
+        
+            references.resize(references.size() + 1);
+            references[references.size() - 1].name = seq->name.s;
+        
+            if ( seq->comment.l > 0 )
+            {
+                references[references.size() - 1].comment = seq->comment.s;
+            }
+        
+            references[references.size() - 1].length = l;
+        
+            for ( int i = 0; i < seq->seq.l - kmerSize + 1; i++ )
+            {
+                hash_t hash;
+                MurmurHash3_x86_32(seq->seq.s + i, kmerSize, seed, &hash);
+                printf("   Hash at pos %d:\t%u\n", i, hash);
+            
+                if
+                (
+                    lociByHashLocal.count(hash) == 0 &&
+                    (
+                        lociByHashLocal.size() < mins ||
+                        hash < lociByHashLocal.rbegin()->first
+                    )
+                )
+                {
+                    lociByHashLocal.insert(pair<hash_t, vector<Locus> >(hash, vector<Locus>())); // insert empty vector
+                
+                    if ( lociByHashLocal.size() > mins )
+                    {
+                        lociByHashLocal.erase(--lociByHashLocal.end());
+                    }
+                }
+            
+                if ( lociByHashLocal.count(hash) )
+                {
+                    lociByHashLocal[hash].push_back(Locus(count, i));
+                }
+            }
+        
+            printf("\n");
+        
+            for ( LociByHash_map::iterator i = lociByHashLocal.begin(); i != lociByHashLocal.end(); i++ )
+            {
+                printf("Hash %u:\n", i->first);
+        
+                for ( int j = 0; j < i->second.size(); j++ )
+                {
+                    printf("   Seq: %d\tPos: %d\n", i->second.at(j).sequence, i->second.at(j).position);
+                }
+            
+                const vector<Locus> & lociLocal = i->second;
+                vector<Locus> & lociGlobal = lociByHash[i->first]; // creates if needed
+            
+                lociGlobal.insert(lociGlobal.end(), lociLocal.begin(), lociLocal.end());
+            }
+        
+            cout << endl;
+        
+            count++;
+        }
+    
+        if ( l != -1 )
+        {
+            printf("ERROR: return value: %d\n", l);
+            return 1;
+        }
+        
+        kseq_destroy(seq);
+        gzclose(fp);
+    }
+    
+    printf("\nCombined hash table:\n\n");
+    
+    for ( LociByHash_umap::iterator i = lociByHash.begin(); i != lociByHash.end(); i++ )
+    {
+        printf("Hash %u:\n", i->first);
+        
+        for ( int j = 0; j < i->second.size(); j++ )
+        {
+            printf("   Seq: %d\tPos: %d\n", i->second.at(j).sequence, i->second.at(j).position);
+        }
+    }
+    
+    return 0;
 }
 
 int Index::writeToCapnp(const char * file) const
 {
-	// use a pipe to compress Cap'n Proto output
-	
-	int fds[2];
-	int piped = pipe(fds);
-	
-	if ( piped < 0 )
-	{
-		cerr << "ERROR: could not open pipe for compression\n";
-		return 1;
-	}
-	
-	int forked = fork();
-	
-	if ( forked < 0 )
-	{
-		cerr << "ERROR: could not fork for compression\n";
-		return 1;
-	}
-	
-	if ( forked == 0 )
-	{
-		// read from pipe and write to compressed file
-		
-		close(fds[1]); // other process's end of pipe
-		
-		int fd = open(file, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-		
-		if ( fd < 0 )
-		{
-			cerr << "ERROR: could not open " << file << " for writing.\n";
-			exit(1);
-		}
-		
-		// write header
-		//
-		write(fd, capnpHeader, capnpHeaderLength);
-		
-		int ret = def(fds[0], fd, Z_DEFAULT_COMPRESSION);
-		if (ret != Z_OK) zerr(ret);
+    // use a pipe to compress Cap'n Proto output
+    
+    int fds[2];
+    int piped = pipe(fds);
+    
+    if ( piped < 0 )
+    {
+        cerr << "ERROR: could not open pipe for compression\n";
+        return 1;
+    }
+    
+    int forked = fork();
+    
+    if ( forked < 0 )
+    {
+        cerr << "ERROR: could not fork for compression\n";
+        return 1;
+    }
+    
+    if ( forked == 0 )
+    {
+        // read from pipe and write to compressed file
+        
+        close(fds[1]); // other process's end of pipe
+        
+        int fd = open(file, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+        
+        if ( fd < 0 )
+        {
+            cerr << "ERROR: could not open " << file << " for writing.\n";
+            exit(1);
+        }
+        
+        // write header
+        //
+        write(fd, capnpHeader, capnpHeaderLength);
+        
+        int ret = def(fds[0], fd, Z_DEFAULT_COMPRESSION);
+        if (ret != Z_OK) zerr(ret);
         exit(ret);
         
-		char buffer[1024];
-		gzFile fileOut = gzopen(file, "ab");
-		
-		int bytesRead;
-		
-		while ( (bytesRead = read(fds[0], buffer, sizeof(buffer))) > 0)
-		{
-			printf("compressing: %s\n", buffer);
-			gzwrite(fileOut, buffer, bytesRead);
-		}
-		
-		gzclose(fileOut);
-		close(fds[0]);
-		exit(0);
-	}
-	
-	// write to pipe
-	
-	close(fds[0]); // other process's end of pipe
-	
-	capnp::MallocMessageBuilder message;
-	capnp::MinHash::Builder builder = message.initRoot<capnp::MinHash>();
-	
-	capnp::MinHash::ReferenceList::Builder referenceListBuilder = builder.initReferenceList();
-	
-	capnp::List<capnp::MinHash::ReferenceList::Reference>::Builder referencesBuilder = referenceListBuilder.initReferences(references.size());
-	
-	for ( int i = 0; i < references.size(); i++ )
-	{
-		capnp::MinHash::ReferenceList::Reference::Builder referenceBuilder = referencesBuilder[i];
-		
-		referenceBuilder.setName(references[i].name);
-		referenceBuilder.setComment(references[i].comment);
-		referenceBuilder.setLength(references[i].length);
-	}
-	
-	capnp::MinHash::HashTable::Builder hashTableBuilder = builder.initHashTable();
-	capnp::List<capnp::MinHash::HashTable::HashBin>::Builder hashBinsBuilder = hashTableBuilder.initHashBins(lociByHash.size());
-	
-	int hashIndex = 0;
-	
-	for ( LociByHash_umap::const_iterator i = lociByHash.begin(); i != lociByHash.end(); i++ )
-	{
-		capnp::MinHash::HashTable::HashBin::Builder hashBinBuilder = hashBinsBuilder[hashIndex];
-		hashIndex++;
-		
-		hashBinBuilder.setHash(i->first);
-		
-		const vector<Locus> & loci = i->second;
-		
-		capnp::List<capnp::MinHash::HashTable::HashBin::Locus>::Builder lociBuilder = hashBinBuilder.initLoci(loci.size());
-		
-		for ( int j = 0; j < loci.size(); j++ )
-		{
-			lociBuilder[j].setSequence(loci[j].sequence);
-			lociBuilder[j].setPosition(loci[j].position);
-		}
-	}
-	
-	builder.setKmerSize(kmerSize);
-	builder.setCompressionFactor(compressionFactor);
-	
-	writeMessageToFd(fds[1], message);
-	close(fds[1]);
-	
-	return 0;
+        char buffer[1024];
+        gzFile fileOut = gzopen(file, "ab");
+        
+        int bytesRead;
+        
+        while ( (bytesRead = read(fds[0], buffer, sizeof(buffer))) > 0)
+        {
+            printf("compressing: %s\n", buffer);
+            gzwrite(fileOut, buffer, bytesRead);
+        }
+        
+        gzclose(fileOut);
+        close(fds[0]);
+        exit(0);
+    }
+    
+    // write to pipe
+    
+    close(fds[0]); // other process's end of pipe
+    
+    capnp::MallocMessageBuilder message;
+    capnp::MinHash::Builder builder = message.initRoot<capnp::MinHash>();
+    
+    capnp::MinHash::ReferenceList::Builder referenceListBuilder = builder.initReferenceList();
+    
+    capnp::List<capnp::MinHash::ReferenceList::Reference>::Builder referencesBuilder = referenceListBuilder.initReferences(references.size());
+    
+    for ( int i = 0; i < references.size(); i++ )
+    {
+        capnp::MinHash::ReferenceList::Reference::Builder referenceBuilder = referencesBuilder[i];
+        
+        referenceBuilder.setName(references[i].name);
+        referenceBuilder.setComment(references[i].comment);
+        referenceBuilder.setLength(references[i].length);
+    }
+    
+    capnp::MinHash::HashTable::Builder hashTableBuilder = builder.initHashTable();
+    capnp::List<capnp::MinHash::HashTable::HashBin>::Builder hashBinsBuilder = hashTableBuilder.initHashBins(lociByHash.size());
+    
+    int hashIndex = 0;
+    
+    for ( LociByHash_umap::const_iterator i = lociByHash.begin(); i != lociByHash.end(); i++ )
+    {
+        capnp::MinHash::HashTable::HashBin::Builder hashBinBuilder = hashBinsBuilder[hashIndex];
+        hashIndex++;
+        
+        hashBinBuilder.setHash(i->first);
+        
+        const vector<Locus> & loci = i->second;
+        
+        capnp::List<capnp::MinHash::HashTable::HashBin::Locus>::Builder lociBuilder = hashBinBuilder.initLoci(loci.size());
+        
+        for ( int j = 0; j < loci.size(); j++ )
+        {
+            lociBuilder[j].setSequence(loci[j].sequence);
+            lociBuilder[j].setPosition(loci[j].position);
+        }
+    }
+    
+    builder.setKmerSize(kmerSize);
+    builder.setCompressionFactor(compressionFactor);
+    
+    writeMessageToFd(fds[1], message);
+    close(fds[1]);
+    
+    return 0;
 }
 
 

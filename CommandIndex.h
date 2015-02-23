@@ -7,9 +7,9 @@ class CommandIndex : public Command
 {
 public:
 
-	CommandIndex();
-	
-	int run() const; // override
+    CommandIndex();
+    
+    int run() const; // override
 };
 
 #endif

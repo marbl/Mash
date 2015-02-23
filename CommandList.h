@@ -7,15 +7,15 @@
 
 class CommandList
 {
-	std::map<std::string, Command *> commands;
-	
+    std::map<std::string, Command *> commands;
+    
 public:
-	
-	~CommandList();
-	
-	void addCommand(Command * command);
-	void print();
-	int run(int argc, const char ** argv);
+    
+    ~CommandList();
+    
+    void addCommand(Command * command);
+    void print();
+    int run(int argc, const char ** argv);
 };
 
 #endif
