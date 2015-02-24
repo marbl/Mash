@@ -8,6 +8,7 @@
 #include "kseq.h"
 #include "MurmurHash3.h"
 #include <assert.h>
+#include <queue>
 
 #define SET_BINARY_MODE(file)
 #define CHUNK 16384
@@ -134,14 +135,18 @@ int Index::initFromCapnp(const char * file)
     kmerSize = reader.getKmerSize();
     compressionFactor = reader.getCompressionFactor();
     
-    cout << "Len\tMins\tName/Comment " << endl << endl;
+    cout << endl << "References:" << endl << endl;
+    cout << "   Len\tMins\tName/Comment " << endl;
     
     for ( int i = 0; i < references.size(); i++ )
     {
-        cout << references[i].length << '\t' << int(references[i].length / compressionFactor) << '\t' << references[i].name << ' ' << references[i].comment << endl;
+        cout << "   " << references[i].length << '\t' << int(references[i].length / compressionFactor) << '\t' << references[i].name << ' ' << references[i].comment << endl;
     }
     
-    printf("\nCombined hash table:\n\n");
+    printf("\nCombined hash table:\n");
+    
+    cout << "   kmer:  " << kmerSize << endl;
+    cout << "   comp:  " << compressionFactor << endl << endl;
     
     for ( LociByHash_umap::iterator i = lociByHash.begin(); i != lociByHash.end(); i++ )
     {
@@ -152,6 +157,8 @@ int Index::initFromCapnp(const char * file)
             printf("   Seq: %d\tPos: %d\n", i->second.at(j).sequence, i->second.at(j).position);
         }
     }
+    
+    cout << endl;
     
     close(fds[0]);
     
@@ -173,20 +180,26 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float
         
         while ((l = kseq_read(seq)) >= 0)
         {
-            LociByHash_map lociByHashLocal;
-        
+            if ( l < kmerSize )
+            {
+                continue;
+            }
+            
+            priority_queue<hash_t> minHashes;
+            LociByHash_umap lociByHashLocal;
+            
             printf("name: %s\n", seq->name.s);
             if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
-            printf("seq: %s\n", seq->seq.s);
+            //printf("seq: %s\n", seq->seq.s);
             if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
-        
+            
             int mins = l / compressionFactor;
-        
+            
             if ( mins < 1 )
             {
                 mins = 1;
             }
-        
+            
             cout << "mins: " << mins << endl << endl;
         
             references.resize(references.size() + 1);
@@ -196,60 +209,95 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float
             {
                 references[references.size() - 1].comment = seq->comment.s;
             }
-        
+            
             references[references.size() - 1].length = l;
-        
+            
+            // uppercase
+            //
+            for ( int i = 0; i < l; i++ )
+            {
+                if ( seq->seq.s[i] > 90 )
+                {
+                    seq->seq.s[i] -= 32;
+                }
+            }
+            
             for ( int i = 0; i < seq->seq.l - kmerSize + 1; i++ )
             {
+                // repeatedly skip kmers with bad characters
+                //
+                for ( int j = i; j < i + kmerSize && i + kmerSize <= l; j++ )
+                {
+                    char c = seq->seq.s[j];
+                    
+                    if ( c != 'A' && c != 'C' && c != 'G' && c != 'T' )
+                    {
+                        i = j + 1; // skip to past the bad character
+                        break;
+                    }
+                }
+                
+                if ( i + kmerSize > l )
+                {
+                    // skipped to end
+                    break;
+                }
+                
                 hash_t hash;
                 MurmurHash3_x86_32(seq->seq.s + i, kmerSize, seed, &hash);
-                printf("   Hash at pos %d:\t%u\n", i, hash);
-            
+                
+                if ( i % 1000000 == 0 )
+                {
+                    printf("   At position %d\n", i);
+                }
+                
                 if
                 (
-                    lociByHashLocal.count(hash) == 0 &&
                     (
-                        lociByHashLocal.size() < mins ||
-                        hash < lociByHashLocal.rbegin()->first
-                    )
+                        minHashes.size() < mins ||
+                        hash < minHashes.top()
+                    ) &&
+                    lociByHashLocal.count(hash) == 0
                 )
                 {
                     lociByHashLocal.insert(pair<hash_t, vector<Locus> >(hash, vector<Locus>())); // insert empty vector
-                
-                    if ( lociByHashLocal.size() > mins )
+                    minHashes.push(hash);
+                    
+                    if ( minHashes.size() > mins )
                     {
-                        lociByHashLocal.erase(--lociByHashLocal.end());
+                        lociByHashLocal.erase(minHashes.top());
+                        minHashes.pop();
                     }
                 }
-            
+                
                 if ( lociByHashLocal.count(hash) )
                 {
                     lociByHashLocal[hash].push_back(Locus(count, i));
                 }
             }
-        
-            printf("\n");
-        
-            for ( LociByHash_map::iterator i = lociByHashLocal.begin(); i != lociByHashLocal.end(); i++ )
+            
+            //printf("\n");
+            
+            for ( LociByHash_umap::iterator i = lociByHashLocal.begin(); i != lociByHashLocal.end(); i++ )
             {
-                printf("Hash %u:\n", i->first);
-        
+                //printf("Hash %u:\n", i->first);
+                
                 for ( int j = 0; j < i->second.size(); j++ )
                 {
-                    printf("   Seq: %d\tPos: %d\n", i->second.at(j).sequence, i->second.at(j).position);
+                    //printf("   Seq: %d\tPos: %d\n", i->second.at(j).sequence, i->second.at(j).position);
                 }
-            
+                
                 const vector<Locus> & lociLocal = i->second;
                 vector<Locus> & lociGlobal = lociByHash[i->first]; // creates if needed
-            
+                
                 lociGlobal.insert(lociGlobal.end(), lociLocal.begin(), lociLocal.end());
             }
-        
-            cout << endl;
-        
+            
+            //cout << endl;
+            
             count++;
         }
-    
+        
         if ( l != -1 )
         {
             printf("ERROR: return value: %d\n", l);
@@ -259,7 +307,7 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float
         kseq_destroy(seq);
         gzclose(fp);
     }
-    
+    /*
     printf("\nCombined hash table:\n\n");
     
     for ( LociByHash_umap::iterator i = lociByHash.begin(); i != lociByHash.end(); i++ )
@@ -271,7 +319,7 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float
             printf("   Seq: %d\tPos: %d\n", i->second.at(j).sequence, i->second.at(j).position);
         }
     }
-    
+    */
     return 0;
 }
 
