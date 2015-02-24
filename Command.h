@@ -70,6 +70,6 @@ private:
     std::map<std::string, std::string> optionNamesByIdentifier;
 };
 
-void printColumns(std::vector<std::vector<std::string>> columns, int indent = 3, int spacing = 3);
+void printColumns(std::vector<std::vector<std::string>> columns, int indent = 3, int spacing = 3, const char * missing = "-");
 
 #endif

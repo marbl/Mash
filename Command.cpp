@@ -86,15 +86,7 @@ void Command::print() const
         }
         
         columns[1].push_back(type);
-        
-        string defaultString;
-        
-        if ( i->second.type != Option::Boolean )
-        {
-            defaultString = "[" + i->second.argument + "]";
-        }
-        
-        columns[2].push_back(defaultString);
+        columns[2].push_back(i->second.argument);
         columns[3].push_back(i->second.description);
     }
     
@@ -141,7 +133,7 @@ int Command::run(int argc, const char ** argv)
     return run();
 }
 
-void printColumns(vector<vector<string>> columns, int indent, int spacing)
+void printColumns(vector<vector<string>> columns, int indent, int spacing, const char * missing)
 {
     struct winsize w;
     ioctl(0, TIOCGWINSZ, &w);
@@ -152,6 +144,11 @@ void printColumns(vector<vector<string>> columns, int indent, int spacing)
     {
         for ( int j = 0; j < columns[i].size(); j++ )
         {
+            if ( columns[i][j].length() == 0 )
+            {
+                columns[i][j] = missing;
+        	}
+            
             if ( columns[i][j].length() > lengthMaxes[i] )
             {
                 lengthMaxes[i] = columns[i][j].length();
