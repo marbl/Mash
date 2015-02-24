@@ -10,8 +10,8 @@ CommandIndex::CommandIndex()
     argumentString = "fast(a|q)[.gz] ...";
     
     addOption("help", Option(Option::Boolean, "h", "Help", ""));
-    addOption("kmer", Option(Option::Number, "k", "Kmer size", "11"));
-    addOption("factor", Option(Option::Number, "c", "Compression factor", "100"));
+    addOption("kmer", Option(Option::Number, "k", "Kmer size. Hashes will be based on strings of this many nucleotides.", "11"));
+    addOption("factor", Option(Option::Number, "c", "Compression factor. The number of min-hashes kept for each sequence will be its length divided by this number.", "100"));
     addOption("prefix", Option(Option::File, "p", "Output prefix (first input file used if unspecified). The suffix '.mash' will be appended.", ""));
 }
 
@@ -29,7 +29,10 @@ int CommandIndex::run() const
     Index index;
     
     index.initFromSequence(arguments, kmer, factor);
-    index.writeToCapnp((arguments[0] + ".mash").c_str());
+    
+    string prefix = options.at("prefix").argument.length() > 0 ? options.at("prefix").argument : arguments[0];
+    
+    index.writeToCapnp((prefix + ".mash").c_str());
     
     return 0;
 }
