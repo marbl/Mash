@@ -60,7 +60,7 @@ int Index::initFromCapnp(const char * file)
         
         if ( strcmp(buffer, capnpHeader) != 0 )
         {
-            cerr << "ERROR: '" << file << "' does not look like an index" << endl;
+            cerr << "ERROR: '" << file << "' does not look like a mash index" << endl;
             exit(1);
         }
         
@@ -142,7 +142,7 @@ int Index::initFromCapnp(const char * file)
     {
         cout << "   " << references[i].length << '\t' << int(references[i].length / compressionFactor) << '\t' << references[i].name << ' ' << references[i].comment << endl;
     }
-    
+    /*
     printf("\nCombined hash table:\n");
     
     cout << "   kmer:  " << kmerSize << endl;
@@ -159,7 +159,7 @@ int Index::initFromCapnp(const char * file)
     }
     
     cout << endl;
-    
+    */
     close(fds[0]);
     
     return 0;
@@ -185,7 +185,6 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float
                 continue;
             }
             
-            priority_queue<hash_t> minHashes;
             LociByHash_umap lociByHashLocal;
             
             printf("name: %s\n", seq->name.s);
@@ -193,15 +192,6 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float
             //printf("seq: %s\n", seq->seq.s);
             if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
             
-            int mins = l / compressionFactor;
-            
-            if ( mins < 1 )
-            {
-                mins = 1;
-            }
-            
-            cout << "mins: " << mins << endl << endl;
-        
             references.resize(references.size() + 1);
             references[references.size() - 1].name = seq->name.s;
         
@@ -212,69 +202,7 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float
             
             references[references.size() - 1].length = l;
             
-            // uppercase
-            //
-            for ( int i = 0; i < l; i++ )
-            {
-                if ( seq->seq.s[i] > 90 )
-                {
-                    seq->seq.s[i] -= 32;
-                }
-            }
-            
-            for ( int i = 0; i < seq->seq.l - kmerSize + 1; i++ )
-            {
-                // repeatedly skip kmers with bad characters
-                //
-                for ( int j = i; j < i + kmerSize && i + kmerSize <= l; j++ )
-                {
-                    char c = seq->seq.s[j];
-                    
-                    if ( c != 'A' && c != 'C' && c != 'G' && c != 'T' )
-                    {
-                        i = j + 1; // skip to past the bad character
-                        break;
-                    }
-                }
-                
-                if ( i + kmerSize > l )
-                {
-                    // skipped to end
-                    break;
-                }
-                
-                hash_t hash;
-                MurmurHash3_x86_32(seq->seq.s + i, kmerSize, seed, &hash);
-                
-                if ( i % 1000000 == 0 )
-                {
-                    printf("   At position %d\n", i);
-                }
-                
-                if
-                (
-                    (
-                        minHashes.size() < mins ||
-                        hash < minHashes.top()
-                    ) &&
-                    lociByHashLocal.count(hash) == 0
-                )
-                {
-                    lociByHashLocal.insert(pair<hash_t, vector<Locus> >(hash, vector<Locus>())); // insert empty vector
-                    minHashes.push(hash);
-                    
-                    if ( minHashes.size() > mins )
-                    {
-                        lociByHashLocal.erase(minHashes.top());
-                        minHashes.pop();
-                    }
-                }
-                
-                if ( lociByHashLocal.count(hash) )
-                {
-                    lociByHashLocal[hash].push_back(Locus(count, i));
-                }
-            }
+            findMinHashes(lociByHashLocal, seq->seq.s, l, count, kmerSize, compressionFactor);
             
             //printf("\n");
             
@@ -434,7 +362,83 @@ int Index::writeToCapnp(const char * file) const
     return 0;
 }
 
-
+void findMinHashes(Index::LociByHash_umap & lociByHash, char * seq, uint32_t length, uint32_t seqId, int kmerSize, float compressionFactor)
+{
+    priority_queue<Index::hash_t> minHashes;
+    
+    int mins = length / compressionFactor;
+    //
+    if ( mins < 1 )
+    {
+        mins = 1;
+    }
+    
+    cout << "mins: " << mins << endl << endl;
+    
+    // uppercase
+    //
+    for ( int i = 0; i < length; i++ )
+    {
+        if ( seq[i] > 90 )
+        {
+            seq[i] -= 32;
+        }
+    }
+    
+    for ( int i = 0; i < length - kmerSize + 1; i++ )
+    {
+        // repeatedly skip kmers with bad characters
+        //
+        for ( int j = i; j < i + kmerSize && i + kmerSize <= length; j++ )
+        {
+            char c = seq[j];
+            
+            if ( c != 'A' && c != 'C' && c != 'G' && c != 'T' )
+            {
+                i = j + 1; // skip to past the bad character
+                break;
+            }
+        }
+        
+        if ( i + kmerSize > length )
+        {
+            // skipped to end
+            break;
+        }
+        
+        Index::hash_t hash;
+        MurmurHash3_x86_32(seq + i, kmerSize, seed, &hash);
+        
+        if ( i % 1000000 == 0 )
+        {
+            printf("   At position %d\n", i);
+        }
+        
+        if
+        (
+            (
+                minHashes.size() < mins ||
+                hash < minHashes.top()
+            ) &&
+            lociByHash.count(hash) == 0
+        )
+        {
+            lociByHash[hash]; // insert empty vector
+            minHashes.push(hash);
+            
+            if ( minHashes.size() > mins )
+            {
+                lociByHash.erase(minHashes.top());
+                minHashes.pop();
+            }
+        }
+        
+        if ( lociByHash.count(hash) )
+        {
+            lociByHash[hash].push_back(Index::Locus(seqId, i));
+        }
+    }
+}
 // The following functions are adapted from http://www.zlib.net/zpipe.c
 
 

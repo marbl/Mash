@@ -1,3 +1,6 @@
+#ifndef Index_h
+#define Index_h
+
 #include <capnp/message.h>
 #include <capnp/serialize.h>
 #include "MinHash.capnp.h"
@@ -36,7 +39,10 @@ public:
     
     typedef uint32_t hash_t;
     typedef std::unordered_map < Index::hash_t, std::vector<Index::Locus> > LociByHash_umap;
-
+	
+	float getCompressionFactor() const {return compressionFactor;}
+	const LociByHash_umap & getLociByHash() const {return lociByHash;}
+	int getKmerSize() const {return kmerSize;}
     int initFromCapnp(const char * file);
     int initFromSequence(const std::vector<std::string> & files, int kmerSizeNew, float compressionFactorNew);
     int writeToCapnp(const char * file) const;
@@ -49,6 +55,10 @@ private:
     float compressionFactor;
 };
 
+void findMinHashes(Index::LociByHash_umap & lociByHash, char * seq, uint32_t length, uint32_t seqId, int kmerSize, float compressionFactor);
+
 int def(int fdSource, int fdDest, int level);
 int inf(int fdSource, int fdDest);
 void zerr(int ret);
+
+#endif
