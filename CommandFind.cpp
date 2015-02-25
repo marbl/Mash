@@ -48,12 +48,14 @@ int CommandFind::run() const
                 continue;
             }
             
-            printf("name: %s\n", seq->name.s);
+            printf("Query name: %s\tlength: %d\n\n", seq->name.s, l);
             if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
             //printf("seq: %s\n", seq->seq.s);
             if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
             
             find(index, seq->seq.s, l, threshold);
+            
+            cout << endl;
         }
         
         if ( l != -1 )
@@ -85,7 +87,7 @@ void find(const Index & index, char * seq, uint32_t length, float threshold)
         mins = 1;
     }
     
-    cout << "Mins: " << mins << "\t length: " << length << "\tComp: " << compressionFactor << endl;
+    //cout << "Mins: " << mins << "\t length: " << length << "\tComp: " << compressionFactor << endl;
     findMinHashes(lociByHash, seq, length, 0, kmerSize, compressionFactor);
     
     // get sorted lists of positions, per reference sequence, that have
@@ -95,26 +97,26 @@ void find(const Index & index, char * seq, uint32_t length, float threshold)
     //
     for ( Index::LociByHash_umap::iterator i = lociByHash.begin(); i != lociByHash.end(); i++ )
     {
-    	Index::hash_t hash = i->first;
-    	//cout << "Hash " << hash << endl;
-    	
-    	if ( index.getLociByHash().count(hash) != 0 )
-    	{
-			for ( int j = 0; j < index.getLociByHash().at(hash).size(); j++ )
-			{
-				const Index::Locus & locus = index.getLociByHash().at(hash).at(j);
-			
-				//cout << "Match for hash " << hash << "\t" << locus.sequence << "\t" << locus.position << endl;
-				hits[locus.sequence].insert(locus.position); // set will be created if needed
-			}
-		}
+        Index::hash_t hash = i->first;
+        //cout << "Hash " << hash << endl;
+        
+        if ( index.getLociByHash().count(hash) != 0 )
+        {
+            for ( int j = 0; j < index.getLociByHash().at(hash).size(); j++ )
+            {
+                const Index::Locus & locus = index.getLociByHash().at(hash).at(j);
+            
+                //cout << "Match for hash " << hash << "\t" << locus.sequence << "\t" << locus.position << endl;
+                hits[locus.sequence].insert(locus.position); // set will be created if needed
+            }
+        }
     }
     
     for ( PositionsBySequence_umap::iterator i = hits.begin(); i != hits.end(); i++ )
     {
-    	// pointer to the position at the beginning of the window; to be updated
-    	// as the end of the window is incremented
-    	//
+        // pointer to the position at the beginning of the window; to be updated
+        // as the end of the window is incremented
+        //
         set<uint32_t>::const_iterator windowStart = i->second.begin();
         
         //cout << "Clustering in seq " << i->first << endl;
@@ -125,29 +127,40 @@ void find(const Index & index, char * seq, uint32_t length, float threshold)
         
         for ( set<uint32_t>::const_iterator j = i->second.begin(); j != i->second.end(); j++ )
         {
-        	windowCount++;
-        	
-        	//cout << *windowStart << "\t" << *j << endl;
-        	
-        	// update window start if it is too far behind
-        	//
-        	while ( windowStart != j && *j > length && *windowStart < *j - length + 1 )
-        	{
-        		//cout << "moving " << *j - length + 1 << endl;
-        		windowStart++;
-        		windowCount--;
-        	}
-        	
-        	//cout << *windowStart << "\t" << *j << endl;
-        	if ( float(windowCount) / mins >= threshold )
-        	{
-        		cout << "Hit in seq " << i->first << "\t(" << float(windowCount) / mins << ")" << endl;
-        		
-        		for ( set<uint32_t>::const_iterator k = windowStart; k != i->second.end() && *k <= *j; k++ )
+            windowCount++;
+            
+            //cout << *windowStart << "\t" << *j << endl;
+            
+            // update window start if it is too far behind
+            //
+            while ( windowStart != j && *j > length && *windowStart < *j - length + 1 )
+            {
+                //cout << "moving " << *j - length + 1 << endl;
+                windowStart++;
+                windowCount--;
+            }
+            
+            // extend the right of the window if possible
+            //
+            while ( j != i->second.end() && *j - *windowStart < length )
+            {
+                windowCount++;
+                j++;
+            }
+            //
+            windowCount--;
+            j--;
+            
+            //cout << *windowStart << "\t" << *j << endl;
+            if ( float(windowCount) / mins >= threshold )
+            {
+                cout << "   Cluster in ref " << i->first << "\tscore: " << float(windowCount) / mins << endl;
+                
+                for ( set<uint32_t>::const_iterator k = windowStart; k != i->second.end() && *k <= *j; k++ )
                 {
-                    cout << "   " << *k << endl;
-        		}
-        	}
+                    cout << "      " << *k << endl;
+                }
+            }
         }
     }
 }
