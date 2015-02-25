@@ -136,7 +136,7 @@ int Index::initFromCapnp(const char * file)
     kmerSize = reader.getKmerSize();
     compressionFactor = reader.getCompressionFactor();
     
-    cout << endl << "References:" << endl << endl;
+    //cout << endl << "References:" << endl << endl;
     
     vector< vector<string> > columns(3);
     
@@ -151,9 +151,8 @@ int Index::initFromCapnp(const char * file)
         columns[2].push_back(references[i].name + " " + references[i].comment);
     }
     
-    printColumns(columns);
-    
-    cout << endl;
+    //printColumns(columns);
+    //cout << endl;
     
     /*
     printf("\nCombined hash table:\n");
@@ -200,10 +199,10 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float
             
             LociByHash_umap lociByHashLocal;
             
-            printf("name: %s\n", seq->name.s);
-            if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
+            //printf("name: %s\n", seq->name.s);
+            //if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
             //printf("seq: %s\n", seq->seq.s);
-            if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
+            //if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
             
             references.resize(references.size() + 1);
             references[references.size() - 1].name = seq->name.s;

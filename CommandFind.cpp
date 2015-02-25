@@ -105,7 +105,7 @@ void find(const Index & index, char * seq, uint32_t length, float threshold)
             for ( int j = 0; j < index.getLociByHash().at(hash).size(); j++ )
             {
                 const Index::Locus & locus = index.getLociByHash().at(hash).at(j);
-            
+                
                 //cout << "Match for hash " << hash << "\t" << locus.sequence << "\t" << locus.position << endl;
                 hits[locus.sequence].insert(locus.position); // set will be created if needed
             }
