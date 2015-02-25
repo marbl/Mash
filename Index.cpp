@@ -9,6 +9,7 @@
 #include "MurmurHash3.h"
 #include <assert.h>
 #include <queue>
+#include "Command.h" // TEMP for column printing
 
 #define SET_BINARY_MODE(file)
 #define CHUNK 16384
@@ -136,12 +137,24 @@ int Index::initFromCapnp(const char * file)
     compressionFactor = reader.getCompressionFactor();
     
     cout << endl << "References:" << endl << endl;
-    cout << "   Len\tMins\tName/Comment " << endl;
+    
+    vector< vector<string> > columns(3);
+    
+    columns[0].push_back("ID");
+    columns[1].push_back("Length");
+    columns[2].push_back("Name/Comment");
     
     for ( int i = 0; i < references.size(); i++ )
     {
-        cout << "   " << references[i].length << '\t' << int(references[i].length / compressionFactor) << '\t' << references[i].name << ' ' << references[i].comment << endl;
+        columns[0].push_back(to_string(i));
+        columns[1].push_back(to_string(references[i].length));
+        columns[2].push_back(references[i].name + " " + references[i].comment);
     }
+    
+    printColumns(columns);
+    
+    cout << endl;
+    
     /*
     printf("\nCombined hash table:\n");
     
@@ -373,7 +386,7 @@ void findMinHashes(Index::LociByHash_umap & lociByHash, char * seq, uint32_t len
         mins = 1;
     }
     
-    cout << "mins: " << mins << endl << endl;
+    //cout << "mins: " << mins << endl << endl;
     
     // uppercase
     //
@@ -411,7 +424,7 @@ void findMinHashes(Index::LociByHash_umap & lociByHash, char * seq, uint32_t len
         
         if ( i % 1000000 == 0 )
         {
-            printf("   At position %d\n", i);
+            //printf("   At position %d\n", i);
         }
         
         if
