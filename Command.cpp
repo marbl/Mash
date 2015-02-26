@@ -48,10 +48,18 @@ void Command::addOption(string name, Option option)
 
 void Command::print() const
 {
+    vector<vector<string>> columns(1);
+    
     cout << endl << "Usage:" << endl << endl;
-    cout << "   minimap " << name << " [options] " << argumentString << endl << endl;
+    
+    columns[0].push_back("minimap " + name + " [options] " + argumentString);
+    printColumns(columns);
+    
     cout << "Description:" << endl << endl;
-    cout << "   " << description << endl << endl;
+    
+    columns[0].clear();
+    columns[0].push_back(description);
+    printColumns(columns);
     
     if ( options.size() == 0 )
     {
@@ -60,7 +68,8 @@ void Command::print() const
     
     cout << "Options:" << endl << endl;
     
-    vector<vector<string>> columns(4);
+    columns.clear();
+    columns.resize(4);
     
     columns[0].push_back("Option");
     columns[1].push_back("Argument");
