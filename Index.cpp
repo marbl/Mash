@@ -429,8 +429,11 @@ void getMinHashes(Index::Hash_set & minHashes, char * seq, uint32_t length, uint
         
         if
         (
-            minHashesQueue.size() < mins ||
-            hash < minHashesQueue.top()
+            (
+                minHashesQueue.size() < mins ||
+                hash < minHashesQueue.top()
+            )
+            && minHashes.count(hash) == 0
         )
         {
             minHashes.insert(hash);

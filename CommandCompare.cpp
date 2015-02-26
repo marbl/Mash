@@ -11,7 +11,7 @@ KSEQ_INIT(gzFile, gzread)
 CommandCompare::CommandCompare()
 {
     name = "compare";
-    description = "Compute the global distance of each input sequence to the reference index. The score is computed as 2*c/(m+n), where m is the min-hash count for the reference, n is the min-hash count for the query, and c is the number of min-hashes in common.";
+    description = "Compute the global distance of each input sequence to the reference index. The score is computed as the Jaccard index, which is the intesection divided by the union, for the sets of min-hashes in the reference and query.";
     argumentString = "reference.mash fast(a|q)[.gz] ...";
     
     addOption("help", Option(Option::Boolean, "h", "Help", ""));
@@ -85,5 +85,5 @@ float compare(const Index & indexRef, const string file)
         }
     }
     
-    return float(common) * 2 / (indexRef.getLociByHash().size() + minHashesGlobal.size());
+    return float(common) / (indexRef.getLociByHash().size() + minHashesGlobal.size() - common);
 }
