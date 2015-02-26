@@ -214,7 +214,7 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float
             
             references[references.size() - 1].length = l;
             
-            findMinHashes(lociByHashLocal, seq->seq.s, l, count, kmerSize, compressionFactor);
+            getMinHashPositions(lociByHashLocal, seq->seq.s, l, count, kmerSize, compressionFactor);
             
             //printf("\n");
             
@@ -374,7 +374,78 @@ int Index::writeToCapnp(const char * file) const
     return 0;
 }
 
-void findMinHashes(Index::LociByHash_umap & lociByHash, char * seq, uint32_t length, uint32_t seqId, int kmerSize, float compressionFactor)
+void getMinHashes(Index::Hash_set & minHashes, char * seq, uint32_t length, uint32_t seqId, int kmerSize, float compressionFactor)
+{
+    priority_queue<Index::hash_t> minHashesQueue;
+    minHashes.clear();
+    
+    int mins = length / compressionFactor;
+    //
+    if ( mins < 1 )
+    {
+        mins = 1;
+    }
+    
+    //cout << "mins: " << mins << endl << endl;
+    
+    // uppercase
+    //
+    for ( int i = 0; i < length; i++ )
+    {
+        if ( seq[i] > 90 )
+        {
+            seq[i] -= 32;
+        }
+    }
+    
+    for ( int i = 0; i < length - kmerSize + 1; i++ )
+    {
+        // repeatedly skip kmers with bad characters
+        //
+        for ( int j = i; j < i + kmerSize && i + kmerSize <= length; j++ )
+        {
+            char c = seq[j];
+            
+            if ( c != 'A' && c != 'C' && c != 'G' && c != 'T' )
+            {
+                i = j + 1; // skip to past the bad character
+                break;
+            }
+        }
+        
+        if ( i + kmerSize > length )
+        {
+            // skipped to end
+            break;
+        }
+        
+        Index::hash_t hash;
+        MurmurHash3_x86_32(seq + i, kmerSize, seed, &hash);
+        
+        if ( i % 1000000 == 0 )
+        {
+            //printf("   At position %d\n", i);
+        }
+        
+        if
+        (
+            minHashesQueue.size() < mins ||
+            hash < minHashesQueue.top()
+        )
+        {
+            minHashes.insert(hash);
+            minHashesQueue.push(hash);
+            
+            if ( minHashesQueue.size() > mins )
+            {
+                minHashes.erase(minHashesQueue.top());
+                minHashesQueue.pop();
+            }
+        }
+    }
+}
+
+void getMinHashPositions(Index::LociByHash_umap & lociByHash, char * seq, uint32_t length, uint32_t seqId, int kmerSize, float compressionFactor)
 {
     priority_queue<Index::hash_t> minHashes;
     
@@ -445,7 +516,7 @@ void findMinHashes(Index::LociByHash_umap & lociByHash, char * seq, uint32_t len
             }
         }
         
-        if ( lociByHash.count(hash) )
+        if ( hash <= minHashes.top() )
         {
             lociByHash[hash].push_back(Index::Locus(seqId, i));
         }

@@ -2,8 +2,8 @@
 #include "Index.h"
 #include <zlib.h>
 #include "kseq.h"
-#include <set>
 #include <iostream>
+#include <set>
 
 using namespace::std;
 
@@ -75,7 +75,7 @@ void find(const Index & index, char * seq, uint32_t length, float threshold)
 {
     typedef unordered_map < uint32_t, set<uint32_t> > PositionsBySequence_umap;
     
-    Index::LociByHash_umap lociByHash;
+    Index::Hash_set minHashes;
     
     int kmerSize = index.getKmerSize();
     float compressionFactor = index.getCompressionFactor();
@@ -88,16 +88,16 @@ void find(const Index & index, char * seq, uint32_t length, float threshold)
     }
     
     //cout << "Mins: " << mins << "\t length: " << length << "\tComp: " << compressionFactor << endl;
-    findMinHashes(lociByHash, seq, length, 0, kmerSize, compressionFactor);
+    getMinHashes(minHashes, seq, length, 0, kmerSize, compressionFactor);
     
     // get sorted lists of positions, per reference sequence, that have
     // mutual min-hashes with the query
     //
     PositionsBySequence_umap hits;
     //
-    for ( Index::LociByHash_umap::iterator i = lociByHash.begin(); i != lociByHash.end(); i++ )
+    for ( Index::Hash_set::const_iterator i = minHashes.begin(); i != minHashes.end(); i++ )
     {
-        Index::hash_t hash = i->first;
+        Index::hash_t hash = *i;
         //cout << "Hash " << hash << endl;
         
         if ( index.getLociByHash().count(hash) != 0 )

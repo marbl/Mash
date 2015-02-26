@@ -13,6 +13,6 @@ public:
     int run() const; // override
 };
 
-float compare(const Index & indexRef, const Index & indexQuery);
+float compare(const Index & indexRef, const std::string file);
 
 #endif

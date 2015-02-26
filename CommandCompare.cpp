@@ -1,8 +1,12 @@
 #include "CommandCompare.h"
 #include "Index.h"
 #include <iostream>
+#include <zlib.h>
+#include "kseq.h"
 
 using namespace::std;
+
+KSEQ_INIT(gzFile, gzread)
 
 CommandCompare::CommandCompare()
 {
@@ -24,31 +28,62 @@ int CommandCompare::run() const
     Index indexRef;
     indexRef.initFromCapnp(arguments[0].c_str());
     
-    int l;
-    int count = 0;
-    
     for ( int i = 1; i < arguments.size(); i++ )
     {
-        Index indexQuery;
-        indexQuery.initFromSequence(vector<string>(1, arguments[i]), indexRef.getKmerSize(), indexRef.getCompressionFactor());
-        
-        cout << compare(indexRef, indexQuery) << '\t' << arguments[i] << endl;
+        cout << compare(indexRef, arguments[i]) << '\t' << arguments[i] << endl;
     }
     
     return 0;
 }
 
-float compare(const Index & indexRef, const Index & indexQuery)
+float compare(const Index & indexRef, const string file)
 {
     int common = 0;
+    int l;
     
-    for ( Index::LociByHash_umap::const_iterator i = indexQuery.getLociByHash().begin(); i != indexQuery.getLociByHash().end(); i++ )
+    gzFile fp = gzopen(file.c_str(), "r");
+    kseq_t *seq = kseq_init(fp);
+    
+    Index::Hash_set minHashesGlobal;
+    
+    while ((l = kseq_read(seq)) >= 0)
     {
-        if ( indexRef.getLociByHash().count(i->first) != 0 )
+        if ( l < indexRef.getKmerSize() )
+        {
+            continue;
+        }
+        
+        //printf("Query name: %s\tlength: %d\n\n", seq->name.s, l);
+        //if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
+        //printf("seq: %s\n", seq->seq.s);
+        //if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
+        
+        Index::Hash_set minHashesLocal;
+        
+        getMinHashes(minHashesLocal, seq->seq.s, l, 0, indexRef.getKmerSize(), indexRef.getCompressionFactor());
+        
+        for ( Index::Hash_set::const_iterator i = minHashesLocal.begin(); i != minHashesLocal.end(); i++ )
+        {
+            minHashesGlobal.insert(*i);
+        }
+    }
+    
+    if ( l != -1 )
+    {
+        printf("ERROR: return value: %d\n", l);
+        return 1;
+    }
+    
+    kseq_destroy(seq);
+    gzclose(fp);
+    
+    for ( Index::Hash_set::const_iterator i = minHashesGlobal.begin(); i != minHashesGlobal.end(); i++ )
+    {
+        if ( indexRef.getLociByHash().count(*i) != 0 )
         {
             common++;
         }
     }
     
-    return float(common) * 2 / (indexRef.getLociByHash().size() + indexQuery.getLociByHash().size());
+    return float(common) * 2 / (indexRef.getLociByHash().size() + minHashesGlobal.size());
 }
