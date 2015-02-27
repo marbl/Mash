@@ -4,6 +4,7 @@
 #include "kseq.h"
 #include <iostream>
 #include <set>
+#include "pthread_pool.h"
 
 using namespace::std;
 
@@ -36,6 +37,8 @@ int CommandFind::run() const
     int l;
     int count = 0;
     
+    void * pool = pool_start(find, 2);
+    
     for ( int i = 1; i < arguments.size(); i++ )
     {
         gzFile fp = gzopen(arguments[i].c_str(), "r");
@@ -48,14 +51,16 @@ int CommandFind::run() const
                 continue;
             }
             
-            printf("Query name: %s\tlength: %d\n\n", seq->name.s, l);
-            if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
+            //printf("Query name: %s\tlength: %d\n\n", seq->name.s, l);
+            //if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
             //printf("seq: %s\n", seq->seq.s);
-            if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
+            //if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
             
-            find(index, seq->seq.s, l, threshold);
-            
-            cout << endl;
+            pool_enqueue(pool, new FindData(index, seq->seq.s, l, threshold), true);
+            //FindData * data = new FindData(index, seq->seq.s, l, threshold);
+            //find(data);
+            //delete data;
+            //cout << endl;
         }
         
         if ( l != -1 )
@@ -68,17 +73,26 @@ int CommandFind::run() const
         gzclose(fp);
     }
     
+    pool_wait(pool);
+    pool_end(pool);
+    
     return 0;
 }
 
-void find(const Index & index, char * seq, uint32_t length, float threshold)
+void * find(void * arg)
 {
+	CommandFind::FindData * data = (CommandFind::FindData *)arg;
+	
     typedef unordered_map < uint32_t, set<uint32_t> > PositionsBySequence_umap;
     
     Index::Hash_set minHashes;
     
+    const Index & index = data->index;
     int kmerSize = index.getKmerSize();
     float compressionFactor = index.getCompressionFactor();
+    int length = data->length;
+    char * seq = data->seq;
+    float threshold = data->threshold;
     
     int mins = length / compressionFactor;
     //
@@ -154,8 +168,8 @@ void find(const Index & index, char * seq, uint32_t length, float threshold)
             //cout << *windowStart << "\t" << *j << endl;
             if ( float(windowCount) / mins >= threshold )
             {
-                cout << "   Cluster in ref " << i->first << "\tscore: " << float(windowCount) / mins << endl;
-                
+                cout << "   Cluster in ref " << i->first << "\tpos: " << *windowStart << "-" << *j << "\tscore: " << float(windowCount) / mins << endl;
+                break;
                 for ( set<uint32_t>::const_iterator k = windowStart; k != i->second.end() && *k <= *j; k++ )
                 {
                     cout << "      " << *k << endl;
@@ -163,4 +177,6 @@ void find(const Index & index, char * seq, uint32_t length, float threshold)
             }
         }
     }
+    
+    return 0; // TODO: find results
 }

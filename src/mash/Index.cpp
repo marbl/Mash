@@ -422,7 +422,7 @@ void getMinHashes(Index::Hash_set & minHashes, char * seq, uint32_t length, uint
         Index::hash_t hash;
         MurmurHash3_x86_32(seq + i, kmerSize, seed, &hash);
         
-        if ( i % 1000000 == 0 )
+        //if ( i % 1000000 == 0 )
         {
             //printf("   At position %d\n", i);
         }

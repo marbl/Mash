@@ -18,8 +18,9 @@ SOURCES=\
 	src/mash/Index.cpp \
 	src/mash/MurmurHash3.cpp \
 	src/mash/mash.cpp \
+	src/mash/pthread_pool.c \
 
-OBJECTS=$(SOURCES:.cpp=.o) src/mash/capnp/MinHash.capnp.o
+OBJECTS=$(SOURCES:.cpp=.o) src/mash/capnp/MinHash.capnp.o src/mash/pthread_pool.o
 
 all : mash libmash.a
 
@@ -36,6 +37,9 @@ libmash.a : $(OBJECTS)
 	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) -o $@ $<
 
 %.o : %.c++
+	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) -o $@ $<
+
+%.o : %.c
 	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) -o $@ $<
 
 src/mash/memcpyWrap.o : src/mash/memcpyWrap.c
