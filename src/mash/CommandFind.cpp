@@ -18,6 +18,7 @@ CommandFind::CommandFind()
     
     addOption("help", Option(Option::Boolean, "h", "Help", ""));
     addOption("threshold", Option(Option::Number, "t", "Threshold. This fraction of the query sequence's min-hashes must appear in a query-sized window of a reference sequence for the match to be reported.", "0.2"));
+    addOption("threads", Option(Option::Number, "p", "Parallelism. This many threads will be spawned to perform the find, each one handling on query sequence at a time.", "1"));
 }
 
 int CommandFind::run() const
@@ -36,8 +37,9 @@ int CommandFind::run() const
     
     int l;
     int count = 0;
+    int threads = options.at("threads").getArgumentAsNumber();
     
-    void * pool = pool_start(find, 2);
+    void * pool = pool_start(find, threads);
     
     for ( int i = 1; i < arguments.size(); i++ )
     {
