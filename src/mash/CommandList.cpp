@@ -4,6 +4,11 @@
 
 using namespace::std;
 
+CommandList::CommandList(string nameNew)
+{
+    name = nameNew;
+}
+
 CommandList::~CommandList()
 {
     for ( map<string, Command *>::iterator i = commands.begin(); i != commands.end(); i++ )
@@ -19,8 +24,13 @@ void CommandList::addCommand(Command * command)
 
 void CommandList::print()
 {
+    vector<vector<string>> columns(1);
+    
     cout << endl << "Usage:" << endl << endl;
-    cout << "   minimap <command> [options] [arguments ...]" << endl << endl;
+    
+    columns[0].push_back(name + " <command> [options] [arguments ...]");
+    printColumns(columns);
+    
     cout << "Commands:" << endl << endl;
     
     int lengthMax = 0;
@@ -33,7 +43,8 @@ void CommandList::print()
         }
     }
     
-    vector<vector<string>> columns(2);
+    columns.clear();
+    columns.resize(2);
     
     for ( map<string, Command *>::iterator i = commands.begin(); i != commands.end(); i++ )
     {

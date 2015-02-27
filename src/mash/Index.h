@@ -3,7 +3,7 @@
 
 #include <capnp/message.h>
 #include <capnp/serialize.h>
-#include "MinHash.capnp.h"
+#include "mash/capnp/MinHash.capnp.h"
 #include <unordered_map>
 #include <vector>
 #include <string>

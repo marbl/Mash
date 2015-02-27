@@ -11,11 +11,16 @@ class CommandList
     
 public:
     
+    CommandList(std::string nameNew);
     ~CommandList();
     
     void addCommand(Command * command);
     void print();
     int run(int argc, const char ** argv);
+    
+private:
+    
+    std::string name;
 };
 
 #endif

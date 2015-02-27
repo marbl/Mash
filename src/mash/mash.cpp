@@ -7,7 +7,7 @@ using namespace::std;
 
 int main(int argc, const char ** argv)
 {
-    CommandList commandList;
+    CommandList commandList("mash");
     
     commandList.addCommand(new CommandIndex());
     commandList.addCommand(new CommandFind());
