@@ -1,0 +1,64 @@
+CXXFLAGS += -std=c++11 -Isrc -I@capnp@/include
+
+UNAME_S=$(shell uname -s)
+
+ifeq ($(UNAME_S),Darwin)
+	CXXFLAGS += -mmacosx-version-min=10.7 -stdlib=libc++
+else
+	CXXFLAGS += -include src/harvest/memcpyLink.h -L. -static-libstdc++  -Wl,--wrap=memcpy
+	CFLAGS += -include src/harvest/memcpyLink.h
+endif
+
+SOURCES=\
+	src/mash/Command.cpp \
+	src/mash/CommandCompare.cpp \
+	src/mash/CommandFind.cpp \
+	src/mash/CommandIndex.cpp \
+	src/mash/CommandList.cpp \
+	src/mash/Index.cpp \
+	src/mash/MurmurHash3.cpp \
+	src/mash/mash.cpp \
+
+OBJECTS=$(SOURCES:.cpp=.o) src/mash/capnp/MinHash.capnp.o
+
+all : mash libmash.a
+
+mash : libmash.a src/mash/memcpyWrap.o
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o mash src/mash/memcpyWrap.o libmash.a @capnp@/lib/libcapnp.a @capnp@/lib/libkj.a -lstdc++ -lz -lm -lpthread
+
+libmash.a : $(OBJECTS)
+	ar -cr libmash.a $(OBJECTS)
+	ranlib libmash.a
+
+.SUFFIXES :
+
+%.o : %.cpp src/mash/capnp/MinHash.capnp.h
+	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) -o $@ $<
+
+%.o : %.c++
+	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) -o $@ $<
+
+src/mash/memcpyWrap.o : src/mash/memcpyWrap.c
+	$(CC) -c -o $@ $<
+
+src/mash/capnp/MinHash.capnp.c++ src/mash/capnp/MinHash.capnp.h : src/mash/capnp/MinHash.capnp
+	cd src/mash/capnp;@capnp@/bin/capnp compile -oc++ MinHash.capnp
+
+install : libmash.a
+	mkdir -p @prefix@/bin/
+	mkdir -p @prefix@/lib/
+	mkdir -p @prefix@/include/
+	mkdir -p @prefix@/include/mash
+	mkdir -p @prefix@/include/mash/capnp
+	ln -sf `pwd`/mash @prefix@/bin/
+	ln -sf `pwd`/libmash.a @prefix@/lib/
+	ln -sf `pwd`/src/mash/*.h @prefix@/include/harvest/
+	ln -sf `pwd`/src/mash/capnp/MinHash.capnp.h @prefix@/include/harvest/capnp/
+
+clean :
+	-rm mash
+	-rm libmash.a
+	-rm src/mash/*.o
+	-rm src/mash/capnp/*.o
+	-rm src/mash/capnp/*.c++
+	-rm src/mash/capnp/*.h
