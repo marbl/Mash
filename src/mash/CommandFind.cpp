@@ -30,6 +30,7 @@ int CommandFind::run() const
     }
     
     float threshold = options.at("threshold").getArgumentAsNumber(0, 1);
+    int threads = options.at("threads").getArgumentAsNumber();
     
     Index index;
     //
@@ -37,7 +38,6 @@ int CommandFind::run() const
     
     int l;
     int count = 0;
-    int threads = options.at("threads").getArgumentAsNumber();
     
     void * pool = pool_start(find, threads);
     
@@ -180,5 +180,5 @@ void * find(void * arg)
         }
     }
     
-    return 0; // TODO: find results
+    return 0; // TODO: thread-safe results
 }

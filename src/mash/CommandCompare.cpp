@@ -3,6 +3,7 @@
 #include <iostream>
 #include <zlib.h>
 #include "kseq.h"
+#include "pthread_pool.h"
 
 using namespace::std;
 
@@ -15,6 +16,7 @@ CommandCompare::CommandCompare()
     argumentString = "reference.mash fast(a|q)[.gz] ...";
     
     addOption("help", Option(Option::Boolean, "h", "Help", ""));
+    addOption("threads", Option(Option::Number, "p", "Parallelism. This many threads will be spawned, each one handling on input file at a time.", "1"));
 }
 
 int CommandCompare::run() const
@@ -25,19 +27,32 @@ int CommandCompare::run() const
         return 0;
     }
     
+    int threads = options.at("threads").getArgumentAsNumber();
+    
     Index indexRef;
     indexRef.initFromCapnp(arguments[0].c_str());
     
+    void * pool = pool_start(compare, threads);
+    
     for ( int i = 1; i < arguments.size(); i++ )
     {
-        cout << compare(indexRef, arguments[i]) << '\t' << arguments[i] << endl;
+        //cout << compare(indexRef, arguments[i]) << '\t' << arguments[i] << endl;
+        pool_enqueue(pool, new CompareData(indexRef, arguments[i]), true);
     }
+    
+    pool_wait(pool);
+    pool_end(pool);
     
     return 0;
 }
 
-float compare(const Index & indexRef, const string file)
+void * compare(void * arg)
 {
+    CommandCompare::CompareData * data = (CommandCompare::CompareData *)arg;
+    
+    const Index & indexRef = data->indexRef;
+    const string file = data->file;
+    
     int common = 0;
     int l;
     
@@ -71,7 +86,7 @@ float compare(const Index & indexRef, const string file)
     if ( l != -1 )
     {
         printf("ERROR: return value: %d\n", l);
-        return 1;
+        return 0;
     }
     
     kseq_destroy(seq);
@@ -85,5 +100,7 @@ float compare(const Index & indexRef, const string file)
         }
     }
     
-    return float(common) / (indexRef.getLociByHash().size() + minHashesGlobal.size() - common);
+    cout << float(common) / (indexRef.getLociByHash().size() + minHashesGlobal.size() - common) << '\t' << file << endl;
+    
+    return 0; // TODO: thread-safe results
 }
