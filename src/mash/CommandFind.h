@@ -11,23 +11,27 @@ public:
 	
 	struct FindData
 	{
-		FindData(const Index & indexNew, char * seqNew, uint32_t lengthNew, float thresholdNew)
+		FindData(const Index & indexNew, char * seqIdNew, char * seqNew, uint32_t lengthNew, float thresholdNew)
 			:
 			index(indexNew),
 			length(lengthNew),
 			threshold(thresholdNew)
 		{
 			seq = new char[strlen(seqNew) + 1];
+			seqId = new char [strlen(seqIdNew) + 1];
 			
 			strcpy(seq, seqNew);
+			strcpy(seqId, seqIdNew);
 		}
 		
 		~FindData()
 		{
 			delete [] seq;
+			delete [] seqId;
 		}
 		
 		const Index & index;
+		char * seqId;
 		char * seq;
 		uint32_t length;
 		float threshold;

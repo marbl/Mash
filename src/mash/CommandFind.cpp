@@ -58,7 +58,7 @@ int CommandFind::run() const
             //printf("seq: %s\n", seq->seq.s);
             //if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
             
-            pool_enqueue(pool, new FindData(index, seq->seq.s, l, threshold), true);
+            pool_enqueue(pool, new FindData(index, seq->name.s, seq->seq.s, l, threshold), true);
             //FindData * data = new FindData(index, seq->seq.s, l, threshold);
             //find(data);
             //delete data;
@@ -170,7 +170,7 @@ void * find(void * arg)
             //cout << *windowStart << "\t" << *j << endl;
             if ( float(windowCount) / mins >= threshold )
             {
-                cout << "   Cluster in ref " << i->first << "\tpos: " << *windowStart << "-" << *j << "\tscore: " << float(windowCount) / mins << endl;
+                cout << data->seqId << '\t' << index.getReference(i->first).name << '\t' << *windowStart << '\t' << *j << '\t' << float(windowCount) / mins << endl;
                 break;
                 for ( set<uint32_t>::const_iterator k = windowStart; k != i->second.end() && *k <= *j; k++ )
                 {

@@ -43,6 +43,7 @@ public:
 	typedef std::unordered_set<Index::hash_t> Hash_set;
 	
 	float getCompressionFactor() const {return compressionFactor;}
+	const Reference & getReference(int index) const {return references.at(index);}
 	const LociByHash_umap & getLociByHash() const {return lociByHash;}
 	int getKmerSize() const {return kmerSize;}
     int initFromCapnp(const char * file);
