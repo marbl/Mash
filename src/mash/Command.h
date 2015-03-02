@@ -33,18 +33,12 @@ public:
         std::string identifier;
         std::string description;
         std::string argument;
+        std::string argumentDefault;
         
         bool active;
         
         Option() {}
-        Option(Type typeNew, std::string identifierNew, std::string descriptionNew, std::string argumentDefault = "")
-            :
-            type(typeNew),
-            identifier(identifierNew),
-            description(descriptionNew),
-            argument(argumentDefault),
-            active(false)
-            {}
+        Option(Type typeNew, std::string identifierNew, std::string descriptionNew, std::string argumentDefaultNew = "");
         
         float getArgumentAsNumber(float min = 0, float max = 0) const;
     };

@@ -5,6 +5,16 @@
 
 using namespace::std;
 
+Command::Option::Option(Type typeNew, std::string identifierNew, std::string descriptionNew, std::string argumentDefaultNew)
+	:
+	type(typeNew),
+	identifier(identifierNew),
+	description(descriptionNew),
+	argument(argumentDefaultNew),
+	argumentDefault(argumentDefaultNew),
+	active(false)
+	{}
+
 float Command::Option::getArgumentAsNumber(float min, float max) const
 {
     float number;
@@ -95,7 +105,7 @@ void Command::print() const
         }
         
         columns[1].push_back(type);
-        columns[2].push_back(i->second.argument);
+        columns[2].push_back(i->second.argumentDefault);
         columns[3].push_back(i->second.description);
     }
     
