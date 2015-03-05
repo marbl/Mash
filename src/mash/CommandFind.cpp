@@ -62,7 +62,7 @@ int CommandFind::run() const
             
             while ( threadPool.outputAvailable() )
             {
-            	//cout << "popping\n";
+                //cout << "popping\n";
                 writeOutput(index, threadPool.popOutputWhenAvailable());
             }
         }
@@ -87,7 +87,7 @@ int CommandFind::run() const
 
 void CommandFind::writeOutput(const Index & index, const FindOutput * output) const
 {
-	//cout << output->seqId << endl;
+    //cout << output->seqId << endl;
     for ( int i = 0; i < output->hits.size(); i++ )
     {
         const FindOutput::Hit & hit = output->hits.at(i);

@@ -131,7 +131,7 @@ void ThreadPool<TypeInput, TypeOutput>::runWhenThreadAvailable(TypeInput * input
     inputCurrent = input;
     
     pthread_mutex_unlock(mutexInput);
-    pthread_cond_signal(condInput);
+    pthread_cond_broadcast(condInput);
 }
 
 template <class TypeInput, class TypeOutput>
@@ -205,7 +205,7 @@ void * ThreadPool<TypeInput, TypeOutput>::thread(void * arg)
         pthread_mutex_unlock(threadPool->mutexOutput);
         pthread_mutex_unlock(threadPool->mutexInput);
         
-        pthread_cond_signal(threadPool->condInput);
+        pthread_cond_broadcast(threadPool->condInput);
         
         //std::cout << "Running\n";
         
