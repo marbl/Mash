@@ -4,7 +4,7 @@
 #include "kseq.h"
 #include <iostream>
 #include <set>
-#include "pthread_pool.h"
+#include "ThreadPool.h"
 
 using namespace::std;
 
@@ -39,7 +39,7 @@ int CommandFind::run() const
     int l;
     int count = 0;
     
-    void * pool = pool_start(find, threads);
+    ThreadPool<FindInput, FindOutput> threadPool(find, threads);
     
     for ( int i = 1; i < arguments.size(); i++ )
     {
@@ -58,11 +58,13 @@ int CommandFind::run() const
             //printf("seq: %s\n", seq->seq.s);
             //if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
             
-            pool_enqueue(pool, new FindData(index, seq->name.s, seq->seq.s, l, threshold), true);
-            //FindData * data = new FindData(index, seq->seq.s, l, threshold);
-            //find(data);
-            //delete data;
-            //cout << endl;
+            threadPool.runWhenThreadAvailable(new FindInput(index, seq->name.s, seq->seq.s, l, threshold));
+            
+            while ( threadPool.outputAvailable() )
+            {
+            	//cout << "popping\n";
+                writeOutput(index, threadPool.popOutputWhenAvailable());
+            }
         }
         
         if ( l != -1 )
@@ -75,16 +77,31 @@ int CommandFind::run() const
         gzclose(fp);
     }
     
-    pool_wait(pool);
-    pool_end(pool);
+    while ( threadPool.running() )
+    {
+        writeOutput(index, threadPool.popOutputWhenAvailable());
+    }
     
     return 0;
 }
 
-void * find(void * arg)
+void CommandFind::writeOutput(const Index & index, const FindOutput * output) const
 {
-	CommandFind::FindData * data = (CommandFind::FindData *)arg;
-	
+	//cout << output->seqId << endl;
+    for ( int i = 0; i < output->hits.size(); i++ )
+    {
+        const FindOutput::Hit & hit = output->hits.at(i);
+        
+        cout << output->seqId << '\t' << index.getReference(hit.ref).name << '\t' << hit.start << '\t' << hit.end << '\t' << hit.score << endl;
+    }
+    
+    delete output;
+}
+
+CommandFind::FindOutput * find(CommandFind::FindInput * data)
+{
+    CommandFind::FindOutput * output = new CommandFind::FindOutput();
+    
     typedef unordered_map < uint32_t, set<uint32_t> > PositionsBySequence_umap;
     
     Index::Hash_set minHashes;
@@ -95,6 +112,8 @@ void * find(void * arg)
     int length = data->length;
     char * seq = data->seq;
     float threshold = data->threshold;
+    
+    output->seqId = data->seqId;
     
     int mins = length / compressionFactor;
     //
@@ -168,10 +187,23 @@ void * find(void * arg)
             j--;
             
             //cout << *windowStart << "\t" << *j << endl;
-            if ( float(windowCount) / mins >= threshold )
+            float score = float(windowCount) / mins;
+            
+            if ( score >= threshold )
             {
-                cout << data->seqId << '\t' << index.getReference(i->first).name << '\t' << *windowStart << '\t' << *j << '\t' << float(windowCount) / mins << endl;
+                //cout << data->seqId << '\t' << index.getReference(i->first).name << '\t' << *windowStart << '\t' << *j << '\t' << float(windowCount) / mins << endl;
+                
+                output->hits.resize(output->hits.size() + 1);
+                
+                CommandFind::FindOutput::Hit & hit = output->hits[output->hits.size() - 1];
+                
+                hit.ref = i->first;
+                hit.start = *windowStart;
+                hit.end = *j;
+                hit.score = score;
+                
                 break;
+                
                 for ( set<uint32_t>::const_iterator k = windowStart; k != i->second.end() && *k <= *j; k++ )
                 {
                     cout << "      " << *k << endl;
@@ -179,6 +211,6 @@ void * find(void * arg)
             }
         }
     }
-    
-    return 0; // TODO: thread-safe results
+    //cout << "done\n";
+    return output;
 }

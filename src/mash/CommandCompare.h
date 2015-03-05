@@ -8,9 +8,9 @@ class CommandCompare : public Command
 {
 public:
     
-    struct CompareData
+    struct CompareInput
     {
-        CompareData(const Index & indexRefNew, const std::string fileNew)
+        CompareInput(const Index & indexRefNew, const std::string fileNew)
             :
             indexRef(indexRefNew),
             file(fileNew)
@@ -20,11 +20,21 @@ public:
         const std::string file;
     };
     
+    struct CompareOutput
+    {
+        float score;
+        std::string file;
+    };
+    
     CommandCompare();
     
     int run() const; // override
+    
+private:
+    
+    void writeOutput(CompareOutput * output) const;
 };
 
-void * compare(void *);
+CommandCompare::CompareOutput * compare(CommandCompare::CompareInput * data);
 
 #endif

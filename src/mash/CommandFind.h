@@ -8,40 +8,55 @@
 class CommandFind : public Command
 {
 public:
-	
-	struct FindData
-	{
-		FindData(const Index & indexNew, char * seqIdNew, char * seqNew, uint32_t lengthNew, float thresholdNew)
-			:
-			index(indexNew),
-			length(lengthNew),
-			threshold(thresholdNew)
-		{
-			seq = new char[strlen(seqNew) + 1];
-			seqId = new char [strlen(seqIdNew) + 1];
-			
-			strcpy(seq, seqNew);
-			strcpy(seqId, seqIdNew);
-		}
-		
-		~FindData()
-		{
-			delete [] seq;
-			delete [] seqId;
-		}
-		
-		const Index & index;
-		char * seqId;
-		char * seq;
-		uint32_t length;
-		float threshold;
-	};
-	
+    
+    struct FindInput
+    {
+        FindInput(const Index & indexNew, const char * seqIdNew, const char * seqNew, uint32_t lengthNew, float thresholdNew)
+            :
+            index(indexNew),
+            length(lengthNew),
+            threshold(thresholdNew),
+            seqId(seqIdNew)
+        {
+            seq = new char[strlen(seqNew) + 1];
+            strcpy(seq, seqNew);
+        }
+        
+        ~FindInput()
+        {
+            delete [] seq;
+        }
+        
+        const Index & index;
+        std::string seqId;
+        char * seq;
+        uint32_t length;
+        float threshold;
+    };
+    
+    struct FindOutput
+    {
+        struct Hit
+        {
+            unsigned int ref;
+            unsigned int start;
+            unsigned int end;
+            float score;
+        };
+        
+        std::string seqId;
+        std::vector<Hit> hits;
+    };
+    
     CommandFind();
     
     int run() const; // override
+	
+private:
+	
+	void writeOutput(const Index & index, const FindOutput * output) const;
 };
 
-void * find(void *);
+CommandFind::FindOutput * find(CommandFind::FindInput * data);
 
 #endif

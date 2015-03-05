@@ -5,8 +5,8 @@ UNAME_S=$(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 	CXXFLAGS += -mmacosx-version-min=10.7 -stdlib=libc++
 else
-	CXXFLAGS += -include src/harvest/memcpyLink.h -L. -static-libstdc++  -Wl,--wrap=memcpy
-	CFLAGS += -include src/harvest/memcpyLink.h
+	CXXFLAGS += -include src/mash/memcpyLink.h -L. -static-libstdc++  -Wl,--wrap=memcpy
+	CFLAGS += -include src/mash/memcpyLink.h
 endif
 
 SOURCES=\
@@ -18,9 +18,8 @@ SOURCES=\
 	src/mash/Index.cpp \
 	src/mash/MurmurHash3.cpp \
 	src/mash/mash.cpp \
-	src/mash/pthread_pool.c \
 
-OBJECTS=$(SOURCES:.cpp=.o) src/mash/capnp/MinHash.capnp.o src/mash/pthread_pool.o
+OBJECTS=$(SOURCES:.cpp=.o) src/mash/capnp/MinHash.capnp.o
 
 all : mash libmash.a
 
@@ -56,8 +55,8 @@ install : libmash.a
 	mkdir -p @prefix@/include/mash/capnp
 	ln -sf `pwd`/mash @prefix@/bin/
 	ln -sf `pwd`/libmash.a @prefix@/lib/
-	ln -sf `pwd`/src/mash/*.h @prefix@/include/harvest/
-	ln -sf `pwd`/src/mash/capnp/MinHash.capnp.h @prefix@/include/harvest/capnp/
+	ln -sf `pwd`/src/mash/*.h @prefix@/include/mash/
+	ln -sf `pwd`/src/mash/capnp/MinHash.capnp.h @prefix@/include/mash/capnp/
 
 clean :
 	-rm mash
