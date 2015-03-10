@@ -59,7 +59,7 @@ private:
 };
 
 void getMinHashes(Index::Hash_set & lociByHash, char * seq, uint32_t length, uint32_t seqId, int kmerSize, float compressionFactor);
-void getMinHashPositions(Index::LociByHash_umap & lociByHash, char * seq, uint32_t length, uint32_t seqId, int kmerSize, float compressionFactor);
+void getMinHashPositions(Index::LociByHash_umap & lociByHash, char * seq, uint32_t length, uint32_t seqId, int kmerSize, float compressionFactor, int windowSize = 1000);
 
 int def(int fdSource, int fdDest, int level);
 int inf(int fdSource, int fdDest);

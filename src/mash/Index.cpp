@@ -9,6 +9,7 @@
 #include "MurmurHash3.h"
 #include <assert.h>
 #include <queue>
+#include <set>
 #include "Command.h" // TEMP for column printing
 
 #define SET_BINARY_MODE(file)
@@ -448,20 +449,54 @@ void getMinHashes(Index::Hash_set & minHashes, char * seq, uint32_t length, uint
     }
 }
 
-void getMinHashPositions(Index::LociByHash_umap & lociByHash, char * seq, uint32_t length, uint32_t seqId, int kmerSize, float compressionFactor)
+void getMinHashPositions(Index::LociByHash_umap & lociByHash, char * seq, uint32_t length, uint32_t seqId, int kmerSize, float compressionFactor, int windowSize)
 {
-    priority_queue<Index::hash_t> minHashes;
+    unordered_map<Index::hash_t, int> windowCountByHash;
     
-    int mins = length / compressionFactor;
+    class HashLessThan
+    {
+    public:
+        
+        HashLessThan(const unordered_map<Index::hash_t, int> & windowCountByHashNew)
+            :
+            windowCountByHash(windowCountByHashNew)
+            {}
+        
+        const unordered_map<Index::hash_t, int> & windowCountByHash;
+        
+        bool operator() (const Index::hash_t & a, const Index::hash_t & b)
+        {
+            int countA = windowCountByHash.at(a);
+            int countB = windowCountByHash.at(b);
+            
+            return countA < countB || (countA == countB && a < b);
+        }
+    };
+    
+    HashLessThan hashLessThan(windowCountByHash);
+    
+    set<Index::hash_t, HashLessThan> windowHashesMin(hashLessThan);
+    set<Index::hash_t, HashLessThan> windowHashesMax(hashLessThan);
+    
+    queue<Index::hash_t> windowHashesSequential;
+    
+    // create a generic hash to pad windowHashesSequential where kmers are invalid
+    //
+    Index::hash_t hashInvalid;
+    //
+    const char kmerInvalid[kmerSize];
+    memset(kmerInvalid, 'N', sizeof(char)); // string of Ns
+    //
+    MurmurHash3_x86_32(kmerInvalid, kmerSize, seed, &hashInvalid);
+    
+    int mins = windowSize / compressionFactor;
     //
     if ( mins < 1 )
     {
         mins = 1;
     }
     
-    //cout << "mins: " << mins << endl << endl;
-    
-    // uppercase
+    // uppercase the entire sequence in place
     //
     for ( int i = 0; i < length; i++ )
     {
@@ -471,25 +506,75 @@ void getMinHashPositions(Index::LociByHash_umap & lociByHash, char * seq, uint32
         }
     }
     
+    int nextValidKmer = 0;
+    
     for ( int i = 0; i < length - kmerSize + 1; i++ )
     {
-        // repeatedly skip kmers with bad characters
+        // maintain front of window
         //
-        for ( int j = i; j < i + kmerSize && i + kmerSize <= length; j++ )
+        if ( i >= windowSize )
         {
-            char c = seq[j];
+            // pop off the front of the window
+            //
+            hash_t hashFront = windowHashesSequential.pop();
             
-            if ( c != 'A' && c != 'C' && c != 'G' && c != 'T' )
+            if ( hashFront != hashInvalid )
             {
-                i = j + 1; // skip to past the bad character
-                break;
+                // remove before decrementing count, since it will change sorting
+                //
+                if ( hashFront <= *windowHashesMin.rbegin() )
+                {
+                    windowHashesMin.erase(hashFront);
+                
+                    // store as final min-hash (map [] creates if needed)
+                    //
+                    lociByHash[hashFront].push_back(Index::Locus(seqId, i - windowSize));
+                }
+                else if ( hashFront >= *windowHashesMax.begin() )
+                {
+                    windowHashesMax.erase(hashFront);
+                }
+            
+                windowCountByHash[hashFront]--;
+            
+                // replace in the proper set if count is still non-zero
+                //
+                if ( windowCountByHash.at(hashFront) != 0 )
+                {
+                    if ( hashFront <= *windowHashesMin.rbegin() )
+                    {
+                        windowHashesMin.erase(hashFront);
+                
+                        // store as final min-hash (map [] creates if needed)
+                        //
+                        lociByHash[hashFront].push_back(Index::Locus(seqId, i - windowSize));
+                    }
+                    else if ( hashFront >= *windowHashesMax.begin() )
+                    {
+                        windowHashesMax.erase(hashFront);
+                    }
+                }
             }
         }
         
-        if ( i + kmerSize > length )
+        if ( i >= nextValidKmer )
         {
-            // skipped to end
-            break;
+            for ( int j = i; j < i + kmerSize; j++ )
+            {
+                char c = seq[j];
+            
+                if ( c != 'A' && c != 'C' && c != 'G' && c != 'T' )
+                {
+                    nextValidKmer = j + 1;
+                    break;
+                }
+            }
+        }
+        
+        if ( i < nextValidKmer )
+        {
+            windowHashesSequential.push(hashInvalid);
+            continue;
         }
         
         Index::hash_t hash;
@@ -500,31 +585,69 @@ void getMinHashPositions(Index::LociByHash_umap & lociByHash, char * seq, uint32
             //printf("   At position %d\n", i);
         }
         
-        if
-        (
-            (
-                minHashes.size() < mins ||
-                hash < minHashes.top()
-            ) &&
-            lociByHash.count(hash) == 0
-        )
+        // remove the new hash from sorted lists  if it is present;
+        // its count increment will change its sorting when reinserted later
+        //
+        if ( hash <= *windowHashesMin.rbegin() )
         {
-            lociByHash[hash]; // insert empty vector
-            minHashes.push(hash);
-            
-            if ( minHashes.size() > mins )
-            {
-                lociByHash.erase(minHashes.top());
-                minHashes.pop();
-            }
+            windowHashesMin.erase(hash);
+        }
+        else if ( hash >= *windowHashesMax.begin() )
+        {
+            windowHashesMax.erase(hash);
         }
         
-        if ( hash <= minHashes.top() )
+        // push new hash onto window and increment its window count
+        //
+        windowHashesSequential.push(hash);
+        windowCountByHash[hash]++; // creates if needed
+        
+        if ( windowHashesMin.size() < mins || hashLessThan(hash, *windowHashesMin.rbegin() )
         {
-            lociByHash[hash].push_back(Index::Locus(seqId, i));
+            if ( windowHashesMax.size() != 0 && hashLessThan(*windowHashesMax.begin(), hash) )
+            {
+                // shift bottom of max to min
+                //
+                windowHashesMin.insert(*windowHashesMax.begin());
+                windowHashesMax.erase(windowHashesMax.begin());
+                
+                windowHashesMax.insert(hash);
+            }
+            else
+            {
+                windowHashesMin.insert(hash);
+                
+                if ( windowHashesMin.size() > mins )
+                {
+                    // shift top of min to max
+                    //
+                    windowHashesMax.insert(*windowHashesMin.rbegin());
+                    windowHashesMin.erase(--windowHashesMin.end()); // needs forward iterator
+                }
+            }
+        }
+        else
+        {
+            windowHashesMax.insert(hash);
+        }
+    }
+    
+    // finalize remaining min-hashes from the last window
+    //
+    for ( int i = 0; i < windowMinHashes; i++ )
+    {
+        hash_t hash = windowHashesSequential;
+        
+        if ( windowHashesMin.count(hash) == 1 )
+        {
+            // map [] creates if needed
+            //
+            lociByHash[hash].push_back(Index::Locus(seqId, length - windowSize + i));
         }
     }
 }
+
+
 // The following functions are adapted from http://www.zlib.net/zpipe.c
 
 

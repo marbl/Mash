@@ -92,7 +92,7 @@ void CommandFind::writeOutput(const Index & index, const FindOutput * output) co
     {
         const FindOutput::Hit & hit = output->hits.at(i);
         
-        cout << output->seqId << '\t' << index.getReference(hit.ref).name << '\t' << hit.start << '\t' << hit.end << '\t' << hit.score << endl;
+        //cout << output->seqId << '\t' << index.getReference(hit.ref).name << '\t' << hit.start << '\t' << hit.end << '\t' << hit.score << endl;
     }
     
     delete output;
@@ -191,7 +191,7 @@ CommandFind::FindOutput * find(CommandFind::FindInput * data)
             
             if ( score >= threshold )
             {
-                //cout << data->seqId << '\t' << index.getReference(i->first).name << '\t' << *windowStart << '\t' << *j << '\t' << float(windowCount) / mins << endl;
+                cout << data->seqId << '\t' << index.getReference(i->first).name << '\t' << *windowStart << '\t' << *j << '\t' << float(windowCount) / mins << endl;
                 
                 output->hits.resize(output->hits.size() + 1);
                 
@@ -201,8 +201,6 @@ CommandFind::FindOutput * find(CommandFind::FindInput * data)
                 hit.start = *windowStart;
                 hit.end = *j;
                 hit.score = score;
-                
-                break;
                 
                 for ( set<uint32_t>::const_iterator k = windowStart; k != i->second.end() && *k <= *j; k++ )
                 {
