@@ -18,15 +18,17 @@ class Index
 {
 public:
     
+    typedef uint32_t hash_t;
+    
     struct Locus
     {
-        Locus(uint32_t sequenceNew, uint32_t positionNew) :
-            sequence(sequenceNew),
-            position(positionNew)
+        Locus(uint32_t positionNew, uint32_t hashNew) :
+            position(positionNew),
+            hash(hashNew)
             {}
 
-        uint32_t sequence;
         uint32_t position;
+        hash_t hash;
     };
     
     struct Reference
@@ -38,28 +40,30 @@ public:
         uint32_t length;
     };
     
-    typedef uint32_t hash_t;
     typedef std::unordered_map < Index::hash_t, std::vector<Index::Locus> > LociByHash_umap;
 	typedef std::unordered_set<Index::hash_t> Hash_set;
 	
 	float getCompressionFactor() const {return compressionFactor;}
 	const Reference & getReference(int index) const {return references.at(index);}
-	const LociByHash_umap & getLociByHash() const {return lociByHash;}
+	const std::vector<std::vector<Locus>> & getLociByReference() const {return lociByReference;}
 	int getKmerSize() const {return kmerSize;}
+	int getWindowSize() const {return windowSize;}
     int initFromCapnp(const char * file);
-    int initFromSequence(const std::vector<std::string> & files, int kmerSizeNew, float compressionFactorNew);
+    int initFromSequence(const std::vector<std::string> & files, int kmerSizeNew, float compressionFactorNew, int windowSizeNew, bool verbose = false);
     int writeToCapnp(const char * file) const;
     
 private:
     
     std::vector<Reference> references;
-    LociByHash_umap lociByHash;
+    std::vector<std::vector<Locus>> lociByReference;
+    
     int kmerSize;
     float compressionFactor;
+    int windowSize;
 };
 
 void getMinHashes(Index::Hash_set & lociByHash, char * seq, uint32_t length, uint32_t seqId, int kmerSize, float compressionFactor);
-void getMinHashPositions(Index::LociByHash_umap & lociByHash, char * seq, uint32_t length, uint32_t seqId, int kmerSize, float compressionFactor, int windowSize = 1000);
+void getMinHashPositions(std::vector<Index::Locus> & loci, char * seq, uint32_t length, int kmerSize, float compressionFactor, int windowSize, bool verbose = false);
 
 int def(int fdSource, int fdDest, int level);
 int inf(int fdSource, int fdDest);

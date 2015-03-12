@@ -19,25 +19,21 @@ struct MinHash
 		references @0 : List(Reference);
 	}
 	
-	struct HashTable
+	struct LocusList
 	{
-		struct HashBin
+		struct Locus
 		{
-			struct Locus
-			{
-				sequence @0 : UInt32;
-				position @1 : UInt32;
-			}
-			
-			hash @0 : UInt32;
-			loci @ 1 : List(Locus);
+			sequence @0 : UInt32;
+			position @1 : UInt32;
+			hash @2 : UInt32;
 		}
 		
-		hashBins @0 : List(HashBin);
+		loci @0 : List(Locus);
 	}
 	
 	referenceList @0 : ReferenceList;
-	hashTable @1 : HashTable;
+	locusList @1 : LocusList;
 	kmerSize @2 : UInt32;
-	compressionFactor @3 : Float32;
+	windowSize @3 : UInt32;
+	compressionFactor @4 : Float32;
 }

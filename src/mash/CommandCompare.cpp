@@ -105,13 +105,13 @@ CommandCompare::CompareOutput * compare(CommandCompare::CompareInput * data)
     
     for ( Index::Hash_set::const_iterator i = minHashesGlobal.begin(); i != minHashesGlobal.end(); i++ )
     {
-        if ( indexRef.getLociByHash().count(*i) != 0 )
+        //if ( indexRef.getLociByHash().count(*i) != 0 )
         {
             common++;
         }
     }
     
-    output->score = float(common) / (indexRef.getLociByHash().size() + minHashesGlobal.size() - common);
+ //   output->score = float(common) / (indexRef.getLociByHash().size() + minHashesGlobal.size() - common);
     output->file = file;
     
     return output;

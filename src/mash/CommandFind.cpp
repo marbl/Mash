@@ -109,6 +109,7 @@ CommandFind::FindOutput * find(CommandFind::FindInput * data)
     const Index & index = data->index;
     int kmerSize = index.getKmerSize();
     float compressionFactor = index.getCompressionFactor();
+    int windowSize = index.getWindowSize();
     int length = data->length;
     char * seq = data->seq;
     float threshold = data->threshold;
@@ -125,34 +126,14 @@ CommandFind::FindOutput * find(CommandFind::FindInput * data)
     //cout << "Mins: " << mins << "\t length: " << length << "\tComp: " << compressionFactor << endl;
     getMinHashes(minHashes, seq, length, 0, kmerSize, compressionFactor);
     
-    // get sorted lists of positions, per reference sequence, that have
-    // mutual min-hashes with the query
-    //
-    PositionsBySequence_umap hits;
-    //
-    for ( Index::Hash_set::const_iterator i = minHashes.begin(); i != minHashes.end(); i++ )
+    for ( int i = 0; i < index.getLociByReference().size(); i++ )
     {
-        Index::hash_t hash = *i;
-        //cout << "Hash " << hash << endl;
+        const vector<Index::Locus> & loci = index.getLociByReference().at(i);
         
-        if ( index.getLociByHash().count(hash) != 0 )
-        {
-            for ( int j = 0; j < index.getLociByHash().at(hash).size(); j++ )
-            {
-                const Index::Locus & locus = index.getLociByHash().at(hash).at(j);
-                
-                //cout << "Match for hash " << hash << "\t" << locus.sequence << "\t" << locus.position << endl;
-                hits[locus.sequence].insert(locus.position); // set will be created if needed
-            }
-        }
-    }
-    
-    for ( PositionsBySequence_umap::iterator i = hits.begin(); i != hits.end(); i++ )
-    {
         // pointer to the position at the beginning of the window; to be updated
         // as the end of the window is incremented
         //
-        set<uint32_t>::const_iterator windowStart = i->second.begin();
+        vector<Index::Locus>::const_iterator windowStart = loci.begin();
         
         //cout << "Clustering in seq " << i->first << endl;
         
@@ -160,7 +141,7 @@ CommandFind::FindOutput * find(CommandFind::FindInput * data)
         //
         int windowCount = 0;
         
-        for ( set<uint32_t>::const_iterator j = i->second.begin(); j != i->second.end(); j++ )
+        for ( vector<Index::Locus>::const_iterator j = loci.begin(); j != loci.end(); j++ )
         {
             windowCount++;
             
@@ -168,7 +149,7 @@ CommandFind::FindOutput * find(CommandFind::FindInput * data)
             
             // update window start if it is too far behind
             //
-            while ( windowStart != j && *j > length && *windowStart < *j - length + 1 )
+            while ( windowStart != j && j->position > length && windowStart->position < j->position - length + 1 )
             {
                 //cout << "moving " << *j - length + 1 << endl;
                 windowStart++;
@@ -177,7 +158,7 @@ CommandFind::FindOutput * find(CommandFind::FindInput * data)
             
             // extend the right of the window if possible
             //
-            while ( j != i->second.end() && *j - *windowStart < length )
+            while ( j != loci.end() && j->position - windowStart->position < length )
             {
                 windowCount++;
                 j++;
@@ -191,20 +172,20 @@ CommandFind::FindOutput * find(CommandFind::FindInput * data)
             
             if ( score >= threshold )
             {
-                cout << data->seqId << '\t' << index.getReference(i->first).name << '\t' << *windowStart << '\t' << *j << '\t' << float(windowCount) / mins << endl;
+                cout << data->seqId << '\t' << index.getReference(i).name << '\t' << windowStart->position << '\t' << j->position << '\t' << float(windowCount) / mins << endl;
                 
                 output->hits.resize(output->hits.size() + 1);
                 
                 CommandFind::FindOutput::Hit & hit = output->hits[output->hits.size() - 1];
                 
-                hit.ref = i->first;
-                hit.start = *windowStart;
-                hit.end = *j;
+                hit.ref = i;
+                hit.start = windowStart->position;
+                hit.end = j->position;
                 hit.score = score;
                 
-                for ( set<uint32_t>::const_iterator k = windowStart; k != i->second.end() && *k <= *j; k++ )
+                for ( vector<Index::Locus>::const_iterator k = windowStart; k != loci.end() && k->position <= j->position; k++ )
                 {
-                    cout << "      " << *k << endl;
+                    cout << "      " << k->position << endl;
                 }
             }
         }

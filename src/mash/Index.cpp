@@ -9,6 +9,7 @@
 #include "MurmurHash3.h"
 #include <assert.h>
 #include <queue>
+#include <deque>
 #include <set>
 #include "Command.h" // TEMP for column printing
 
@@ -117,25 +118,21 @@ int Index::initFromCapnp(const char * file)
         references[i].length = referenceReader.getLength();
     }
     
-    capnp::MinHash::HashTable::Reader hashTableReader = reader.getHashTable();
-    capnp::List<capnp::MinHash::HashTable::HashBin>::Reader hashBinsReader = hashTableReader.getHashBins();
+    capnp::MinHash::LocusList::Reader locusListReader = reader.getLocusList();
+    capnp::List<capnp::MinHash::LocusList::Locus>::Reader lociReader = locusListReader.getLoci();
     
-    for ( int i = 0; i < hashBinsReader.size(); i++ )
+    lociByReference.resize(references.size());
+    
+    for ( int i = 0; i < lociReader.size(); i++ )
     {
-        capnp::MinHash::HashTable::HashBin::Reader hashBinReader = hashBinsReader[i];
+        capnp::MinHash::LocusList::Locus::Reader locusReader = lociReader[i];
         
-        vector<Locus> & loci = lociByHash[hashBinReader.getHash()];
-        
-        capnp::List<capnp::MinHash::HashTable::HashBin::Locus>::Reader lociReader = hashBinReader.getLoci();
-        
-        for ( int j = 0; j < lociReader.size(); j++ )
-        {
-            loci.push_back(Locus(lociReader[j].getSequence(), lociReader[j].getPosition()));
-        }
+        lociByReference[locusReader.getSequence()].push_back(Locus(locusReader.getPosition(), locusReader.getHash()));
     }
     
     kmerSize = reader.getKmerSize();
     compressionFactor = reader.getCompressionFactor();
+    windowSize = reader.getWindowSize();
     
     //cout << endl << "References:" << endl << endl;
     
@@ -178,10 +175,11 @@ int Index::initFromCapnp(const char * file)
     return 0;
 }
 
-int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float compressionFactorNew)
+int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float compressionFactorNew, int windowSizeNew, bool verbose)
 {
     kmerSize = kmerSizeNew;
     compressionFactor = compressionFactorNew;
+    windowSize = windowSizeNew;
     
     int l;
     int count = 0;
@@ -198,7 +196,7 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float
                 continue;
             }
             
-            LociByHash_umap lociByHashLocal;
+            lociByReference.resize(count + 1);
             
             //printf("name: %s\n", seq->name.s);
             //if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
@@ -215,26 +213,7 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float
             
             references[references.size() - 1].length = l;
             
-            getMinHashPositions(lociByHashLocal, seq->seq.s, l, count, kmerSize, compressionFactor);
-            
-            //printf("\n");
-            
-            for ( LociByHash_umap::iterator i = lociByHashLocal.begin(); i != lociByHashLocal.end(); i++ )
-            {
-                //printf("Hash %u:\n", i->first);
-                
-                for ( int j = 0; j < i->second.size(); j++ )
-                {
-                    //printf("   Seq: %d\tPos: %d\n", i->second.at(j).sequence, i->second.at(j).position);
-                }
-                
-                const vector<Locus> & lociLocal = i->second;
-                vector<Locus> & lociGlobal = lociByHash[i->first]; // creates if needed
-                
-                lociGlobal.insert(lociGlobal.end(), lociLocal.begin(), lociLocal.end());
-            }
-            
-            //cout << endl;
+            getMinHashPositions(lociByReference[count], seq->seq.s, l, kmerSize, compressionFactor, windowSize, verbose);
             
             count++;
         }
@@ -343,31 +322,33 @@ int Index::writeToCapnp(const char * file) const
         referenceBuilder.setLength(references[i].length);
     }
     
-    capnp::MinHash::HashTable::Builder hashTableBuilder = builder.initHashTable();
-    capnp::List<capnp::MinHash::HashTable::HashBin>::Builder hashBinsBuilder = hashTableBuilder.initHashBins(lociByHash.size());
+    int locusCount = 0;
     
-    int hashIndex = 0;
-    
-    for ( LociByHash_umap::const_iterator i = lociByHash.begin(); i != lociByHash.end(); i++ )
+    for ( int i = 0; i < lociByReference.size(); i++ )
     {
-        capnp::MinHash::HashTable::HashBin::Builder hashBinBuilder = hashBinsBuilder[hashIndex];
-        hashIndex++;
-        
-        hashBinBuilder.setHash(i->first);
-        
-        const vector<Locus> & loci = i->second;
-        
-        capnp::List<capnp::MinHash::HashTable::HashBin::Locus>::Builder lociBuilder = hashBinBuilder.initLoci(loci.size());
-        
-        for ( int j = 0; j < loci.size(); j++ )
+        locusCount += lociByReference.at(i).size();
+    }
+    
+    capnp::MinHash::LocusList::Builder locusListBuilder = builder.initLocusList();
+    capnp::List<capnp::MinHash::LocusList::Locus>::Builder lociBuilder = locusListBuilder.initLoci(locusCount);
+    
+    int locusIndex = 0;
+    
+    for ( int i = 0; i < lociByReference.size(); i++ )
+    {
+        for ( int j = 0; j < lociByReference.at(i).size(); j++ )
         {
-            lociBuilder[j].setSequence(loci[j].sequence);
-            lociBuilder[j].setPosition(loci[j].position);
+            capnp::MinHash::LocusList::Locus::Builder locusBuilder = lociBuilder[locusIndex];
+            locusIndex++;
+            
+            locusBuilder.setPosition(lociByReference.at(i).at(j).position);
+            locusBuilder.setHash(lociByReference.at(i).at(j).hash);
         }
     }
     
     builder.setKmerSize(kmerSize);
     builder.setCompressionFactor(compressionFactor);
+    builder.setWindowSize(windowSize);
     
     writeMessageToFd(fds[1], message);
     close(fds[1]);
@@ -449,46 +430,8 @@ void getMinHashes(Index::Hash_set & minHashes, char * seq, uint32_t length, uint
     }
 }
 
-void getMinHashPositions(Index::LociByHash_umap & lociByHash, char * seq, uint32_t length, uint32_t seqId, int kmerSize, float compressionFactor, int windowSize)
+void getMinHashPositions(vector<Index::Locus> & loci, char * seq, uint32_t length, int kmerSize, float compressionFactor, int windowSize, bool verbose)
 {
-    unordered_map<Index::hash_t, int> windowCountByHash;
-    
-    class HashLessThan
-    {
-    public:
-        
-        HashLessThan(const unordered_map<Index::hash_t, int> & windowCountByHashNew)
-            :
-            windowCountByHash(windowCountByHashNew)
-            {}
-        
-        const unordered_map<Index::hash_t, int> & windowCountByHash;
-        
-        bool operator() (const Index::hash_t & a, const Index::hash_t & b)
-        {
-            int countA = windowCountByHash.at(a);
-            int countB = windowCountByHash.at(b);
-            
-            return countA < countB || (countA == countB && a < b);
-        }
-    };
-    
-    HashLessThan hashLessThan(windowCountByHash);
-    
-    set<Index::hash_t, HashLessThan> windowHashesMin(hashLessThan);
-    set<Index::hash_t, HashLessThan> windowHashesMax(hashLessThan);
-    
-    queue<Index::hash_t> windowHashesSequential;
-    
-    // create a generic hash to pad windowHashesSequential where kmers are invalid
-    //
-    Index::hash_t hashInvalid;
-    //
-    const char kmerInvalid[kmerSize];
-    memset(kmerInvalid, 'N', sizeof(char)); // string of Ns
-    //
-    MurmurHash3_x86_32(kmerInvalid, kmerSize, seed, &hashInvalid);
-    
     int mins = windowSize / compressionFactor;
     //
     if ( mins < 1 )
@@ -508,142 +451,216 @@ void getMinHashPositions(Index::LociByHash_umap & lociByHash, char * seq, uint32
     
     int nextValidKmer = 0;
     
+    struct CandidateLocus
+    {
+        CandidateLocus(int positionNew)
+            :
+            position(positionNew),
+            isMinmer(false)
+            {}
+        
+        int position;
+        bool isMinmer;
+    };
+    
+    if ( verbose ) cout << seq << endl << endl;
+    map<Index::hash_t, deque<CandidateLocus>> candidatesByHash;
+    
+    queue<map<Index::hash_t, deque<CandidateLocus>>::iterator> windowQueue;
+    map<Index::hash_t, deque<CandidateLocus>>::iterator maxMinmer = candidatesByHash.end();
+    
+    int unique = 0;
+    
     for ( int i = 0; i < length - kmerSize + 1; i++ )
     {
-        // maintain front of window
-        //
-        if ( i >= windowSize )
-        {
-            // pop off the front of the window
-            //
-            hash_t hashFront = windowHashesSequential.pop();
-            
-            if ( hashFront != hashInvalid )
-            {
-                // remove before decrementing count, since it will change sorting
-                //
-                if ( hashFront <= *windowHashesMin.rbegin() )
-                {
-                    windowHashesMin.erase(hashFront);
-                
-                    // store as final min-hash (map [] creates if needed)
-                    //
-                    lociByHash[hashFront].push_back(Index::Locus(seqId, i - windowSize));
-                }
-                else if ( hashFront >= *windowHashesMax.begin() )
-                {
-                    windowHashesMax.erase(hashFront);
-                }
-            
-                windowCountByHash[hashFront]--;
-            
-                // replace in the proper set if count is still non-zero
-                //
-                if ( windowCountByHash.at(hashFront) != 0 )
-                {
-                    if ( hashFront <= *windowHashesMin.rbegin() )
-                    {
-                        windowHashesMin.erase(hashFront);
-                
-                        // store as final min-hash (map [] creates if needed)
-                        //
-                        lociByHash[hashFront].push_back(Index::Locus(seqId, i - windowSize));
-                    }
-                    else if ( hashFront >= *windowHashesMax.begin() )
-                    {
-                        windowHashesMax.erase(hashFront);
-                    }
-                }
-            }
-        }
-        
         if ( i >= nextValidKmer )
         {
             for ( int j = i; j < i + kmerSize; j++ )
             {
                 char c = seq[j];
-            
+                
                 if ( c != 'A' && c != 'C' && c != 'G' && c != 'T' )
                 {
-                    nextValidKmer = j + 1;
+                    //nextValidKmer = j + 1;
                     break;
                 }
             }
         }
         
-        if ( i < nextValidKmer )
-        {
-            windowHashesSequential.push(hashInvalid);
-            continue;
-        }
+        map<Index::hash_t, deque<CandidateLocus>>::iterator newCandidates;
         
-        Index::hash_t hash;
-        MurmurHash3_x86_32(seq + i, kmerSize, seed, &hash);
-        
-        if ( i % 1000000 == 0 )
+        if ( i >= nextValidKmer )
         {
-            //printf("   At position %d\n", i);
-        }
-        
-        // remove the new hash from sorted lists  if it is present;
-        // its count increment will change its sorting when reinserted later
-        //
-        if ( hash <= *windowHashesMin.rbegin() )
-        {
-            windowHashesMin.erase(hash);
-        }
-        else if ( hash >= *windowHashesMax.begin() )
-        {
-            windowHashesMax.erase(hash);
-        }
-        
-        // push new hash onto window and increment its window count
-        //
-        windowHashesSequential.push(hash);
-        windowCountByHash[hash]++; // creates if needed
-        
-        if ( windowHashesMin.size() < mins || hashLessThan(hash, *windowHashesMin.rbegin() )
-        {
-            if ( windowHashesMax.size() != 0 && hashLessThan(*windowHashesMax.begin(), hash) )
+            Index::hash_t hash;
+            MurmurHash3_x86_32(seq + i, kmerSize, seed, &hash);
+            
+            if ( verbose )
             {
-                // shift bottom of max to min
-                //
-                windowHashesMin.insert(*windowHashesMax.begin());
-                windowHashesMax.erase(windowHashesMax.begin());
-                
-                windowHashesMax.insert(hash);
-            }
-            else
-            {
-                windowHashesMin.insert(hash);
-                
-                if ( windowHashesMin.size() > mins )
+                cout << "   ";
+            
+                for ( int j = i; j < i + kmerSize; j++ )
                 {
-                    // shift top of min to max
-                    //
-                    windowHashesMax.insert(*windowHashesMin.rbegin());
-                    windowHashesMin.erase(--windowHashesMin.end()); // needs forward iterator
+                    cout << seq[j]; 
                 }
+            
+                cout << "   " << i << '\t' << hash << endl;
+            }
+            
+            pair<map<Index::hash_t, deque<CandidateLocus>>::iterator, bool> inserted =
+                candidatesByHash.insert(pair<Index::hash_t, deque<CandidateLocus>>(hash, deque<CandidateLocus>()));
+            newCandidates = inserted.first;
+            newCandidates->second.push_back(CandidateLocus(i));
+            
+            if
+            (
+                inserted.second && // inserted; decrement maxMinmer if...
+                (
+                    (
+                        // ...just reached number of mins
+                        
+                        maxMinmer == candidatesByHash.end() &&
+                        candidatesByHash.size() == mins
+                    ) ||
+                    (
+                        // ...inserted before maxMinmer
+                        
+                        maxMinmer != candidatesByHash.end() &&
+                        newCandidates->first < maxMinmer->first
+                    )
+                )
+            )
+            {
+                if
+                (
+                    maxMinmer == candidatesByHash.end() &&
+                    candidatesByHash.size() == mins
+                )
+                {
+                    // first complete window; mark minmers
+                    
+                    for ( map<Index::hash_t, deque<CandidateLocus>>::iterator j = candidatesByHash.begin(); j != candidatesByHash.end(); j++ )
+                    {
+                        j->second.front().isMinmer = true;
+                    }
+                }
+                
+                maxMinmer--;
+                unique++;
             }
         }
         else
         {
-            windowHashesMax.insert(hash);
+            newCandidates = candidatesByHash.end();
+        }
+        
+        windowQueue.push(newCandidates);
+        map<Index::hash_t, deque<CandidateLocus>>::iterator windowFront = candidatesByHash.end();
+        
+        if ( windowQueue.size() > windowSize )
+        {
+            windowFront = windowQueue.front();
+            windowQueue.pop();
+            
+            cout << "   \tPOP: " << windowFront->first << endl;
+        }
+        
+        if ( windowFront != candidatesByHash.end() )
+        {
+            deque<CandidateLocus> & frontCandidates = windowFront->second;
+            
+            if ( frontCandidates.front().isMinmer )
+            {
+                if ( verbose ) cout << "   \t   minmer: " << frontCandidates.front().position << '\t' << windowFront->first << endl;
+                loci.push_back(Index::Locus(frontCandidates.front().position, windowFront->first));
+            }
+            
+            if ( frontCandidates.size() > 1 )
+            {
+                frontCandidates.pop_front();
+            
+                if ( maxMinmer != candidatesByHash.end() && windowFront->first <= maxMinmer->first )
+                {
+                    frontCandidates.front().isMinmer = true;
+                }
+            }
+            else
+            {
+                if ( maxMinmer != candidatesByHash.end() && windowFront->first <= maxMinmer->first )
+                {
+                    maxMinmer++;
+                    maxMinmer->second.front().isMinmer = true;
+                    unique++;
+                }
+            
+                candidatesByHash.erase(windowFront);
+            }
+        }
+        
+        if ( newCandidates != candidatesByHash.end() && maxMinmer != candidatesByHash.end() && newCandidates->first <= maxMinmer->first )
+        {
+            newCandidates->second.front().isMinmer = true;
+        }
+        
+        if ( verbose )
+        {
+            for ( map<Index::hash_t, deque<CandidateLocus>>::iterator j = candidatesByHash.begin(); j != candidatesByHash.end(); j++ )
+            {
+                cout << "   \t" << j->first;
+                
+                if ( j == maxMinmer )
+                {
+                     cout << "*";
+                }
+                
+                for ( deque<CandidateLocus>::iterator k = j->second.begin(); k != j->second.end(); k++ )
+                {
+                    cout << '\t' << k->position;
+                    
+                    if ( k->isMinmer )
+                    {
+                        cout << '!';
+                    }
+                }
+                
+                cout << endl;
+            }
         }
     }
     
     // finalize remaining min-hashes from the last window
     //
-    for ( int i = 0; i < windowMinHashes; i++ )
+    while ( windowQueue.size() > 0 )
     {
-        hash_t hash = windowHashesSequential;
+        map<Index::hash_t, deque<CandidateLocus>>::iterator windowFront = windowQueue.front();
+        windowQueue.pop();
         
-        if ( windowHashesMin.count(hash) == 1 )
+        if ( windowFront != candidatesByHash.end() )
         {
-            // map [] creates if needed
-            //
-            lociByHash[hash].push_back(Index::Locus(seqId, length - windowSize + i));
+            deque<CandidateLocus> & frontCandidates = windowFront->second;
+            
+            if ( frontCandidates.size() > 0 )
+            {
+                if ( frontCandidates.front().isMinmer )
+                {
+                    if ( verbose ) cout << "   \t   minmer:" << frontCandidates.front().position << '\t' << windowFront->first << endl;
+                    loci.push_back(Index::Locus(frontCandidates.front().position, windowFront->first));
+                }
+                
+                frontCandidates.pop_front();
+            }
         }
+    }
+    
+    if ( verbose )
+    {
+        cout << endl << "Minmers:" << endl;
+    
+        for ( int i = 0; i < loci.size(); i++ )
+        {
+            cout << "   " << loci.at(i).position << '\t' << loci.at(i).hash << endl;
+        }
+    
+        cout << endl << unique << " of " << length - windowSize + 1 << " unique windows" << endl << endl;
     }
 }
 
