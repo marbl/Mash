@@ -531,7 +531,11 @@ void getMinHashPositions(vector<Index::Locus> & loci, char * seq, uint32_t lengt
             )
             {
                 maxMinmer--;
-                unique++;
+                
+                if ( i >= windowSize )
+                {
+                    unique++;
+                }
             }
         }
         else
@@ -592,6 +596,7 @@ void getMinHashPositions(vector<Index::Locus> & loci, char * seq, uint32_t lengt
             }
             
             maxMinmer->second.front().isMinmer = true;
+            unique++;
         }
         
         if ( newCandidates != candidatesByHash.end() && i >= windowSize && newCandidates->first <= maxMinmer->first )
