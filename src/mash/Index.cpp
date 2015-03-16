@@ -530,20 +530,6 @@ void getMinHashPositions(vector<Index::Locus> & loci, char * seq, uint32_t lengt
                 )
             )
             {
-                if
-                (
-                    maxMinmer == candidatesByHash.end() &&
-                    candidatesByHash.size() == mins
-                )
-                {
-                    // first complete window; mark minmers
-                    
-                    for ( map<Index::hash_t, deque<CandidateLocus>>::iterator j = candidatesByHash.begin(); j != candidatesByHash.end(); j++ )
-                    {
-                        j->second.front().isMinmer = true;
-                    }
-                }
-                
                 maxMinmer--;
                 unique++;
             }
@@ -596,7 +582,19 @@ void getMinHashPositions(vector<Index::Locus> & loci, char * seq, uint32_t lengt
             }
         }
         
-        if ( newCandidates != candidatesByHash.end() && maxMinmer != candidatesByHash.end() && newCandidates->first <= maxMinmer->first )
+        if ( i == windowSize - 1 )
+        {
+            // first complete window; mark minmers
+            
+            for ( map<Index::hash_t, deque<CandidateLocus>>::iterator j = candidatesByHash.begin(); j != maxMinmer; j++ )
+            {
+                j->second.front().isMinmer = true;
+            }
+            
+            maxMinmer->second.front().isMinmer = true;
+        }
+        
+        if ( newCandidates != candidatesByHash.end() && i >= windowSize && newCandidates->first <= maxMinmer->first )
         {
             newCandidates->second.front().isMinmer = true;
         }
