@@ -1,4 +1,4 @@
-CXXFLAGS += -std=c++11 -Isrc -I@capnp@/include
+CXXFLAGS += -O3 -std=c++11 -Isrc -I@capnp@/include
 
 UNAME_S=$(shell uname -s)
 

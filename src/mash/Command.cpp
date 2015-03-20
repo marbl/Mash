@@ -6,14 +6,14 @@
 using namespace::std;
 
 Command::Option::Option(Type typeNew, std::string identifierNew, std::string descriptionNew, std::string argumentDefaultNew)
-	:
-	type(typeNew),
-	identifier(identifierNew),
-	description(descriptionNew),
-	argument(argumentDefaultNew),
-	argumentDefault(argumentDefaultNew),
-	active(false)
-	{}
+    :
+    type(typeNew),
+    identifier(identifierNew),
+    description(descriptionNew),
+    argument(argumentDefaultNew),
+    argumentDefault(argumentDefaultNew),
+    active(false)
+    {}
 
 float Command::Option::getArgumentAsNumber(float min, float max) const
 {
@@ -166,7 +166,7 @@ void printColumns(vector<vector<string>> columns, int indent, int spacing, const
             if ( columns[i][j].length() == 0 )
             {
                 columns[i][j] = missing;
-        	}
+            }
             
             if ( columns[i][j].length() > lengthMaxes[i] )
             {

@@ -19,7 +19,12 @@ KSEQ_INIT(gzFile, gzread)
 
 using namespace std;
 
-typedef map < Index::hash_t, vector<Index::Locus> > LociByHash_map;
+typedef map < Index::hash_t, vector<Index::PositionHash> > LociByHash_map;
+
+const vector<Index::Locus> & Index::getLociByHash(hash_t hash) const
+{
+    return lociByHash.at(hash);
+}
 
 int Index::initFromCapnp(const char * file)
 {
@@ -121,17 +126,18 @@ int Index::initFromCapnp(const char * file)
     capnp::MinHash::LocusList::Reader locusListReader = reader.getLocusList();
     capnp::List<capnp::MinHash::LocusList::Locus>::Reader lociReader = locusListReader.getLoci();
     
-    lociByReference.resize(references.size());
+    positionHashesByReference.resize(references.size());
     
     for ( int i = 0; i < lociReader.size(); i++ )
     {
         capnp::MinHash::LocusList::Locus::Reader locusReader = lociReader[i];
         
-        lociByReference[locusReader.getSequence()].push_back(Locus(locusReader.getPosition(), locusReader.getHash()));
+        positionHashesByReference[locusReader.getSequence()].push_back(PositionHash(locusReader.getPosition(), locusReader.getHash()));
+        lociByHash[locusReader.getHash()].push_back(Locus(locusReader.getSequence(), locusReader.getPosition()));
     }
     
     kmerSize = reader.getKmerSize();
-    compressionFactor = reader.getCompressionFactor();
+    minHashesPerWindow = reader.getMinHashesPerWindow();
     windowSize = reader.getWindowSize();
     
     //cout << endl << "References:" << endl << endl;
@@ -175,10 +181,10 @@ int Index::initFromCapnp(const char * file)
     return 0;
 }
 
-int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float compressionFactorNew, int windowSizeNew, bool verbose)
+int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, int minHashesPerWindowNew, int windowSizeNew, int verbosity)
 {
     kmerSize = kmerSizeNew;
-    compressionFactor = compressionFactorNew;
+    minHashesPerWindow = minHashesPerWindowNew;
     windowSize = windowSizeNew;
     
     int l;
@@ -196,9 +202,9 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float
                 continue;
             }
             
-            lociByReference.resize(count + 1);
+            positionHashesByReference.resize(count + 1);
             
-            //printf("name: %s\n", seq->name.s);
+            cout << '>' << seq->name.s << " (" << l << "nt)" << endl << endl;
             //if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
             //printf("seq: %s\n", seq->seq.s);
             //if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
@@ -213,7 +219,7 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, float
             
             references[references.size() - 1].length = l;
             
-            getMinHashPositions(lociByReference[count], seq->seq.s, l, kmerSize, compressionFactor, windowSize, verbose);
+            getMinHashPositions(positionHashesByReference[count], seq->seq.s, l, kmerSize, minHashesPerWindow, windowSize, verbosity);
             
             count++;
         }
@@ -324,9 +330,9 @@ int Index::writeToCapnp(const char * file) const
     
     int locusCount = 0;
     
-    for ( int i = 0; i < lociByReference.size(); i++ )
+    for ( int i = 0; i < positionHashesByReference.size(); i++ )
     {
-        locusCount += lociByReference.at(i).size();
+        locusCount += positionHashesByReference.at(i).size();
     }
     
     capnp::MinHash::LocusList::Builder locusListBuilder = builder.initLocusList();
@@ -334,20 +340,20 @@ int Index::writeToCapnp(const char * file) const
     
     int locusIndex = 0;
     
-    for ( int i = 0; i < lociByReference.size(); i++ )
+    for ( int i = 0; i < positionHashesByReference.size(); i++ )
     {
-        for ( int j = 0; j < lociByReference.at(i).size(); j++ )
+        for ( int j = 0; j < positionHashesByReference.at(i).size(); j++ )
         {
             capnp::MinHash::LocusList::Locus::Builder locusBuilder = lociBuilder[locusIndex];
             locusIndex++;
             
-            locusBuilder.setPosition(lociByReference.at(i).at(j).position);
-            locusBuilder.setHash(lociByReference.at(i).at(j).hash);
+            locusBuilder.setPosition(positionHashesByReference.at(i).at(j).position);
+            locusBuilder.setHash(positionHashesByReference.at(i).at(j).hash);
         }
     }
     
     builder.setKmerSize(kmerSize);
-    builder.setCompressionFactor(compressionFactor);
+    builder.setMinHashesPerWindow(minHashesPerWindow);
     builder.setWindowSize(windowSize);
     
     writeMessageToFd(fds[1], message);
@@ -356,17 +362,10 @@ int Index::writeToCapnp(const char * file) const
     return 0;
 }
 
-void getMinHashes(Index::Hash_set & minHashes, char * seq, uint32_t length, uint32_t seqId, int kmerSize, float compressionFactor)
+void getMinHashes(Index::Hash_set & minHashes, char * seq, uint32_t length, uint32_t seqId, int kmerSize, int mins)
 {
     priority_queue<Index::hash_t> minHashesQueue;
     minHashes.clear();
-    
-    int mins = length / compressionFactor;
-    //
-    if ( mins < 1 )
-    {
-        mins = 1;
-    }
     
     //cout << "mins: " << mins << endl << endl;
     
@@ -430,25 +429,9 @@ void getMinHashes(Index::Hash_set & minHashes, char * seq, uint32_t length, uint
     }
 }
 
-void getMinHashPositions(vector<Index::Locus> & loci, char * seq, uint32_t length, int kmerSize, float compressionFactor, int windowSize, bool verbose)
+void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * seq, uint32_t length, int kmerSize, int minHashesPerWindow, int windowSize, int verbosity)
 {
-    int mins = windowSize / compressionFactor;
-    //
-    if ( mins < 1 )
-    {
-        mins = 1;
-    }
-    
-    // uppercase the entire sequence in place
-    //
-    for ( int i = 0; i < length; i++ )
-    {
-        if ( seq[i] > 90 )
-        {
-            seq[i] -= 32;
-        }
-    }
-    
+    int mins = minHashesPerWindow;
     int nextValidKmer = 0;
     
     struct CandidateLocus
@@ -463,11 +446,17 @@ void getMinHashPositions(vector<Index::Locus> & loci, char * seq, uint32_t lengt
         bool isMinmer;
     };
     
-    if ( verbose ) cout << seq << endl << endl;
+    if ( windowSize > length - kmerSize + 1 )
+    {
+        windowSize = length - kmerSize + 1;
+    }
+    
+    if ( verbosity > 1 ) cout << seq << endl << endl;
     map<Index::hash_t, deque<CandidateLocus>> candidatesByHash;
     
     queue<map<Index::hash_t, deque<CandidateLocus>>::iterator> windowQueue;
     map<Index::hash_t, deque<CandidateLocus>>::iterator maxMinmer = candidatesByHash.end();
+    map<Index::hash_t, deque<CandidateLocus>>::iterator newCandidates;
     
     int unique = 0;
     
@@ -487,14 +476,12 @@ void getMinHashPositions(vector<Index::Locus> & loci, char * seq, uint32_t lengt
             }
         }
         
-        map<Index::hash_t, deque<CandidateLocus>>::iterator newCandidates;
-        
         if ( i >= nextValidKmer )
         {
             Index::hash_t hash;
             MurmurHash3_x86_32(seq + i, kmerSize, seed, &hash);
             
-            if ( verbose )
+            if ( verbosity > 1 )
             {
                 cout << "   ";
             
@@ -551,7 +538,7 @@ void getMinHashPositions(vector<Index::Locus> & loci, char * seq, uint32_t lengt
             windowFront = windowQueue.front();
             windowQueue.pop();
             
-            cout << "   \tPOP: " << windowFront->first << endl;
+            if ( verbosity > 1 ) cout << "   \tPOP: " << windowFront->first << endl;
         }
         
         if ( windowFront != candidatesByHash.end() )
@@ -560,15 +547,15 @@ void getMinHashPositions(vector<Index::Locus> & loci, char * seq, uint32_t lengt
             
             if ( frontCandidates.front().isMinmer )
             {
-                if ( verbose ) cout << "   \t   minmer: " << frontCandidates.front().position << '\t' << windowFront->first << endl;
-                loci.push_back(Index::Locus(frontCandidates.front().position, windowFront->first));
+                if ( verbosity > 1 ) cout << "   \t   minmer: " << frontCandidates.front().position << '\t' << windowFront->first << endl;
+                positionHashes.push_back(Index::PositionHash(frontCandidates.front().position, windowFront->first));
             }
             
             if ( frontCandidates.size() > 1 )
             {
                 frontCandidates.pop_front();
             
-                if ( maxMinmer != candidatesByHash.end() && windowFront->first <= maxMinmer->first )
+                if ( maxMinmer == candidatesByHash.end() || ( i >= windowSize && windowFront->first <= maxMinmer->first) )
                 {
                     frontCandidates.front().isMinmer = true;
                 }
@@ -578,7 +565,11 @@ void getMinHashPositions(vector<Index::Locus> & loci, char * seq, uint32_t lengt
                 if ( maxMinmer != candidatesByHash.end() && windowFront->first <= maxMinmer->first )
                 {
                     maxMinmer++;
-                    maxMinmer->second.front().isMinmer = true;
+                    
+                    if ( maxMinmer != candidatesByHash.end() )
+                    {
+                        maxMinmer->second.front().isMinmer = true;
+                    }
                     unique++;
                 }
             
@@ -604,7 +595,7 @@ void getMinHashPositions(vector<Index::Locus> & loci, char * seq, uint32_t lengt
             newCandidates->second.front().isMinmer = true;
         }
         
-        if ( verbose )
+        if ( verbosity > 1 )
         {
             for ( map<Index::hash_t, deque<CandidateLocus>>::iterator j = candidatesByHash.begin(); j != candidatesByHash.end(); j++ )
             {
@@ -645,8 +636,8 @@ void getMinHashPositions(vector<Index::Locus> & loci, char * seq, uint32_t lengt
             {
                 if ( frontCandidates.front().isMinmer )
                 {
-                    if ( verbose ) cout << "   \t   minmer:" << frontCandidates.front().position << '\t' << windowFront->first << endl;
-                    loci.push_back(Index::Locus(frontCandidates.front().position, windowFront->first));
+                    if ( verbosity > 1 ) cout << "   \t   minmer:" << frontCandidates.front().position << '\t' << windowFront->first << endl;
+                    positionHashes.push_back(Index::PositionHash(frontCandidates.front().position, windowFront->first));
                 }
                 
                 frontCandidates.pop_front();
@@ -654,17 +645,19 @@ void getMinHashPositions(vector<Index::Locus> & loci, char * seq, uint32_t lengt
         }
     }
     
-    if ( verbose )
+    if ( verbosity > 1 )
     {
         cout << endl << "Minmers:" << endl;
     
-        for ( int i = 0; i < loci.size(); i++ )
+        for ( int i = 0; i < positionHashes.size(); i++ )
         {
-            cout << "   " << loci.at(i).position << '\t' << loci.at(i).hash << endl;
+            cout << "   " << positionHashes.at(i).position << '\t' << positionHashes.at(i).hash << endl;
         }
-    
-        cout << endl << unique << " of " << length - windowSize + 1 << " unique windows" << endl << endl;
+        
+        cout << endl;
     }
+    
+    if ( verbosity > 0 ) cout << "   " << positionHashes.size() << " minmers across " << length - windowSize - kmerSize + 2 << " windows (" << unique << " windows with distinct minmer sets)." << endl << endl;
 }
 
 

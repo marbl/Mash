@@ -86,7 +86,15 @@ CommandCompare::CompareOutput * compare(CommandCompare::CompareInput * data)
         
         Index::Hash_set minHashesLocal;
         
-        getMinHashes(minHashesLocal, seq->seq.s, l, 0, indexRef.getKmerSize(), indexRef.getCompressionFactor());
+        //getMinHashes(minHashesLocal, seq->seq.s, l, 0, indexRef.getKmerSize(), indexRef.getMinHashesPerWindow());
+        //
+        vector<Index::PositionHash> positionHashes;
+        getMinHashPositions(positionHashes, seq->seq.s, l, indexRef.getKmerSize(), indexRef.getMinHashesPerWindow(), indexRef.getWindowSize(), 0);
+        //
+        for ( int i = 0; i < positionHashes.size(); i++ )
+        {
+            minHashesGlobal.insert(positionHashes.at(i).hash);
+        }
         
         for ( Index::Hash_set::const_iterator i = minHashesLocal.begin(); i != minHashesLocal.end(); i++ )
         {
@@ -105,13 +113,13 @@ CommandCompare::CompareOutput * compare(CommandCompare::CompareInput * data)
     
     for ( Index::Hash_set::const_iterator i = minHashesGlobal.begin(); i != minHashesGlobal.end(); i++ )
     {
-        //if ( indexRef.getLociByHash().count(*i) != 0 )
+        if ( indexRef.hasLociByHash(*i) )
         {
             common++;
         }
     }
     
- //   output->score = float(common) / (indexRef.getLociByHash().size() + minHashesGlobal.size() - common);
+    output->score = float(common) / (indexRef.getHashCount() + minHashesGlobal.size() - common);
     output->file = file;
     
     return output;

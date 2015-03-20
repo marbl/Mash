@@ -35,5 +35,5 @@ struct MinHash
 	locusList @1 : LocusList;
 	kmerSize @2 : UInt32;
 	windowSize @3 : UInt32;
-	compressionFactor @4 : Float32;
+	minHashesPerWindow @4 : UInt32;
 }
