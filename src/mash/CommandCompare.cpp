@@ -17,6 +17,8 @@ CommandCompare::CommandCompare()
     
     addOption("help", Option(Option::Boolean, "h", "Help", ""));
     addOption("threads", Option(Option::Number, "p", "Parallelism. This many threads will be spawned, each one handling one input file at a time.", "1"));
+    addOption("kmer", Option(Option::Number, "k", "Kmer size. Hashes will be based on strings of this many nucleotides.", "11"));
+    addOption("mins", Option(Option::Number, "m", "Min-hashes per input file.", "10000"));
 }
 
 int CommandCompare::run() const
@@ -28,15 +30,17 @@ int CommandCompare::run() const
     }
     
     int threads = options.at("threads").getArgumentAsNumber();
+    int kmerSize = options.at("kmer").getArgumentAsNumber();
+    int mins = options.at("mins").getArgumentAsNumber();
     
-    Index indexRef;
-    indexRef.initFromCapnp(arguments[0].c_str());
+    Index::Hash_set minHashesRef;
+    getMinHashesForFile(minHashesRef, arguments[0], kmerSize, mins);
     
     ThreadPool<CompareInput, CompareOutput> threadPool(compare, threads);
     
     for ( int i = 1; i < arguments.size(); i++ )
     {
-        threadPool.runWhenThreadAvailable(new CompareInput(indexRef, arguments[i]));
+        threadPool.runWhenThreadAvailable(new CompareInput(minHashesRef, arguments[i], kmerSize, mins));
         
         while ( threadPool.outputAvailable() )
         {
@@ -60,21 +64,42 @@ void CommandCompare::writeOutput(CompareOutput * output) const
 
 CommandCompare::CompareOutput * compare(CommandCompare::CompareInput * data)
 {
-    const Index & indexRef = data->indexRef;
+    const Index::Hash_set & minHashesRef = data->minHashesRef;
     const string file = data->file;
     
     CommandCompare::CompareOutput * output = new CommandCompare::CompareOutput();
     int common = 0;
+    Index::Hash_set minHashes;
+    
+    getMinHashesForFile(minHashes, file, data->kmerSize, data->mins);
+    
+    for ( Index::Hash_set::const_iterator i = minHashes.begin(); i != minHashes.end(); i++ )
+    {
+        if ( minHashesRef.count(*i) == 1 )
+        {
+            common++;
+        }
+    }
+    
+    output->score = float(common) / (minHashesRef.size() + minHashes.size() - common);
+    output->file = file;
+    
+    return output;
+}
+
+void getMinHashesForFile(Index::Hash_set & minHashes, const string & file, int kmerSize, int mins)
+{
     int l;
     
     gzFile fp = gzopen(file.c_str(), "r");
     kseq_t *seq = kseq_init(fp);
     
-    Index::Hash_set minHashesGlobal;
+    minHashes.clear();
+    priority_queue<Index::hash_t> minHashesQueue;
     
     while ((l = kseq_read(seq)) >= 0)
     {
-        if ( l < indexRef.getKmerSize() )
+        if ( l < kmerSize )
         {
             continue;
         }
@@ -84,43 +109,17 @@ CommandCompare::CompareOutput * compare(CommandCompare::CompareInput * data)
         //printf("seq: %s\n", seq->seq.s);
         //if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
         
-        Index::Hash_set minHashesLocal;
-        
         //getMinHashes(minHashesLocal, seq->seq.s, l, 0, indexRef.getKmerSize(), indexRef.getMinHashesPerWindow());
         //
-        vector<Index::PositionHash> positionHashes;
-        getMinHashPositions(positionHashes, seq->seq.s, l, indexRef.getKmerSize(), indexRef.getMinHashesPerWindow(), indexRef.getWindowSize(), 0);
-        //
-        for ( int i = 0; i < positionHashes.size(); i++ )
-        {
-            minHashesGlobal.insert(positionHashes.at(i).hash);
-        }
-        
-        for ( Index::Hash_set::const_iterator i = minHashesLocal.begin(); i != minHashesLocal.end(); i++ )
-        {
-            minHashesGlobal.insert(*i);
-        }
+        addMinHashes(minHashes, minHashesQueue, seq->seq.s, l, kmerSize, mins);
     }
     
     if ( l != -1 )
     {
         printf("ERROR: return value: %d\n", l);
-        return 0;
+        exit(1);
     }
     
     kseq_destroy(seq);
     gzclose(fp);
-    
-    for ( Index::Hash_set::const_iterator i = minHashesGlobal.begin(); i != minHashesGlobal.end(); i++ )
-    {
-        if ( indexRef.hasLociByHash(*i) )
-        {
-            common++;
-        }
-    }
-    
-    output->score = float(common) / (indexRef.getHashCount() + minHashesGlobal.size() - common);
-    output->file = file;
-    
-    return output;
 }

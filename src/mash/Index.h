@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 #include <unordered_set>
+#include <queue>
 
 static const int seed = 42; // TODO: better seed???
 
@@ -77,7 +78,7 @@ private:
     int windowSize;
 };
 
-void getMinHashes(Index::Hash_set & lociByHash, char * seq, uint32_t length, uint32_t seqId, int kmerSize, int minHashesPerWindow);
+void addMinHashes(Index::Hash_set & lociByHash, std::priority_queue<Index::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins);
 void getMinHashPositions(std::vector<Index::PositionHash> & loci, char * seq, uint32_t length, int kmerSize, int minHashesPerWindow, int windowSize, int verbosity = 0);
 
 int def(int fdSource, int fdDest, int level);

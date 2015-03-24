@@ -362,11 +362,8 @@ int Index::writeToCapnp(const char * file) const
     return 0;
 }
 
-void getMinHashes(Index::Hash_set & minHashes, char * seq, uint32_t length, uint32_t seqId, int kmerSize, int mins)
+void addMinHashes(Index::Hash_set & minHashes, priority_queue<Index::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins)
 {
-    priority_queue<Index::hash_t> minHashesQueue;
-    minHashes.clear();
-    
     //cout << "mins: " << mins << endl << endl;
     
     // uppercase
@@ -474,6 +471,18 @@ void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * se
                     break;
                 }
             }
+        }
+        
+        if ( i < nextValidKmer && verbosity > 1 )
+        {
+            cout << "  [";
+        
+            for ( int j = i; j < i + kmerSize; j++ )
+            {
+                cout << seq[j];
+            }
+            
+            cout << "]" << endl;
         }
         
         if ( i >= nextValidKmer )
@@ -590,7 +599,7 @@ void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * se
             unique++;
         }
         
-        if ( newCandidates != candidatesByHash.end() && i >= windowSize && newCandidates->first <= maxMinmer->first )
+        if ( newCandidates != candidatesByHash.end() && i >= windowSize && (maxMinmer == candidatesByHash.end() || newCandidates->first <= maxMinmer->first) )
         {
             newCandidates->second.front().isMinmer = true;
         }

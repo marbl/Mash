@@ -10,14 +10,18 @@ public:
     
     struct CompareInput
     {
-        CompareInput(const Index & indexRefNew, const std::string fileNew)
+        CompareInput(const Index::Hash_set & minHashesRefNew, const std::string fileNew, int kmerSizeNew, int minsNew)
             :
-            indexRef(indexRefNew),
-            file(fileNew)
+            minHashesRef(minHashesRefNew),
+            file(fileNew),
+            kmerSize(kmerSizeNew),
+            mins(minsNew)
             {}
         
-        const Index & indexRef;
+        const Index::Hash_set & minHashesRef;
         const std::string file;
+        int kmerSize;
+        int mins;
     };
     
     struct CompareOutput
@@ -36,5 +40,6 @@ private:
 };
 
 CommandCompare::CompareOutput * compare(CommandCompare::CompareInput * data);
+void getMinHashesForFile(Index::Hash_set & minHashes, const std::string & file, int kmerSize, int mins);
 
 #endif
