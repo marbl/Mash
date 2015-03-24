@@ -39,7 +39,7 @@ libmash.a : $(OBJECTS)
 	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) -o $@ $<
 
 src/mash/memcpyWrap.o : src/mash/memcpyWrap.c
-	$(CC) -c -o $@ $<
+	$(CC) ($CFLAGS) -c -o $@ $<
 
 src/mash/capnp/MinHash.capnp.c++ src/mash/capnp/MinHash.capnp.h : src/mash/capnp/MinHash.capnp
 	cd src/mash/capnp;@capnp@/bin/capnp compile -oc++ MinHash.capnp
