@@ -14,8 +14,8 @@ KSEQ_INIT(gzFile, gzread)
 CommandFind::CommandFind()
 {
     name = "find";
-    description = "Compare query sequences to a reference index";
-    argumentString = "index.mash fast(a|q)[.gz] ...";
+    description = "Compare query sequences to a reference index. <input> can be fasta or fastq, gzipped or not, and can a list of files or \"-\" to read from standard input.";
+    argumentString = "index.mash <input> ...";
     
     addOption("help", Option(Option::Boolean, "h", "Help", ""));
     addOption("threshold", Option(Option::Number, "t", "Threshold. This fraction of the query sequence's min-hashes must appear in a query-sized window of a reference sequence for the match to be reported.", "0.2"));
@@ -46,7 +46,18 @@ int CommandFind::run() const
     
     for ( int i = 1; i < arguments.size(); i++ )
     {
-        gzFile fp = gzopen(arguments[i].c_str(), "r");
+        FILE * inStream = 0;
+        
+        if ( arguments[i] == "-" )
+        {
+            inStream = stdin;
+        }
+        else
+        {
+            inStream = fopen(arguments[i].c_str(), "r");
+        }
+        
+        gzFile fp = gzdopen(fileno(inStream), "r");
         kseq_t *seq = kseq_init(fp);
         
         while ((l = kseq_read(seq)) >= 0)

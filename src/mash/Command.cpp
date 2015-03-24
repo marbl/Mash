@@ -62,7 +62,7 @@ void Command::print() const
     
     cout << endl << "Usage:" << endl << endl;
     
-    columns[0].push_back("minimap " + name + " [options] " + argumentString);
+    columns[0].push_back("mash " + name + " [options] " + argumentString);
     printColumns(columns);
     
     cout << "Description:" << endl << endl;
@@ -116,7 +116,7 @@ int Command::run(int argc, const char ** argv)
 {
     for ( int i = 0; i < argc; i++ )
     {
-        if ( argv[i][0] == '-' )
+        if ( argv[i][0] == '-' && argv[i][1] != 0 )
         {
             if ( optionNamesByIdentifier.count(argv[i] + 1) == 0 )
             {
