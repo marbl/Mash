@@ -38,9 +38,6 @@ libmash.a : $(OBJECTS)
 %.o : %.c++
 	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) -o $@ $<
 
-%.o : %.c
-	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) -o $@ $<
-
 src/mash/memcpyWrap.o : src/mash/memcpyWrap.c
 	$(CC) -c -o $@ $<
 
