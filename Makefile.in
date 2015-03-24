@@ -5,7 +5,7 @@ UNAME_S=$(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 	CXXFLAGS += -mmacosx-version-min=10.7 -stdlib=libc++
 else
-	CXXFLAGS += -include src/mash/memcpyLink.h -L. -static-libstdc++  -Wl,--wrap=memcpy
+	CXXFLAGS += -include src/mash/memcpyLink.h -Wl,--wrap=memcpy
 	CFLAGS += -include src/mash/memcpyLink.h
 endif
 
