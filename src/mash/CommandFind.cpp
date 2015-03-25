@@ -14,7 +14,7 @@ KSEQ_INIT(gzFile, gzread)
 CommandFind::CommandFind()
 {
     name = "find";
-    description = "Compare query sequences to a reference index. <input> can be fasta or fastq, gzipped or not, and can a list of files or \"-\" to read from standard input.";
+    description = "Compare query sequences to a reference index. <input> can be fasta or fastq, gzipped or not, and can be a list of files or \"-\" to read from standard input.";
     argumentString = "index.mash <input> ...";
     
     addOption("help", Option(Option::Boolean, "h", "Help", ""));
@@ -154,6 +154,8 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
 {
     typedef unordered_map < uint32_t, set<uint32_t> > PositionsBySequence_umap;
     
+    bool verbose = false;
+    
     Index::Hash_set minHashes;
     
     const Index & index = input->index;
@@ -206,7 +208,7 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
     
     if ( minusStrand )
     {
-        delete seq;
+        delete [] seq;
     }
     
     // get sorted lists of positions, per reference sequence, that have
@@ -227,7 +229,7 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
             {
                 const Index::Locus & locus = loci.at(j);
                 
-                //cout << "Match for hash " << hash << "\t" << locus.sequence << "\t" << locus.position << endl;
+                if ( verbose ) cout << "Match for hash " << hash << "\t" << locus.sequence << "\t" << locus.position << endl;
                 hits[locus.sequence].insert(locus.position); // set will be created if needed
             }
         }
@@ -240,7 +242,7 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
         //
         set<uint32_t>::const_iterator windowStart = i->second.begin();
         
-        //cout << "Clustering in seq " << i->first << endl;
+        if ( verbose ) cout << "Clustering in seq " << i->first << endl;
         
         // the number of positions between the window start and end (inclusive)
         //
@@ -250,13 +252,13 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
         {
             windowCount++;
             
-            //cout << *windowStart << "\t" << *j << endl;
+            if ( verbose ) cout << *windowStart << "\t" << *j << endl;
             
             // update window start if it is too far behind
             //
             while ( windowStart != j && *j > length && *windowStart < *j - length + 1 )
             {
-                //cout << "moving " << *j - length + 1 << endl;
+                if ( verbose ) cout << "moving " << *j - length + 1 << endl;
                 windowStart++;
                 windowCount--;
             }
@@ -272,7 +274,7 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
             windowCount--;
             j--;
             
-            //cout << *windowStart << "\t" << *j << endl;
+            if ( verbose ) cout << *windowStart << "\t" << *j << endl;
             float score = float(windowCount) / minHashes.size();
             
             if
@@ -285,7 +287,7 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
                 )
             )
             {
-                //cout << data->seqId << '\t' << index.getReference(i->first).name << '\t' << *windowStart << '\t' << *j << '\t' << float(windowCount) / mins << endl;
+                if ( verbose ) cout << input->seqId << '\t' << index.getReference(i->first).name << '\t' << *windowStart << '\t' << *j << '\t' << float(windowCount) / mins << endl;
                 
                 output->hits.push(CommandFind::FindOutput::Hit(i->first, *windowStart, *j, minusStrand, score));
                 
@@ -298,7 +300,7 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
                 
                 for ( set<uint32_t>::const_iterator k = windowStart; k != i->second.end() && *k <= *j; k++ )
                 {
-                    //cout << "      " << *k << endl;
+                    if ( verbose ) cout << "      " << *k << endl;
                 }
             }
         }

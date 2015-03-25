@@ -131,7 +131,7 @@ int Index::initFromCapnp(const char * file)
     for ( int i = 0; i < lociReader.size(); i++ )
     {
         capnp::MinHash::LocusList::Locus::Reader locusReader = lociReader[i];
-        
+        //cout << locusReader.getHash() << '\t' << locusReader.getSequence() << '\t' << locusReader.getPosition() << endl;
         positionHashesByReference[locusReader.getSequence()].push_back(PositionHash(locusReader.getPosition(), locusReader.getHash()));
         lociByHash[locusReader.getHash()].push_back(Locus(locusReader.getSequence(), locusReader.getPosition()));
     }
@@ -347,6 +347,7 @@ int Index::writeToCapnp(const char * file) const
             capnp::MinHash::LocusList::Locus::Builder locusBuilder = lociBuilder[locusIndex];
             locusIndex++;
             
+            locusBuilder.setSequence(i);
             locusBuilder.setPosition(positionHashesByReference.at(i).at(j).position);
             locusBuilder.setHash(positionHashesByReference.at(i).at(j).hash);
         }
