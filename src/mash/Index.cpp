@@ -26,6 +26,18 @@ const vector<Index::Locus> & Index::getLociByHash(hash_t hash) const
     return lociByHash.at(hash);
 }
 
+int Index::getReferenceIndex(string id) const
+{
+    if ( referenceIndecesById.count(id) == 1 )
+    {
+        return referenceIndecesById.at(id);
+    }
+    else
+    {
+        return -1;
+    }
+}
+
 int Index::initFromCapnp(const char * file)
 {
     // use a pipe to decompress input to Cap'n Proto
@@ -121,6 +133,10 @@ int Index::initFromCapnp(const char * file)
         references[i].name = referenceReader.getName();
         references[i].comment = referenceReader.getComment();
         references[i].length = referenceReader.getLength();
+        
+        // TODO: init from seq?
+        //
+        referenceIndecesById[references[i].name] = i;
     }
     
     capnp::MinHash::LocusList::Reader locusListReader = reader.getLocusList();
@@ -133,6 +149,9 @@ int Index::initFromCapnp(const char * file)
         capnp::MinHash::LocusList::Locus::Reader locusReader = lociReader[i];
         //cout << locusReader.getHash() << '\t' << locusReader.getSequence() << '\t' << locusReader.getPosition() << endl;
         positionHashesByReference[locusReader.getSequence()].push_back(PositionHash(locusReader.getPosition(), locusReader.getHash()));
+        
+        // TODO: init from seq?
+        //
         lociByHash[locusReader.getHash()].push_back(Locus(locusReader.getSequence(), locusReader.getPosition()));
     }
     

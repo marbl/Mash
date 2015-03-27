@@ -60,6 +60,7 @@ public:
     const std::vector<Locus> & getLociByHash(hash_t hash) const;
     int getHashCount() const {return lociByHash.size();}
     const Reference & getReference(int index) const {return references.at(index);}
+    int getReferenceIndex(std::string id) const;
     int getKmerSize() const {return kmerSize;}
     int getWindowSize() const {return windowSize;}
     bool hasLociByHash(hash_t hash) const {return lociByHash.count(hash);}
@@ -70,6 +71,7 @@ public:
 private:
     
     std::vector<Reference> references;
+    std::unordered_map<std::string, int> referenceIndecesById;
     std::vector<std::vector<PositionHash>> positionHashesByReference;
     std::unordered_map<hash_t, std::vector<Locus>> lociByHash;
     

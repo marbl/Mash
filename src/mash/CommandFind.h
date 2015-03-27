@@ -12,13 +12,22 @@ public:
     
     struct FindInput
     {
-        FindInput(const Index & indexNew, const char * seqIdNew, const char * seqNew, uint32_t lengthNew, float thresholdNew, int bestNew)
-            :
-            index(indexNew),
-            length(lengthNew),
-            threshold(thresholdNew),
-            seqId(seqIdNew),
-            best(bestNew)
+        FindInput
+        (
+            const Index & indexNew,
+            const char * seqIdNew,
+            const char * seqNew,
+            uint32_t lengthNew,
+            float thresholdNew,
+            int bestNew,
+            bool selfMatchesNew
+        ) :
+        index(indexNew),
+        length(lengthNew),
+        threshold(thresholdNew),
+        seqId(seqIdNew),
+        best(bestNew),
+        selfMatches(selfMatchesNew)
         {
             seq = new char[strlen(seqNew) + 1];
             strcpy(seq, seqNew);
@@ -35,6 +44,7 @@ public:
         uint32_t length;
         float threshold;
         int best;
+        bool selfMatches;
     };
     
     struct FindOutput

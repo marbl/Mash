@@ -21,6 +21,7 @@ CommandFind::CommandFind()
     addOption("threshold", Option(Option::Number, "t", "Threshold. This fraction of the query sequence's min-hashes must appear in a query-sized window of a reference sequence for the match to be reported.", "0.2"));
     addOption("threads", Option(Option::Number, "p", "Parallelism. This many threads will be spawned to perform the find, each one handling on query sequence at a time.", "1"));
     addOption("best", Option(Option::Number, "b", "Best hit count. This many of the best hits will be reported (0 to report all hits). Score ties are broken by keeping the hit to the earlier reference or to the left-most position.", "0"));
+    addOption("self", Option(Option::Boolean, "s", "Allow self matches if query ID appears in reference index.", ""));
 }
 
 int CommandFind::run() const
@@ -34,6 +35,7 @@ int CommandFind::run() const
     float threshold = options.at("threshold").getArgumentAsNumber(0, 1);
     int threads = options.at("threads").getArgumentAsNumber();
     int best = options.at("best").getArgumentAsNumber();
+    bool selfMatches = options.at("self").active;
     
     Index index;
     //
@@ -72,7 +74,7 @@ int CommandFind::run() const
             //printf("seq: %s\n", seq->seq.s);
             //if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
             
-            threadPool.runWhenThreadAvailable(new FindInput(index, seq->name.s, seq->seq.s, l, threshold, best));
+            threadPool.runWhenThreadAvailable(new FindInput(index, seq->name.s, seq->seq.s, l, threshold, best, selfMatches));
             
             while ( threadPool.outputAvailable() )
             {
@@ -166,6 +168,8 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
     float threshold = input->threshold;
     int windowSize = index.getWindowSize();
     int best = input->best;
+    int selfIndexRef = index.getReferenceIndex(input->seqId);
+    bool selfMatches = input->selfMatches;
     
     output->seqId = input->seqId;
     
@@ -230,7 +234,11 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
                 const Index::Locus & locus = loci.at(j);
                 
                 if ( verbose ) cout << "Match for hash " << hash << "\t" << locus.sequence << "\t" << locus.position << endl;
-                hits[locus.sequence].insert(locus.position); // set will be created if needed
+                
+                if ( locus.sequence != selfIndexRef || selfMatches )
+                {
+                    hits[locus.sequence].insert(locus.position); // set will be created if needed
+                }
             }
         }
     }
