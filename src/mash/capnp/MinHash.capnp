@@ -25,7 +25,7 @@ struct MinHash
 		{
 			sequence @0 : UInt32;
 			position @1 : UInt32;
-			hash @2 : UInt32;
+			hash @2 : UInt64;
 		}
 		
 		loci @0 : List(Locus);

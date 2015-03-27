@@ -19,7 +19,7 @@ class Index
 {
 public:
     
-    typedef uint32_t hash_t;
+    typedef uint64_t hash_t;
     
     struct PositionHash
     {
@@ -81,6 +81,7 @@ private:
 };
 
 void addMinHashes(Index::Hash_set & lociByHash, std::priority_queue<Index::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins);
+Index::hash_t getHash(const char * seq, int length);
 void getMinHashPositions(std::vector<Index::PositionHash> & loci, char * seq, uint32_t length, int kmerSize, int minHashesPerWindow, int windowSize, int verbosity = 0);
 
 int def(int fdSource, int fdDest, int level);

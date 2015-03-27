@@ -417,8 +417,7 @@ void addMinHashes(Index::Hash_set & minHashes, priority_queue<Index::hash_t> & m
             break;
         }
         
-        Index::hash_t hash;
-        MurmurHash3_x86_32(seq + i, kmerSize, seed, &hash);
+        Index::hash_t hash = getHash(seq + i, kmerSize);
         
         //if ( i % 1000000 == 0 )
         {
@@ -444,6 +443,25 @@ void addMinHashes(Index::Hash_set & minHashes, priority_queue<Index::hash_t> & m
             }
         }
     }
+}
+
+Index::hash_t getHash(const char * seq, int length)
+{
+    Index::hash_t hash = 0;
+    
+    uint32_t hashLow;
+    MurmurHash3_x86_32(seq, (length > 16 ? 16 : length), seed, &hashLow);
+    
+    hash = hashLow;
+    
+    if ( length > 16 )
+    {
+        uint32_t hashHigh;
+        MurmurHash3_x86_32(seq + 16, length - 16, seed, &hashHigh);
+        hash += ((uint64_t)hashHigh << 32);
+    }
+    
+    return hash;
 }
 
 void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * seq, uint32_t length, int kmerSize, int minHashesPerWindow, int windowSize, int verbosity)
@@ -507,8 +525,7 @@ void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * se
         
         if ( i >= nextValidKmer )
         {
-            Index::hash_t hash;
-            MurmurHash3_x86_32(seq + i, kmerSize, seed, &hash);
+            Index::hash_t hash = getHash(seq + i, kmerSize);
             
             if ( verbosity > 1 )
             {
