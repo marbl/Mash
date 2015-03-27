@@ -130,6 +130,37 @@ void ThreadPool<TypeInput, TypeOutput>::runWhenThreadAvailable(TypeInput * input
     
     inputCurrent = input;
     
+    //std::cout << "Enqueuing output\n";
+    // enqueue output while input locked (to preserve order)
+    //
+    OutputQueueNode * outputQueueNode = new OutputQueueNode();
+    outputQueueNode->next = 0;
+    outputQueueNode->ready = false;
+    //
+    //std::cout << "locking output\n";
+    pthread_mutex_lock(mutexOutput);
+    //
+    //std::cout << "output locked\n";
+    if ( outputQueueHead == 0 )
+    {
+        //std::cout << "output queue empty; setting head\n";
+        outputQueueHead = outputQueueNode;
+    }
+    //
+    outputQueueNode->prev = outputQueueTail;
+    //
+    if ( outputQueueTail != 0 )
+    {
+        //std::cout << "setting tail\n";
+        outputQueueTail->next = outputQueueNode;
+    }
+    //
+    outputQueueTail = outputQueueNode;
+    //
+    pthread_mutex_unlock(mutexOutput);
+    
+    outputQueueNodeCurrent = outputQueueNode;
+    
     pthread_mutex_unlock(mutexInput);
     pthread_cond_broadcast(condInput);
 }
@@ -152,6 +183,7 @@ void * ThreadPool<TypeInput, TypeOutput>::thread(void * arg)
     //std::cout << "Thread created" << std::endl;
     ThreadPool * threadPool = (ThreadPool *)arg;
     TypeInput * input;
+    OutputQueueNode * outputQueueNode;
     
     while ( ! threadPool->finished )
     {
@@ -173,36 +205,9 @@ void * ThreadPool<TypeInput, TypeOutput>::thread(void * arg)
         //
         //std::cout << "Taking input " << threadPool->inputCurrent << std::endl;
         input = threadPool->inputCurrent;
+        outputQueueNode = threadPool->outputQueueNodeCurrent;
         threadPool->inputCurrent = 0;
         
-        //std::cout << "Enqueuing output\n";
-        // enqueue output while input locked (to preserve order)
-        //
-        OutputQueueNode * outputQueueNode = new OutputQueueNode();
-        outputQueueNode->next = 0;
-        outputQueueNode->ready = false;
-        //
-        //std::cout << "locking output\n";
-        pthread_mutex_lock(threadPool->mutexOutput);
-        //
-        //std::cout << "output locked\n";
-        if ( threadPool->outputQueueHead == 0 )
-        {
-            //std::cout << "output queue empty; setting head\n";
-            threadPool->outputQueueHead = outputQueueNode;
-        }
-        //
-        outputQueueNode->prev = threadPool->outputQueueTail;
-        //
-        if ( threadPool->outputQueueTail != 0 )
-        {
-            //std::cout << "setting tail\n";
-            threadPool->outputQueueTail->next = outputQueueNode;
-        }
-        //
-        threadPool->outputQueueTail = outputQueueNode;
-        //
-        pthread_mutex_unlock(threadPool->mutexOutput);
         pthread_mutex_unlock(threadPool->mutexInput);
         
         pthread_cond_broadcast(threadPool->condInput);

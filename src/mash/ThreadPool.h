@@ -19,14 +19,6 @@ public:
     
 private:
     
-    unsigned int threadCount;
-    
-    pthread_t * threads;
-    
-    static void * thread(void *);
-    
-public: // TODO: these need to be accessed by static thread(). Better way?
-    
     struct OutputQueueNode
     {
         // used to preserve input order when outputting
@@ -38,8 +30,15 @@ public: // TODO: these need to be accessed by static thread(). Better way?
         bool ready;
     };
     
+    unsigned int threadCount;
+    
+    pthread_t * threads;
+    
+    static void * thread(void *);
+    
     TypeOutput * (* function)(TypeInput *);
     TypeInput * inputCurrent;
+    OutputQueueNode * outputQueueNodeCurrent;
     
     pthread_mutex_t * mutexInput;
     pthread_mutex_t * mutexOutput;
@@ -51,6 +50,7 @@ public: // TODO: these need to be accessed by static thread(). Better way?
     OutputQueueNode * outputQueueTail;
     
     bool finished;
+    friend void * thread(void *);
 };
 
 
