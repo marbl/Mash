@@ -13,7 +13,7 @@ CommandIndex::CommandIndex()
     addOption("kmer", Option(Option::Number, "k", "Kmer size. Hashes will be based on strings of this many nucleotides.", "11"));
     addOption("window", Option(Option::Number, "w", "Window size. Hashes that are minima in any window of this size will be stored.", "1000"));
     addOption("mins", Option(Option::Number, "m", "Min-hashes per window.", "10"));
-    addOption("prefix", Option(Option::File, "p", "Output prefix (first input file used if unspecified). The suffix '.mash' will be appended.", ""));
+    addOption("prefix", Option(Option::File, "o", "Output prefix (first input file used if unspecified). The suffix '.mash' will be appended.", ""));
     addOption("verbose", Option(Option::Boolean, "v", "Verbose", ""));
 }
 
