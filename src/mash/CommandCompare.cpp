@@ -30,7 +30,7 @@ int CommandCompare::run() const
     }
     
     int threads = options.at("threads").getArgumentAsNumber();
-    int kmerSize = options.at("kmer").getArgumentAsNumber();
+    int kmerSize = options.at("kmer").getArgumentAsNumber(1, 32);
     int mins = options.at("mins").getArgumentAsNumber();
     
     Index::Hash_set minHashesRef;

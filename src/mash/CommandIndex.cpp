@@ -25,7 +25,7 @@ int CommandIndex::run() const
         return 0;
     }
     
-    int kmer = options.at("kmer").getArgumentAsNumber();
+    int kmer = options.at("kmer").getArgumentAsNumber(1, 32);
     int minHashesPerWindow = options.at("mins").getArgumentAsNumber();
     int windowSize = options.at("window").getArgumentAsNumber();
     int verbosity = options.at("verbose").active ? 2 : 1;
