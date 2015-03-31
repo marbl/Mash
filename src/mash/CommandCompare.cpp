@@ -81,7 +81,25 @@ CommandCompare::CompareOutput * compare(CommandCompare::CompareInput * data)
         }
     }
     
-    output->score = float(common) / (minHashesRef.size() + minHashes.size() - common);
+    int denominator;
+    
+    if ( minHashesRef.size() >= data->mins & minHashes.size() >= data->mins )
+    {
+        denominator = data->mins;
+    }
+    else
+    {
+        if ( minHashesRef.size() > minHashes.size() )
+        {
+            denominator = minHashesRef.size();
+        }
+        else
+        {
+            denominator = minHashes.size();
+        }
+    }
+    
+    output->score = float(common) / denominator;
     output->file = file;
     
     return output;
