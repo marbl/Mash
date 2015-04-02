@@ -81,6 +81,8 @@ public:
     
 private:
     
+    void createTables();
+    
     std::vector<Reference> references;
     std::unordered_map<std::string, int> referenceIndecesById;
     std::vector<std::vector<PositionHash>> positionHashesByReference;

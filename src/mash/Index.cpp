@@ -165,12 +165,8 @@ int Index::initFromCapnp(const char * file)
         
         for ( int j = 0; j < hashesReader.size(); j++ )
         {
-            references[i].hashes.insert(hashesReader[i]);
+            references[i].hashes.insert(hashesReader[j]);
         }
-        
-        // TODO: init from seq?
-        //
-        referenceIndecesById[references[i].name] = i;
     }
     
     capnp::MinHash::LocusList::Reader locusListReader = reader.getLocusList();
@@ -183,10 +179,6 @@ int Index::initFromCapnp(const char * file)
         capnp::MinHash::LocusList::Locus::Reader locusReader = lociReader[i];
         //cout << locusReader.getHash() << '\t' << locusReader.getSequence() << '\t' << locusReader.getPosition() << endl;
         positionHashesByReference[locusReader.getSequence()].push_back(PositionHash(locusReader.getPosition(), locusReader.getHash()));
-        
-        // TODO: init from seq?
-        //
-        lociByHash[locusReader.getHash()].push_back(Locus(locusReader.getSequence(), locusReader.getPosition()));
     }
     
     kmerSize = reader.getKmerSize();
@@ -230,6 +222,8 @@ int Index::initFromCapnp(const char * file)
     cout << endl;
     */
     close(fds[0]);
+    
+    createTables();
     
     return 0;
 }
@@ -335,6 +329,9 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, int m
         }
     }
     */
+    
+    createTables();
+    
     return 0;
 }
 
@@ -469,6 +466,24 @@ int Index::writeToCapnp(const char * file) const
     close(fds[1]);
     
     return 0; // TODO
+}
+
+void Index::createTables()
+{
+    for ( int i = 0; i < references.size(); i++ )
+    {
+        referenceIndecesById[references[i].name] = i;
+    }
+    
+    for ( int i = 0; i < positionHashesByReference.size(); i++ )
+    {
+        for ( int j = 0; j < positionHashesByReference.at(i).size(); j++ )
+        {
+        	const PositionHash & positionHash = positionHashesByReference.at(i).at(j);
+        	
+	        lociByHash[positionHash.hash].push_back(Locus(i, positionHash.position));
+        }
+    }
 }
 
 void addMinHashes(Index::Hash_set & minHashes, priority_queue<Index::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins)
