@@ -19,7 +19,11 @@ class Index
 {
 public:
     
+#ifdef ARCH_32
+    typedef uint32_t hash_t;
+#else
     typedef uint64_t hash_t;
+#endif
     
     struct PositionHash
     {

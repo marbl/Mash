@@ -506,18 +506,16 @@ Index::hash_t getHash(const char * seq, int length)
 {
     Index::hash_t hash = 0;
     
-    uint32_t hashLow;
-    MurmurHash3_x86_32(seq, (length > 16 ? 16 : length), seed, &hashLow);
-    
-    hash = hashLow;
-    
-    if ( length > 16 )
-    {
-        uint32_t hashHigh;
-        MurmurHash3_x86_32(seq + 16, length - 16, seed, &hashHigh);
-        hash += ((uint64_t)hashHigh << 32);
-    }
-    
+#ifdef ARCH_32
+    uint32_t data[4];
+    MurmurHash3_x86_32(seq, length, seed, data);
+    hash = data[0];
+#else
+    uint64_t data[2];
+    MurmurHash3_x64_128(seq, length, seed, data);
+    hash = data[0];
+#endif    
+
     return hash;
 }
 
@@ -673,6 +671,7 @@ void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * se
                     {
                         maxMinmer->second.front().isMinmer = true;
                     }
+                    
                     unique++;
                 }
             
@@ -689,7 +688,11 @@ void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * se
                 j->second.front().isMinmer = true;
             }
             
-            maxMinmer->second.front().isMinmer = true;
+            if ( maxMinmer != candidatesByHash.end() )
+            {
+                maxMinmer->second.front().isMinmer = true;
+            }
+            
             unique++;
         }
         

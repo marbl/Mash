@@ -102,7 +102,25 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
             }
         }
         
-        output->pairs[i].score = float(common) / (minHashesRef.size() + minHashes.size() - common);
+		int denominator;
+		
+		if ( minHashesRef.size() >= data->mins & minHashes.size() >= data->mins )
+		{
+			denominator = data->mins;
+		}
+		else
+		{
+			if ( minHashesRef.size() > minHashes.size() )
+			{
+				denominator = minHashesRef.size();
+			}
+			else
+			{
+				denominator = minHashes.size();
+			}
+		}
+		
+        output->pairs[i].score = float(common) / denominator;
         output->pairs[i].file = index.getReference(i).name;
     }
     
