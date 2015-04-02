@@ -134,6 +134,13 @@ int Index::initFromCapnp(const char * file)
         references[i].comment = referenceReader.getComment();
         references[i].length = referenceReader.getLength();
         
+        capnp::List<uint64_t>::Reader hashesReader = referenceReader.getHashes();
+        
+        for ( int j = 0; j < hashesReader.size(); j++ )
+        {
+            references[i].hashes.insert(hashesReader[i]);
+        }
+        
         // TODO: init from seq?
         //
         referenceIndecesById[references[i].name] = i;
@@ -200,11 +207,14 @@ int Index::initFromCapnp(const char * file)
     return 0;
 }
 
-int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, int minHashesPerWindowNew, int windowSizeNew, int verbosity)
+int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, int minHashesPerWindowNew, bool windowedNew, int windowSizeNew, bool concat, int verbosity)
 {
     kmerSize = kmerSizeNew;
     minHashesPerWindow = minHashesPerWindowNew;
     windowSize = windowSizeNew;
+    windowed = windowedNew;
+    
+    priority_queue<Index::hash_t> minHashesQueue; // only used for non-windowed
     
     int l;
     int count = 0;
@@ -214,6 +224,12 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, int m
         gzFile fp = gzopen(files[i].c_str(), "r");
         kseq_t *seq = kseq_init(fp);
         
+        if ( concat )
+        {
+            references.resize(references.size() + 1);
+            references[references.size() - 1].name = files[i];
+        }
+        
         while ((l = kseq_read(seq)) >= 0)
         {
             if ( l < kmerSize )
@@ -221,32 +237,59 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, int m
                 continue;
             }
             
-            positionHashesByReference.resize(count + 1);
+            if ( windowed )
+            {
+                positionHashesByReference.resize(count + 1);
+            }
             
-            cout << '>' << seq->name.s << " (" << l << "nt)" << endl << endl;
+            if ( ! concat )
+            {
+                references.resize(references.size() + 1);
+            }
+            
+            if ( verbosity > 0 && windowed ) cout << '>' << seq->name.s << " (" << l << "nt)" << endl << endl;
             //if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
             //printf("seq: %s\n", seq->seq.s);
             //if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
             
-            references.resize(references.size() + 1);
-            references[references.size() - 1].name = seq->name.s;
-        
-            if ( seq->comment.l > 0 )
+            Reference & reference = references[references.size() - 1];
+            
+            if ( ! concat )
             {
-                references[references.size() - 1].comment = seq->comment.s;
+                reference.name = seq->name.s;
+                
+                if ( seq->comment.l > 0 )
+                {
+                    reference.comment = seq->comment.s;
+                }
+                
+                reference.length = l;
             }
             
-            references[references.size() - 1].length = l;
+            if ( windowed )
+            {
+                getMinHashPositions(positionHashesByReference[count], seq->seq.s, l, kmerSize, minHashesPerWindow, windowSize, verbosity);
+            }
+            else
+            {
+                addMinHashes(reference.hashes, minHashesQueue, seq->seq.s, l, kmerSize, minHashesPerWindow);
+            }
             
-            getMinHashPositions(positionHashesByReference[count], seq->seq.s, l, kmerSize, minHashesPerWindow, windowSize, verbosity);
-            
-            count++;
+            if ( ! concat )
+            {
+                count++;
+            }
         }
         
         if ( l != -1 )
         {
             printf("ERROR: return value: %d\n", l);
             return 1;
+        }
+        
+        if ( concat )
+        {
+            count++;
         }
         
         kseq_destroy(seq);
@@ -345,6 +388,20 @@ int Index::writeToCapnp(const char * file) const
         referenceBuilder.setName(references[i].name);
         referenceBuilder.setComment(references[i].comment);
         referenceBuilder.setLength(references[i].length);
+        
+        if ( references[i].hashes.size() != 0 )
+        {
+            const Hash_set & hashes = references[i].hashes;
+            capnp::List<uint64_t>::Builder hashesBuilder = referenceBuilder.initHashes(hashes.size());
+            
+            int index = 0;
+            
+            for ( Hash_set::const_iterator j = hashes.begin(); j != hashes.end(); j++ )
+            {
+                hashesBuilder.set(index, *j);
+                index++;
+            }
+        }
     }
     
     int locusCount = 0;

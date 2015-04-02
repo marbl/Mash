@@ -44,6 +44,9 @@ public:
         uint32_t position;
     };
     
+    typedef std::unordered_map < Index::hash_t, std::vector<Index::PositionHash> > LociByHash_umap;
+    typedef std::unordered_set<Index::hash_t> Hash_set;
+    
     struct Reference
     {
         // no sequence for now
@@ -51,21 +54,20 @@ public:
         std::string name;
         std::string comment;
         uint32_t length;
+        Hash_set hashes;
     };
-    
-    typedef std::unordered_map < Index::hash_t, std::vector<Index::PositionHash> > LociByHash_umap;
-    typedef std::unordered_set<Index::hash_t> Hash_set;
     
     float getMinHashesPerWindow() const {return minHashesPerWindow;}
     const std::vector<Locus> & getLociByHash(hash_t hash) const;
     int getHashCount() const {return lociByHash.size();}
     const Reference & getReference(int index) const {return references.at(index);}
+    int getReferenceCount() const {return references.size();}
     int getReferenceIndex(std::string id) const;
     int getKmerSize() const {return kmerSize;}
     int getWindowSize() const {return windowSize;}
     bool hasLociByHash(hash_t hash) const {return lociByHash.count(hash);}
     int initFromCapnp(const char * file);
-    int initFromSequence(const std::vector<std::string> & files, int kmerSizeNew, int minHashesPerWindowNew, int windowSizeNew, int verbose = 0);
+    int initFromSequence(const std::vector<std::string> & files, int kmerSizeNew, int minHashesPerWindowNew, bool windowedNew, int windowSizeNew, bool concat, int verbosity = 0);
     int writeToCapnp(const char * file) const;
     
 private:
@@ -78,6 +80,7 @@ private:
     int kmerSize;
     int minHashesPerWindow;
     int windowSize;
+    bool windowed;
 };
 
 void addMinHashes(Index::Hash_set & lociByHash, std::priority_queue<Index::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins);

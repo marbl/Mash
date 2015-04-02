@@ -14,6 +14,7 @@ struct MinHash
 			length @ 2 : UInt32;
 			name @3 : Text;
 			comment @4 : Text;
+			hashes @5 : List(UInt64);
 		}
 		
 		references @0 : List(Reference);

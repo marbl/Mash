@@ -11,9 +11,9 @@ endif
 
 SOURCES=\
 	src/mash/Command.cpp \
-	src/mash/CommandCompare.cpp \
+	src/mash/CommandDistance.cpp \
 	src/mash/CommandFind.cpp \
-	src/mash/CommandIndex.cpp \
+	src/mash/CommandSketch.cpp \
 	src/mash/CommandList.cpp \
 	src/mash/Index.cpp \
 	src/mash/MurmurHash3.cpp \
