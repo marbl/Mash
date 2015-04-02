@@ -5,49 +5,66 @@
 
 using namespace::std;
 
-Command::Option::Option(Type typeNew, std::string identifierNew, std::string descriptionNew, std::string argumentDefaultNew)
+Command::Option::Option
+(
+    Type typeNew,
+    std::string identifierNew,
+    std::string descriptionNew,
+    std::string argumentDefaultNew,
+    float argumentMinNew,
+    float argumentMaxNew
+)
     :
     type(typeNew),
     identifier(identifierNew),
     description(descriptionNew),
     argument(argumentDefaultNew),
     argumentDefault(argumentDefaultNew),
+    argumentMin(argumentMinNew),
+    argumentMax(argumentMaxNew),
     active(false)
-    {}
-
-float Command::Option::getArgumentAsNumber(float min, float max) const
 {
-    float number;
-    bool failed = false;
+}
+
+void Command::Option::setArgument(string argumentNew)
+{
+    argument = argumentNew;
     
-    try
+    if ( type == Number || type == Integer )
     {
-        number = stof(argument);
+        bool failed = false;
+    
+        try
+        {
+            argumentAsNumber = stof(argument);
         
-        if ( min != max && (number < min || number > max) )
+            if ( argumentMin != argumentMax && (argumentAsNumber < argumentMin || argumentAsNumber > argumentMax) )
+            {
+                failed = true;
+            }
+            else if ( type == Integer && int(argumentAsNumber) != argumentAsNumber )
+            {
+                failed = true;
+            }
+        }
+        catch ( const exception & e )
         {
             failed = true;
         }
-    }
-    catch ( const exception & e )
-    {
-        failed = true;
-    }
-    
-    if ( failed )
-    {
-        cerr << "ERROR: Argument to -" << identifier << " must be a number";
         
-        if ( min != max )
+        if ( failed )
         {
-            cerr << " between " << min << " and " << max;
-        }
+            cerr << "ERROR: Argument to -" << identifier << " must be a" << (type == Integer ? "n integer" : " number");
         
-        cerr << " (" << argument << " given)" << endl;
-        exit(1);
+            if ( argumentMin != argumentMax )
+            {
+                cerr << " between " << argumentMin << " and " << argumentMax;
+            }
+        
+            cerr << " (" << argument << " given)" << endl;
+            exit(1);
+        }
     }
-    
-    return number;
 }
 
 void Command::addOption(string name, Option option)
@@ -59,11 +76,11 @@ void Command::addOption(string name, Option option)
 Command::Command()
 {
     addAvailableOption("help", Option(Option::Boolean, "h", "Help", ""));
-    addAvailableOption("kmer", Option(Option::Number, "k", "Kmer size. Hashes will be based on strings of this many nucleotides.", "11"));
+    addAvailableOption("kmer", Option(Option::Integer, "k", "Kmer size. Hashes will be based on strings of this many nucleotides.", "11", 1, 32));
     addAvailableOption("windowed", Option(Option::Boolean, "w", "Windowed", ""));
-    addAvailableOption("window", Option(Option::Number, "l", "Window length. Hashes that are minima in any window of this size will be stored.", "1000"));
-    addAvailableOption("mins", Option(Option::Number, "m", "Min-hashes (not used with -w)", "10000"));
-    addAvailableOption("minsWindowed", Option(Option::Number, "n", "Min-hashes per window (only used with -w).", "10"));
+    addAvailableOption("window", Option(Option::Integer, "l", "Window length. Hashes that are minima in any window of this size will be stored.", "1000"));
+    addAvailableOption("mins", Option(Option::Integer, "m", "Min-hashes (not used with -w)", "10000"));
+    addAvailableOption("minsWindowed", Option(Option::Integer, "n", "Min-hashes per window (only used with -w).", "10"));
     addAvailableOption("verbose", Option(Option::Boolean, "v", "Verbose", ""));
     addAvailableOption("silent", Option(Option::Boolean, "s", "Silent", ""));
 }
@@ -111,6 +128,9 @@ void Command::print() const
             case Option::Number:
                 type = "<number>";
                 break;
+            case Option::Integer:
+                type = "<integer>";
+                break;
             case Option::File:
                 type = "<path>  ";
                 break;
@@ -152,7 +172,7 @@ int Command::run(int argc, const char ** argv)
                     return 1;
                 }
                 
-                option.argument = argv[i];
+                option.setArgument(argv[i]);
             }
         }
         else

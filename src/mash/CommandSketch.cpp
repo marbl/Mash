@@ -29,7 +29,7 @@ int CommandSketch::run() const
         return 0;
     }
     
-    int kmer = options.at("kmer").getArgumentAsNumber(1, 32);
+    int kmer = options.at("kmer").getArgumentAsNumber();
     bool windowed = options.at("windowed").active;
     int minHashesPerWindow = windowed ? options.at("minsWindowed").getArgumentAsNumber() : options.at("mins").getArgumentAsNumber();
     int windowSize = options.at("window").getArgumentAsNumber();

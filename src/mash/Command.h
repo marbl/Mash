@@ -26,6 +26,7 @@ public:
         {
             Boolean,
             Number,
+            Integer,
             File
         }
         type;
@@ -35,12 +36,18 @@ public:
         std::string argument;
         std::string argumentDefault;
         
+        float argumentAsNumber;
+        float argumentMin;
+        float argumentMax;
+        
         bool active;
+        bool changed;
         
         Option() {}
-        Option(Type typeNew, std::string identifierNew, std::string descriptionNew, std::string argumentDefaultNew = "");
+        Option(Type typeNew, std::string identifierNew, std::string descriptionNew, std::string argumentDefaultNew = "", float argumentMinNew = 0, float argumentMaxNew = 0);
         
-        float getArgumentAsNumber(float min = 0, float max = 0) const;
+        float getArgumentAsNumber() const {return argumentAsNumber;}
+        void setArgument(std::string argumentNew);
     };
     
     Command();

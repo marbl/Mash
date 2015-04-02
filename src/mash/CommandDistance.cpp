@@ -32,7 +32,7 @@ int CommandDistance::run() const
     }
     
     int threads = options.at("threads").getArgumentAsNumber();
-    int kmerSize = options.at("kmer").getArgumentAsNumber(1, 32);
+    int kmerSize = options.at("kmer").getArgumentAsNumber();
     int mins = options.at("mins").getArgumentAsNumber();
     bool concat = options.at("concat").active;
     

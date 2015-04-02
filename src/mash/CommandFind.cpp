@@ -24,8 +24,8 @@ CommandFind::CommandFind()
     useOption("minsWindowed");
     addOption("index", Option(Option::File, "s", "Sketch to use. If not specified, a sketch with the prefix <reference> will be used, creating if necessary.", ""));
     addOption("threshold", Option(Option::Number, "t", "Threshold. This fraction of the query sequence's min-hashes must appear in a query-sized window of a reference sequence for the match to be reported.", "0.2"));
-    addOption("threads", Option(Option::Number, "p", "Parallelism. This many threads will be spawned to perform the find, each one handling on query sequence at a time.", "1"));
-    addOption("best", Option(Option::Number, "b", "Best hit count. This many of the best hits will be reported (0 to report all hits). Score ties are broken by keeping the hit to the earlier reference or to the left-most position.", "0"));
+    addOption("threads", Option(Option::Integer, "p", "Parallelism. This many threads will be spawned to perform the find, each one handling on query sequence at a time.", "1"));
+    addOption("best", Option(Option::Integer, "b", "Best hit count. This many of the best hits will be reported (0 to report all hits). Score ties are broken by keeping the hit to the earlier reference or to the left-most position.", "0"));
     addOption("self", Option(Option::Boolean, "self", "Allow self matches if query ID appears in reference index.", ""));
 }
 
@@ -37,7 +37,7 @@ int CommandFind::run() const
         return 0;
     }
     
-    float threshold = options.at("threshold").getArgumentAsNumber(0, 1);
+    float threshold = options.at("threshold").getArgumentAsNumber();
     int threads = options.at("threads").getArgumentAsNumber();
     int best = options.at("best").getArgumentAsNumber();
     bool selfMatches = options.at("self").active;
@@ -54,7 +54,7 @@ int CommandFind::run() const
 		
 		if ( ! indexFileExists )
 		{
-			int kmerSize = options.at("kmer").getArgumentAsNumber(1, 32);
+			int kmerSize = options.at("kmer").getArgumentAsNumber();
 			int mins = options.at("minsWindowed").getArgumentAsNumber();
 		    int windowSize = options.at("window").getArgumentAsNumber();
 			
