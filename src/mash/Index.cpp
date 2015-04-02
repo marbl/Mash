@@ -12,6 +12,7 @@
 #include <deque>
 #include <set>
 #include "Command.h" // TEMP for column printing
+#include <sys/stat.h>
 
 #define SET_BINARY_MODE(file)
 #define CHUNK 16384
@@ -36,6 +37,32 @@ int Index::getReferenceIndex(string id) const
     {
         return -1;
     }
+}
+
+bool Index::initFromBase(const std::string & fileSeq, bool windowed)
+{
+    file = fileSeq + (windowed ? suffixWindowed : suffix);
+    
+    struct stat fileInfoSeq;
+    struct stat fileInfoIndex;
+    
+    if ( stat(fileSeq.c_str(), &fileInfoSeq) == -1 )
+    {
+        return false;
+    }
+    
+    if ( stat(file.c_str(), &fileInfoIndex) == -1 )
+    {
+        return false;
+    }
+    
+    if ( fileInfoSeq.st_mtime > fileInfoIndex.st_mtime )
+    {
+        return false;
+    }
+    
+    initFromCapnp(file.c_str());
+    return true;
 }
 
 int Index::initFromCapnp(const char * file)
@@ -311,6 +338,11 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, int m
     return 0;
 }
 
+bool Index::writeToFile() const
+{
+    return writeToCapnp(file.c_str()) == 0;
+}
+
 int Index::writeToCapnp(const char * file) const
 {
     // use a pipe to compress Cap'n Proto output
@@ -436,7 +468,7 @@ int Index::writeToCapnp(const char * file) const
     writeMessageToFd(fds[1], message);
     close(fds[1]);
     
-    return 0;
+    return 0; // TODO
 }
 
 void addMinHashes(Index::Hash_set & minHashes, priority_queue<Index::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins)
@@ -765,7 +797,6 @@ void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * se
     
     if ( verbosity > 0 ) cout << "   " << positionHashes.size() << " minmers across " << length - windowSize - kmerSize + 2 << " windows (" << unique << " windows with distinct minmer sets)." << endl << endl;
 }
-
 
 // The following functions are adapted from http://www.zlib.net/zpipe.c
 

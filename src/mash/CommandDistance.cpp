@@ -10,8 +10,9 @@ using namespace::std;
 KSEQ_INIT(gzFile, gzread)
 
 CommandDistance::CommandDistance()
+: Command()
 {
-    name = "distance";
+    name = "dist";
     description = "Compute the global distance of each input sequence to the reference index. The score is computed as the Jaccard index, which is the intesection divided by the union, for the sets of min-hashes in the reference and query.";
     argumentString = "reference.mash fast(a|q)[.gz] ...";
     
@@ -36,10 +37,26 @@ int CommandDistance::run() const
     bool concat = options.at("concat").active;
     
     Index indexRef;
-    vector<string> refArgVector;
-    refArgVector.push_back(arguments[0]);
-    
-    indexRef.initFromSequence(refArgVector, kmerSize, mins, false, 0, concat);
+    //
+    bool indexFileExists = indexRef.initFromBase(arguments[0], false);
+    //
+    if ( ! indexFileExists )
+    {
+        vector<string> refArgVector;
+        refArgVector.push_back(arguments[0]);
+        
+        cerr << "Sketch for " << arguments[0] << " not found or out of date; creating..." << endl;
+        indexRef.initFromSequence(refArgVector, kmerSize, mins, false, 0, concat);
+        
+        if ( indexRef.writeToFile() )
+        {
+            cerr << "Sketch saved for subsequent runs." << endl;
+        }
+        else
+        {
+            cerr << "The sketch for " << arguments[0] << " could not be saved; it will be sketched again next time." << endl;
+        }
+    }
     
     ThreadPool<CompareInput, CompareOutput> threadPool(compare, threads);
     

@@ -4,20 +4,21 @@
 using namespace::std;
 
 CommandSketch::CommandSketch()
+: Command()
 {
     name = "sketch";
     description = "Create a reference index";
     argumentString = "fast(a|q)[.gz] ...";
     
-    addOption("help", Option(Option::Boolean, "h", "Help", ""));
-    addOption("kmer", Option(Option::Number, "k", "Kmer size. Hashes will be based on strings of this many nucleotides.", "11"));
-    addOption("windowed", Option(Option::Boolean, "w", "Windowed", ""));
-    addOption("window", Option(Option::Number, "l", "Window length. Hashes that are minima in any window of this size will be stored.", "1000"));
-    addOption("mins", Option(Option::Number, "m", "Min-hashes (not used with -w)", "10000"));
-    addOption("minsWindowed", Option(Option::Number, "n", "Min-hashes per window (only used with -w).", "10"));
+    useOption("help");
+    useOption("kmer");
+    useOption("windowed");
+    useOption("window");
+    useOption("mins");
+    useOption("minsWindowed");
+    useOption("verbose");
+    useOption("silent");
     addOption("prefix", Option(Option::File, "o", "Output prefix (first input file used if unspecified). The suffix '.mash' will be appended.", ""));
-    addOption("verbose", Option(Option::Boolean, "v", "Verbose", ""));
-    addOption("silent", Option(Option::Boolean, "s", "Silent", ""));
 }
 
 int CommandSketch::run() const

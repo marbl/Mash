@@ -15,6 +15,9 @@ static const int seed = 42; // TODO: better seed???
 static const char * capnpHeader = "Cap'n Proto";
 static const int capnpHeaderLength = strlen(capnpHeader);
 
+static const char * suffix = ".msh";
+static const char * suffixWindowed = ".msw";
+
 class Index
 {
 public:
@@ -70,8 +73,10 @@ public:
     int getKmerSize() const {return kmerSize;}
     int getWindowSize() const {return windowSize;}
     bool hasLociByHash(hash_t hash) const {return lociByHash.count(hash);}
+    bool initFromBase(const std::string & file, bool windowed);
     int initFromCapnp(const char * file);
     int initFromSequence(const std::vector<std::string> & files, int kmerSizeNew, int minHashesPerWindowNew, bool windowedNew, int windowSizeNew, bool concat, int verbosity = 0);
+    bool writeToFile() const;
     int writeToCapnp(const char * file) const;
     
 private:
@@ -85,6 +90,7 @@ private:
     int minHashesPerWindow;
     int windowSize;
     bool windowed;
+    std::string file;
 };
 
 void addMinHashes(Index::Hash_set & lociByHash, std::priority_queue<Index::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins);

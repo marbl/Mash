@@ -43,12 +43,14 @@ public:
         float getArgumentAsNumber(float min = 0, float max = 0) const;
     };
     
+    Command();
     virtual ~Command() {};
     
     void addOption(std::string name, Option option);
     void print() const;
     virtual int run() const = 0;
     int run(int argc, const char ** argv);
+    void useOption(std::string name);
     
     std::string name;
     std::string description;
@@ -57,9 +59,12 @@ public:
 protected:
 
     std::map<std::string, Option> options;
+    std::map<std::string, Option> optionsAvailable;
     std::vector<std::string> arguments;
     
 private:
+    
+    void addAvailableOption(std::string name, Option option);
     
     std::map<std::string, std::string> optionNamesByIdentifier;
 };

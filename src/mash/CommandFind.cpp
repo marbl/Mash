@@ -12,16 +12,21 @@ using namespace::std;
 KSEQ_INIT(gzFile, gzread)
 
 CommandFind::CommandFind()
+: Command()
 {
     name = "find";
     description = "Compare query sequences to a reference index. <input> can be fasta or fastq, gzipped or not, and can be a list of files or \"-\" to read from standard input.";
-    argumentString = "index.mash <input> ...";
+    argumentString = "<reference> <query> [<query>] ...";
     
-    addOption("help", Option(Option::Boolean, "h", "Help", ""));
+    useOption("help");
+    useOption("kmer");
+    useOption("window");
+    useOption("minsWindowed");
+    addOption("index", Option(Option::File, "s", "Sketch to use. If not specified, a sketch with the prefix <reference> will be used, creating if necessary.", ""));
     addOption("threshold", Option(Option::Number, "t", "Threshold. This fraction of the query sequence's min-hashes must appear in a query-sized window of a reference sequence for the match to be reported.", "0.2"));
     addOption("threads", Option(Option::Number, "p", "Parallelism. This many threads will be spawned to perform the find, each one handling on query sequence at a time.", "1"));
     addOption("best", Option(Option::Number, "b", "Best hit count. This many of the best hits will be reported (0 to report all hits). Score ties are broken by keeping the hit to the earlier reference or to the left-most position.", "0"));
-    addOption("self", Option(Option::Boolean, "s", "Allow self matches if query ID appears in reference index.", ""));
+    addOption("self", Option(Option::Boolean, "self", "Allow self matches if query ID appears in reference index.", ""));
 }
 
 int CommandFind::run() const
@@ -39,7 +44,36 @@ int CommandFind::run() const
     
     Index index;
     //
-    index.initFromCapnp(arguments[0].c_str());
+    if ( options.at("index").argument.length() )
+    {
+    	index.initFromCapnp(options.at("index").argument.c_str());
+    }
+    else
+    {
+		bool indexFileExists = index.initFromBase(arguments[0], true);
+		
+		if ( ! indexFileExists )
+		{
+			int kmerSize = options.at("kmer").getArgumentAsNumber(1, 32);
+			int mins = options.at("minsWindowed").getArgumentAsNumber();
+		    int windowSize = options.at("window").getArgumentAsNumber();
+			
+			vector<string> refArgVector;
+			refArgVector.push_back(arguments[0]);
+		
+			cerr << "Sketch for " << arguments[0] << " not found or out of date; creating..." << endl;
+			index.initFromSequence(refArgVector, kmerSize, mins, true, windowSize, false);
+		
+			if ( index.writeToFile() )
+			{
+				cerr << "Sketch saved for subsequent runs." << endl;
+			}
+			else
+			{
+				cerr << "The sketch for " << arguments[0] << " could not be saved; it will be sketched again next time." << endl;
+			}
+		}
+    }
     
     int l;
     int count = 0;

@@ -56,6 +56,18 @@ void Command::addOption(string name, Option option)
     optionNamesByIdentifier[option.identifier] = name;
 }
 
+Command::Command()
+{
+    addAvailableOption("help", Option(Option::Boolean, "h", "Help", ""));
+    addAvailableOption("kmer", Option(Option::Number, "k", "Kmer size. Hashes will be based on strings of this many nucleotides.", "11"));
+    addAvailableOption("windowed", Option(Option::Boolean, "w", "Windowed", ""));
+    addAvailableOption("window", Option(Option::Number, "l", "Window length. Hashes that are minima in any window of this size will be stored.", "1000"));
+    addAvailableOption("mins", Option(Option::Number, "m", "Min-hashes (not used with -w)", "10000"));
+    addAvailableOption("minsWindowed", Option(Option::Number, "n", "Min-hashes per window (only used with -w).", "10"));
+    addAvailableOption("verbose", Option(Option::Boolean, "v", "Verbose", ""));
+    addAvailableOption("silent", Option(Option::Boolean, "s", "Silent", ""));
+}
+
 void Command::print() const
 {
     vector<vector<string>> columns(1);
@@ -150,6 +162,17 @@ int Command::run(int argc, const char ** argv)
     }
     
     return run();
+}
+
+void Command::useOption(string name)
+{
+    options[name] = optionsAvailable.at(name);
+    optionNamesByIdentifier[options[name].identifier] = name;
+}
+
+void Command::addAvailableOption(string name, Option option)
+{
+    optionsAvailable[name] = option;
 }
 
 void printColumns(vector<vector<string>> columns, int indent, int spacing, const char * missing)
