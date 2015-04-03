@@ -119,24 +119,46 @@ void Command::print() const
     {
         columns[0].push_back("-" + i->second.identifier);
         
-        string type;
+        const Option & option = i->second;
         
-        switch ( i->second.type )
+        string type;
+        string range;
+        
+        switch ( option.type )
         {
             case Option::Boolean:
                 break;
             case Option::Number:
-                type = "<number>";
+                type = "number";
                 break;
             case Option::Integer:
-                type = "<integer>";
+                type = "integer";
                 break;
             case Option::File:
-                type = "<path>  ";
+                type = "path";
                 break;
         }
         
-        columns[1].push_back(type);
+        if ( option.argumentMin != option.argumentMax )
+        {
+            string stringMin;
+            string stringMax;
+            
+            if ( option.type == Option::Integer )
+            {
+                stringMin = to_string(int(option.argumentMin));
+                stringMax = to_string(int(option.argumentMax));
+            }
+            else
+            {
+                stringMin = to_string(option.argumentMin);
+                stringMax = to_string(option.argumentMax);
+            }
+            
+            range = "(" + stringMin + "-" + stringMax + ")";
+        }
+        
+        columns[1].push_back("<" + type + range + ">");
         columns[2].push_back(i->second.argumentDefault);
         columns[3].push_back(i->second.description);
     }
