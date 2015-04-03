@@ -43,21 +43,35 @@ int CommandFind::run() const
     bool selfMatches = options.at("self").active;
     
     Index index;
-    //
+    
     if ( options.at("index").argument.length() )
     {
     	index.initFromCapnp(options.at("index").argument.c_str());
     }
     else
     {
-		bool indexFileExists = index.initFromBase(arguments[0], true);
+		int kmerSize = options.at("kmer").getArgumentAsNumber();
+		int mins = options.at("minsWindowed").getArgumentAsNumber();
+		int windowSize = options.at("window").getArgumentAsNumber();
 		
-		if ( ! indexFileExists )
+		bool indexFileExists = index.initHeaderFromBaseIfValid(arguments[0], true);
+		
+		if
+		(
+			(options.at("kmer").active && kmerSize != index.getKmerSize()) ||
+			(options.at("minsWindowed").active && mins != index.getMinHashesPerWindow()) ||
+			(options.at("window").active && windowSize != index.getWindowSize())
+		)
 		{
-			int kmerSize = options.at("kmer").getArgumentAsNumber();
-			int mins = options.at("minsWindowed").getArgumentAsNumber();
-		    int windowSize = options.at("window").getArgumentAsNumber();
-			
+			indexFileExists = false;
+		}
+		
+		if ( indexFileExists )
+		{
+			index.initFromBase(arguments[0], true);
+		}
+		else
+		{
 			vector<string> refArgVector;
 			refArgVector.push_back(arguments[0]);
 		

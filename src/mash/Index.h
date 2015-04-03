@@ -64,18 +64,20 @@ public:
         Hash_set hashes;
     };
     
-    float getMinHashesPerWindow() const {return minHashesPerWindow;}
-    const std::vector<Locus> & getLociByHash(hash_t hash) const;
+    bool getConcatenated() const {return concatenated;}
     int getHashCount() const {return lociByHash.size();}
+    const std::vector<Locus> & getLociByHash(hash_t hash) const;
+    float getMinHashesPerWindow() const {return minHashesPerWindow;}
     const Reference & getReference(int index) const {return references.at(index);}
     int getReferenceCount() const {return references.size();}
     int getReferenceIndex(std::string id) const;
     int getKmerSize() const {return kmerSize;}
     int getWindowSize() const {return windowSize;}
     bool hasLociByHash(hash_t hash) const {return lociByHash.count(hash);}
-    bool initFromBase(const std::string & file, bool windowed);
-    int initFromCapnp(const char * file);
+    void initFromBase(const std::string & file, bool windowed);
+    int initFromCapnp(const char * file, bool headerOnly = false);
     int initFromSequence(const std::vector<std::string> & files, int kmerSizeNew, int minHashesPerWindowNew, bool windowedNew, int windowSizeNew, bool concat, int verbosity = 0);
+    bool initHeaderFromBaseIfValid(const std::string & file, bool windowed);
     bool writeToFile() const;
     int writeToCapnp(const char * file) const;
     
@@ -92,6 +94,7 @@ private:
     int minHashesPerWindow;
     int windowSize;
     bool windowed;
+    bool concatenated;
     std::string file;
 };
 

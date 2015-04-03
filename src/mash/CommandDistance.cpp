@@ -36,19 +36,33 @@ int CommandDistance::run() const
     int mins = options.at("mins").getArgumentAsNumber();
     bool concat = options.at("concat").active;
     
-    Index indexRef;
-    //
-    bool indexFileExists = indexRef.initFromBase(arguments[0], false);
-    //
-    if ( ! indexFileExists )
+    Index index;
+    
+    bool indexFileExists = index.initHeaderFromBaseIfValid(arguments[0], false);
+    
+    if
+    (
+        (options.at("kmer").active && kmerSize != index.getKmerSize()) ||
+        (options.at("mins").active && mins != index.getMinHashesPerWindow()) ||
+        concat != index.getConcatenated()
+    )
+    {
+        indexFileExists = false;
+    }
+    
+    if ( indexFileExists )
+    {
+        index.initFromBase(arguments[0], false);
+    }
+    else
     {
         vector<string> refArgVector;
         refArgVector.push_back(arguments[0]);
         
         cerr << "Sketch for " << arguments[0] << " not found or out of date; creating..." << endl;
-        indexRef.initFromSequence(refArgVector, kmerSize, mins, false, 0, concat);
+        index.initFromSequence(refArgVector, kmerSize, mins, false, 0, concat);
         
-        if ( indexRef.writeToFile() )
+        if ( index.writeToFile() )
         {
             cerr << "Sketch saved for subsequent runs." << endl;
         }
@@ -62,9 +76,9 @@ int CommandDistance::run() const
     
     for ( int i = 1; i < arguments.size(); i++ )
     {
-        for ( int j = 0; j < indexRef.getReferenceCount(); j++ )
+        for ( int j = 0; j < index.getReferenceCount(); j++ )
         {
-            threadPool.runWhenThreadAvailable(new CompareInput(indexRef.getReference(j).hashes, indexRef.getReference(j).name, arguments[i], kmerSize, mins, concat));
+            threadPool.runWhenThreadAvailable(new CompareInput(index.getReference(j).hashes, index.getReference(j).name, arguments[i], kmerSize, mins, concat));
         
             while ( threadPool.outputAvailable() )
             {

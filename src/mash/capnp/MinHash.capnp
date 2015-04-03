@@ -32,9 +32,11 @@ struct MinHash
 		loci @0 : List(Locus);
 	}
 	
-	referenceList @0 : ReferenceList;
-	locusList @1 : LocusList;
-	kmerSize @2 : UInt32;
-	windowSize @3 : UInt32;
-	minHashesPerWindow @4 : UInt32;
+	kmerSize @0 : UInt32;
+	windowSize @1 : UInt32;
+	minHashesPerWindow @2 : UInt32;
+	concatenated @3 : Bool;
+	
+	referenceList @4 : ReferenceList;
+	locusList @5 : LocusList;
 }

@@ -13,6 +13,7 @@
 #include <set>
 #include "Command.h" // TEMP for column printing
 #include <sys/stat.h>
+#include <signal.h>
 
 #define SET_BINARY_MODE(file)
 #define CHUNK 16384
@@ -39,33 +40,13 @@ int Index::getReferenceIndex(string id) const
     }
 }
 
-bool Index::initFromBase(const std::string & fileSeq, bool windowed)
+void Index::initFromBase(const std::string & fileSeq, bool windowed)
 {
     file = fileSeq + (windowed ? suffixWindowed : suffix);
-    
-    struct stat fileInfoSeq;
-    struct stat fileInfoIndex;
-    
-    if ( stat(fileSeq.c_str(), &fileInfoSeq) == -1 )
-    {
-        return false;
-    }
-    
-    if ( stat(file.c_str(), &fileInfoIndex) == -1 )
-    {
-        return false;
-    }
-    
-    if ( fileInfoSeq.st_mtime > fileInfoIndex.st_mtime )
-    {
-        return false;
-    }
-    
     initFromCapnp(file.c_str());
-    return true;
 }
 
-int Index::initFromCapnp(const char * file)
+int Index::initFromCapnp(const char * file, bool headerOnly)
 {
     // use a pipe to decompress input to Cap'n Proto
     
@@ -114,7 +95,6 @@ int Index::initFromCapnp(const char * file)
         int ret = inf(fd, fds[1]);
         if (ret != Z_OK) zerr(ret);
         close(fd);
-        exit(ret);
         
         gzFile fileIn = gzopen(file, "rb");
         
@@ -124,10 +104,8 @@ int Index::initFromCapnp(const char * file)
         //
         gzread(fileIn, buffer, capnpHeaderLength);
         
-        printf("header: %s\n", buffer);
         while ( (bytesRead = gzread(fileIn, buffer, sizeof(buffer))) > 0)
         {
-            printf("uncompressed: %s\n", buffer);
             write(fds[1], buffer, bytesRead);
         }
         
@@ -145,8 +123,27 @@ int Index::initFromCapnp(const char * file)
     readerOptions.traversalLimitInWords = 1000000000000;
     readerOptions.nestingLimit = 1000000;
     
-    capnp::StreamFdMessageReader message(fds[0], readerOptions);
-    capnp::MinHash::Reader reader = message.getRoot<capnp::MinHash>();
+    capnp::StreamFdMessageReader * message = new capnp::StreamFdMessageReader(fds[0], readerOptions);
+    capnp::MinHash::Reader reader = message->getRoot<capnp::MinHash>();
+    
+    kmerSize = reader.getKmerSize();
+    minHashesPerWindow = reader.getMinHashesPerWindow();
+    windowSize = reader.getWindowSize();
+    concatenated = reader.getConcatenated();
+    
+    if ( headerOnly )
+    {
+        close(fds[0]);
+        kill(forked, SIGKILL);
+        
+        try
+        {
+            delete message;
+        }
+        catch (exception e) {}
+        
+        return 0;
+    }
     
     capnp::MinHash::ReferenceList::Reader referenceListReader = reader.getReferenceList();
     
@@ -180,10 +177,6 @@ int Index::initFromCapnp(const char * file)
         //cout << locusReader.getHash() << '\t' << locusReader.getSequence() << '\t' << locusReader.getPosition() << endl;
         positionHashesByReference[locusReader.getSequence()].push_back(PositionHash(locusReader.getPosition(), locusReader.getHash()));
     }
-    
-    kmerSize = reader.getKmerSize();
-    minHashesPerWindow = reader.getMinHashesPerWindow();
-    windowSize = reader.getWindowSize();
     
     //cout << endl << "References:" << endl << endl;
     
@@ -234,6 +227,7 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, int m
     minHashesPerWindow = minHashesPerWindowNew;
     windowSize = windowSizeNew;
     windowed = windowedNew;
+    concatenated = concat;
     
     priority_queue<Index::hash_t> minHashesQueue; // only used for non-windowed
     
@@ -335,6 +329,32 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, int m
     return 0;
 }
 
+bool Index::initHeaderFromBaseIfValid(const std::string & fileSeq, bool windowed)
+{
+    file = fileSeq + (windowed ? suffixWindowed : suffix);
+    
+    struct stat fileInfoSeq;
+    struct stat fileInfoIndex;
+    
+    if ( stat(fileSeq.c_str(), &fileInfoSeq) == -1 )
+    {
+        return false;
+    }
+    
+    if ( stat(file.c_str(), &fileInfoIndex) == -1 )
+    {
+        return false;
+    }
+    
+    if ( fileInfoSeq.st_mtime > fileInfoIndex.st_mtime )
+    {
+        return false;
+    }
+    
+    initFromCapnp(file.c_str(), true);
+    return true;
+}
+
 bool Index::writeToFile() const
 {
     return writeToCapnp(file.c_str()) == 0;
@@ -343,7 +363,7 @@ bool Index::writeToFile() const
 int Index::writeToCapnp(const char * file) const
 {
     // use a pipe to compress Cap'n Proto output
-    
+    cout << "writing" << endl;
     int fds[2];
     int piped = pipe(fds);
     
@@ -461,6 +481,7 @@ int Index::writeToCapnp(const char * file) const
     builder.setKmerSize(kmerSize);
     builder.setMinHashesPerWindow(minHashesPerWindow);
     builder.setWindowSize(windowSize);
+    builder.setConcatenated(concatenated);
     
     writeMessageToFd(fds[1], message);
     close(fds[1]);
