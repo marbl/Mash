@@ -23,7 +23,7 @@ CommandFind::CommandFind()
     useOption("window");
     useOption("minsWindowed");
     addOption("index", Option(Option::File, "s", "Sketch to use. If not specified, a sketch with the prefix <reference> will be used, creating if necessary.", ""));
-    addOption("threshold", Option(Option::Number, "t", "Threshold. This fraction of the query sequence's min-hashes must appear in a query-sized window of a reference sequence for the match to be reported.", "0.2"));
+    addOption("threshold", Option(Option::Number, "t", "Threshold. This fraction of the query sequence's min-hashes must appear in a query-sized window of a reference sequence for the match to be reported.", "0.2", 0.0, 1.0));
     addOption("threads", Option(Option::Integer, "p", "Parallelism. This many threads will be spawned to perform the find, each one handling on query sequence at a time.", "1"));
     addOption("best", Option(Option::Integer, "b", "Best hit count. This many of the best hits will be reported (0 to report all hits). Score ties are broken by keeping the hit to the earlier reference or to the left-most position.", "0"));
     addOption("self", Option(Option::Boolean, "self", "Allow self matches if query ID appears in reference index.", ""));

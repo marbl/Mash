@@ -1,5 +1,6 @@
 #include <iostream>
 #include <sys/ioctl.h>
+#include <sstream>
 
 #include "Command.h"
 
@@ -18,12 +19,12 @@ Command::Option::Option
     type(typeNew),
     identifier(identifierNew),
     description(descriptionNew),
-    argument(argumentDefaultNew),
     argumentDefault(argumentDefaultNew),
     argumentMin(argumentMinNew),
     argumentMax(argumentMaxNew),
     active(false)
 {
+    setArgument(argumentDefault);
 }
 
 void Command::Option::setArgument(string argumentNew)
@@ -141,24 +142,24 @@ void Command::print() const
         
         if ( option.argumentMin != option.argumentMax )
         {
-            string stringMin;
-            string stringMax;
+            stringstream stringMin;
+            stringstream stringMax;
             
             if ( option.type == Option::Integer )
             {
-                stringMin = to_string(int(option.argumentMin));
-                stringMax = to_string(int(option.argumentMax));
+                stringMin << int(option.argumentMin);
+                stringMax << int(option.argumentMax);
             }
             else
             {
-                stringMin = to_string(option.argumentMin);
-                stringMax = to_string(option.argumentMax);
+                stringMin << option.argumentMin;
+                stringMax << option.argumentMax;
             }
             
-            range = "(" + stringMin + "-" + stringMax + ")";
+            range = "(" + stringMin.str() + "-" + stringMax.str() + ")";
         }
         
-        columns[1].push_back("<" + type + range + ">");
+        columns[1].push_back(type.length() ? "<" + type + range + ">" : "");
         columns[2].push_back(i->second.argumentDefault);
         columns[3].push_back(i->second.description);
     }
