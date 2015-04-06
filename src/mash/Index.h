@@ -15,8 +15,8 @@ static const int seed = 42; // TODO: better seed???
 static const char * capnpHeader = "Cap'n Proto";
 static const int capnpHeaderLength = strlen(capnpHeader);
 
-static const char * suffix = ".msh";
-static const char * suffixWindowed = ".msw";
+static const char * suffixSketch = ".msh";
+static const char * suffixSketchWindowed = ".msw";
 
 class Index
 {

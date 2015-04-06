@@ -15,7 +15,7 @@ CommandFind::CommandFind()
 : Command()
 {
     name = "find";
-    description = "Compare query sequences to a reference. <reference> can be a fasta file (gzipped or not) or a mash windowed sketch file (.msw). If it is fasta and a sketch file does not exist (or is out of date), one will be written with the current options. <query> can be fasta or fastq, gzipped or not. Multiple query files can be provided, or \"-\" can be given to read from standard input.";
+    description = "Compare query sequences to a reference. <reference> can be a fasta file (gzipped or not) or a mash windowed sketch file (.msw). If it is fasta and a sketch file does not exist (or is out of date), one will be written with the current options and used for future runs if possible. <query> can be fasta or fastq, gzipped or not. Multiple query files can be provided, or \"-\" can be given to read from standard input.";
     argumentString = "<reference> <query> [<query>] ...";
     
     useOption("help");
@@ -44,52 +44,52 @@ int CommandFind::run() const
     Index index;
     const string & fileReference = arguments[0];
     
-    if ( hasSuffix(fileReference, suffixWindowed) )
+    if ( hasSuffix(fileReference, suffixSketchWindowed) )
     {
-        index.initFromCapnp(fileReference.c_str());
+    	index.initFromCapnp(fileReference.c_str());
     }
     else
     {
-        int kmerSize = options.at("kmer").getArgumentAsNumber();
-        int mins = options.at("minsWindowed").getArgumentAsNumber();
-        int windowSize = options.at("window").getArgumentAsNumber();
-        
-        bool indexFileExists = index.initHeaderFromBaseIfValid(fileReference, true);
-        
-        if
-        (
-            (options.at("kmer").active && kmerSize != index.getKmerSize()) ||
-            (options.at("minsWindowed").active && mins != index.getMinHashesPerWindow()) ||
-            (options.at("window").active && windowSize != index.getWindowSize())
-        )
-        {
-            indexFileExists = false;
-        }
-        
-        if ( indexFileExists )
-        {
-            index.initFromBase(arguments[0], true);
-            kmerSize = index.getKmerSize();
-            mins = index.getMinHashesPerWindow();
-            windowSize = index.getWindowSize();
-        }
-        else
-        {
-            vector<string> refArgVector;
-            refArgVector.push_back(fileReference);
-        
-            cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
-            index.initFromSequence(refArgVector, kmerSize, mins, true, windowSize, false);
-        
-            if ( index.writeToFile() )
-            {
-                cerr << "Sketch saved for subsequent runs." << endl;
-            }
-            else
-            {
-                cerr << "The sketch for " << fileReference << " could not be saved; it will be sketched again next time." << endl;
-            }
-        }
+		int kmerSize = options.at("kmer").getArgumentAsNumber();
+		int mins = options.at("minsWindowed").getArgumentAsNumber();
+		int windowSize = options.at("window").getArgumentAsNumber();
+		
+		bool indexFileExists = index.initHeaderFromBaseIfValid(fileReference, true);
+		
+		if
+		(
+			(options.at("kmer").active && kmerSize != index.getKmerSize()) ||
+			(options.at("minsWindowed").active && mins != index.getMinHashesPerWindow()) ||
+			(options.at("window").active && windowSize != index.getWindowSize())
+		)
+		{
+			indexFileExists = false;
+		}
+		
+		if ( indexFileExists )
+		{
+			index.initFromBase(arguments[0], true);
+			kmerSize = index.getKmerSize();
+			mins = index.getMinHashesPerWindow();
+			windowSize = index.getWindowSize();
+		}
+		else
+		{
+			vector<string> refArgVector;
+			refArgVector.push_back(fileReference);
+		
+			cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
+			index.initFromSequence(refArgVector, kmerSize, mins, true, windowSize, false);
+		
+			if ( index.writeToFile() )
+			{
+				cerr << "Sketch saved for subsequent runs." << endl;
+			}
+			else
+			{
+				cerr << "The sketch for " << fileReference << " could not be saved; it will be sketched again next time." << endl;
+			}
+		}
     }
     
     int l;

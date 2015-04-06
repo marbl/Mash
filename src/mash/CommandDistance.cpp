@@ -13,8 +13,8 @@ CommandDistance::CommandDistance()
 : Command()
 {
     name = "dist";
-    description = "Compute the global distance of each input sequence to the reference index. The score is computed as the Jaccard index, which is the intesection divided by the union, for the sets of min-hashes in the reference and query.";
-    argumentString = "reference.mash fast(a|q)[.gz] ...";
+    description = "Compute the global distance of each query sequence to the reference. Both the reference and queries can be fasta or fastq, gzipped or not. The reference can also be a mash sketch file (.msh). If the reference is fasta/fastq and a sketch file does not exist (or is out of date), one will be written with the current options and used for future runs if possible. The score is computed as the number of matching min-hashes divided by -m, or the larger number of kmers if both sequences have fewer than -m.";
+    argumentString = "<reference> <query> [<query>] ...";
     
     addOption("help", Option(Option::Boolean, "h", "Help", ""));
     addOption("threads", Option(Option::Number, "p", "Parallelism. This many threads will be spawned, each one handling one input file at a time.", "1"));
@@ -38,38 +38,47 @@ int CommandDistance::run() const
     
     Index index;
     
-    bool indexFileExists = index.initHeaderFromBaseIfValid(arguments[0], false);
+    const string & fileReference = arguments[0];
     
-    if
-    (
-        (options.at("kmer").active && kmerSize != index.getKmerSize()) ||
-        (options.at("mins").active && mins != index.getMinHashesPerWindow())
-    )
+    if ( hasSuffix(fileReference, suffixSketch) )
     {
-        indexFileExists = false;
-    }
-    
-    if ( indexFileExists )
-    {
-        index.initFromBase(arguments[0], false);
-        kmerSize = index.getKmerSize();
-        mins = index.getMinHashesPerWindow();
+    	index.initFromCapnp(fileReference.c_str());
     }
     else
     {
-        vector<string> refArgVector;
-        refArgVector.push_back(arguments[0]);
-        
-        cerr << "Sketch for " << arguments[0] << " not found or out of date; creating..." << endl;
-        index.initFromSequence(refArgVector, kmerSize, mins, false, 0, concat);
-        
-        if ( index.writeToFile() )
+        bool indexFileExists = index.initHeaderFromBaseIfValid(fileReference, false);
+    
+        if
+        (
+            (options.at("kmer").active && kmerSize != index.getKmerSize()) ||
+            (options.at("mins").active && mins != index.getMinHashesPerWindow())
+        )
         {
-            cerr << "Sketch saved for subsequent runs." << endl;
+            indexFileExists = false;
+        }
+    
+        if ( indexFileExists )
+        {
+            index.initFromBase(fileReference, false);
+            kmerSize = index.getKmerSize();
+            mins = index.getMinHashesPerWindow();
         }
         else
         {
-            cerr << "The sketch for " << arguments[0] << " could not be saved; it will be sketched again next time." << endl;
+            vector<string> refArgVector;
+            refArgVector.push_back(fileReference);
+        
+            cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
+            index.initFromSequence(refArgVector, kmerSize, mins, false, 0, concat);
+        
+            if ( index.writeToFile() )
+            {
+                cerr << "Sketch saved for subsequent runs." << endl;
+            }
+            else
+            {
+                cerr << "The sketch for " << fileReference << " could not be saved; it will be sketched again next time." << endl;
+            }
         }
     }
     
@@ -134,24 +143,24 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
             }
         }
         
-        int denominator;
-        
-        if ( minHashesRef.size() >= data->mins & minHashes.size() >= data->mins )
-        {
-            denominator = data->mins;
-        }
-        else
-        {
-            if ( minHashesRef.size() > minHashes.size() )
-            {
-                denominator = minHashesRef.size();
-            }
-            else
-            {
-                denominator = minHashes.size();
-            }
-        }
-        
+		int denominator;
+		
+		if ( minHashesRef.size() >= data->mins & minHashes.size() >= data->mins )
+		{
+			denominator = data->mins;
+		}
+		else
+		{
+			if ( minHashesRef.size() > minHashes.size() )
+			{
+				denominator = minHashesRef.size();
+			}
+			else
+			{
+				denominator = minHashes.size();
+			}
+		}
+		
         output->pairs[i].score = float(common) / denominator;
         output->pairs[i].file = index.getReference(i).name;
     }
