@@ -46,50 +46,50 @@ int CommandFind::run() const
     
     if ( hasSuffix(fileReference, suffixSketchWindowed) )
     {
-    	index.initFromCapnp(fileReference.c_str());
+        index.initFromCapnp(fileReference.c_str());
     }
     else
     {
-		int kmerSize = options.at("kmer").getArgumentAsNumber();
-		int mins = options.at("minsWindowed").getArgumentAsNumber();
-		int windowSize = options.at("window").getArgumentAsNumber();
-		
-		bool indexFileExists = index.initHeaderFromBaseIfValid(fileReference, true);
-		
-		if
-		(
-			(options.at("kmer").active && kmerSize != index.getKmerSize()) ||
-			(options.at("minsWindowed").active && mins != index.getMinHashesPerWindow()) ||
-			(options.at("window").active && windowSize != index.getWindowSize())
-		)
-		{
-			indexFileExists = false;
-		}
-		
-		if ( indexFileExists )
-		{
-			index.initFromBase(arguments[0], true);
-			kmerSize = index.getKmerSize();
-			mins = index.getMinHashesPerWindow();
-			windowSize = index.getWindowSize();
-		}
-		else
-		{
-			vector<string> refArgVector;
-			refArgVector.push_back(fileReference);
-		
-			cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
-			index.initFromSequence(refArgVector, kmerSize, mins, true, windowSize, false);
-		
-			if ( index.writeToFile() )
-			{
-				cerr << "Sketch saved for subsequent runs." << endl;
-			}
-			else
-			{
-				cerr << "The sketch for " << fileReference << " could not be saved; it will be sketched again next time." << endl;
-			}
-		}
+        int kmerSize = options.at("kmer").getArgumentAsNumber();
+        int mins = options.at("minsWindowed").getArgumentAsNumber();
+        int windowSize = options.at("window").getArgumentAsNumber();
+        
+        bool indexFileExists = index.initHeaderFromBaseIfValid(fileReference, true);
+        
+        if
+        (
+            (options.at("kmer").active && kmerSize != index.getKmerSize()) ||
+            (options.at("minsWindowed").active && mins != index.getMinHashesPerWindow()) ||
+            (options.at("window").active && windowSize != index.getWindowSize())
+        )
+        {
+            indexFileExists = false;
+        }
+        
+        if ( indexFileExists )
+        {
+            index.initFromBase(arguments[0], true);
+            kmerSize = index.getKmerSize();
+            mins = index.getMinHashesPerWindow();
+            windowSize = index.getWindowSize();
+        }
+        else
+        {
+            vector<string> refArgVector;
+            refArgVector.push_back(fileReference);
+        
+            cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
+            index.initFromSequence(refArgVector, kmerSize, mins, true, windowSize, false);
+        
+            if ( index.writeToFile() )
+            {
+                cerr << "Sketch saved for subsequent runs." << endl;
+            }
+            else
+            {
+                cerr << "The sketch for " << fileReference << " could not be saved; it will be sketched again next time." << endl;
+            }
+        }
     }
     
     int l;
