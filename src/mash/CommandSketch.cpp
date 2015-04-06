@@ -1,5 +1,5 @@
 #include "CommandSketch.h"
-#include "Index.h"
+#include "Sketch.h"
 
 using namespace::std;
 
@@ -7,7 +7,7 @@ CommandSketch::CommandSketch()
 : Command()
 {
     name = "sketch";
-    description = "Create a reference index";
+    description = "Create a reference sketch";
     argumentString = "fast(a|q)[.gz] ...";
     
     useOption("help");
@@ -35,13 +35,13 @@ int CommandSketch::run() const
     int windowSize = options.at("window").getArgumentAsNumber();
     int verbosity = options.at("silent").active ? 0 : options.at("verbose").active ? 2 : 1;
     
-    Index index;
+    Sketch sketch;
     
-    index.initFromSequence(arguments, kmer, minHashesPerWindow, windowed, windowSize, false, verbosity);
+    sketch.initFromSequence(arguments, kmer, minHashesPerWindow, windowed, windowSize, false, verbosity);
     
     string prefix = options.at("prefix").argument.length() > 0 ? options.at("prefix").argument : arguments[0];
     
-    index.writeToCapnp((prefix + ".mash").c_str());
+    sketch.writeToCapnp((prefix + ".mash").c_str());
     
     return 0;
 }

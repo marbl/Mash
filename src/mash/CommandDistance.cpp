@@ -1,5 +1,5 @@
 #include "CommandDistance.h"
-#include "Index.h"
+#include "Sketch.h"
 #include <iostream>
 #include <zlib.h>
 #include "kseq.h"
@@ -36,32 +36,32 @@ int CommandDistance::run() const
     int mins = options.at("mins").getArgumentAsNumber();
     bool concat = options.at("concat").active;
     
-    Index index;
+    Sketch sketch;
     
     const string & fileReference = arguments[0];
     
     if ( hasSuffix(fileReference, suffixSketch) )
     {
-        index.initFromCapnp(fileReference.c_str());
+        sketch.initFromCapnp(fileReference.c_str());
     }
     else
     {
-        bool indexFileExists = index.initHeaderFromBaseIfValid(fileReference, false);
+        bool sketchFileExists = sketch.initHeaderFromBaseIfValid(fileReference, false);
     
         if
         (
-            (options.at("kmer").active && kmerSize != index.getKmerSize()) ||
-            (options.at("mins").active && mins != index.getMinHashesPerWindow())
+            (options.at("kmer").active && kmerSize != sketch.getKmerSize()) ||
+            (options.at("mins").active && mins != sketch.getMinHashesPerWindow())
         )
         {
-            indexFileExists = false;
+            sketchFileExists = false;
         }
     
-        if ( indexFileExists )
+        if ( sketchFileExists )
         {
-            index.initFromBase(fileReference, false);
-            kmerSize = index.getKmerSize();
-            mins = index.getMinHashesPerWindow();
+            sketch.initFromBase(fileReference, false);
+            kmerSize = sketch.getKmerSize();
+            mins = sketch.getMinHashesPerWindow();
         }
         else
         {
@@ -69,9 +69,9 @@ int CommandDistance::run() const
             refArgVector.push_back(fileReference);
         
             cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
-            index.initFromSequence(refArgVector, kmerSize, mins, false, 0, concat);
+            sketch.initFromSequence(refArgVector, kmerSize, mins, false, 0, concat);
         
-            if ( index.writeToFile() )
+            if ( sketch.writeToFile() )
             {
                 cerr << "Sketch saved for subsequent runs." << endl;
             }
@@ -86,9 +86,9 @@ int CommandDistance::run() const
     
     for ( int i = 1; i < arguments.size(); i++ )
     {
-        for ( int j = 0; j < index.getReferenceCount(); j++ )
+        for ( int j = 0; j < sketch.getReferenceCount(); j++ )
         {
-            threadPool.runWhenThreadAvailable(new CompareInput(index.getReference(j).hashes, index.getReference(j).name, arguments[i], kmerSize, mins, concat));
+            threadPool.runWhenThreadAvailable(new CompareInput(sketch.getReference(j).hashes, sketch.getReference(j).name, arguments[i], kmerSize, mins, concat));
         
             while ( threadPool.outputAvailable() )
             {
@@ -117,25 +117,25 @@ void CommandDistance::writeOutput(CompareOutput * output) const
 
 CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
 {
-    const Index::Hash_set & minHashesRef = data->minHashesRef;
+    const Sketch::Hash_set & minHashesRef = data->minHashesRef;
     const string file = data->file;
     
     CommandDistance::CompareOutput * output = new CommandDistance::CompareOutput();
-    Index index;
+    Sketch sketch;
     vector<string> fileVector;
     fileVector.push_back(file);
     
-    index.initFromSequence(fileVector, data->kmerSize, data->mins, false, 0, data->concat);
+    sketch.initFromSequence(fileVector, data->kmerSize, data->mins, false, 0, data->concat);
     output->nameRef = data->nameRef;
-    output->pairs.resize(index.getReferenceCount());
+    output->pairs.resize(sketch.getReferenceCount());
     
-    for ( int i = 0; i < index.getReferenceCount(); i++ )
+    for ( int i = 0; i < sketch.getReferenceCount(); i++ )
     {
         int common = 0;
         
-        const Index::Hash_set & minHashes = index.getReference(i).hashes;
+        const Sketch::Hash_set & minHashes = sketch.getReference(i).hashes;
         
-        for ( Index::Hash_set::const_iterator i = minHashes.begin(); i != minHashes.end(); i++ )
+        for ( Sketch::Hash_set::const_iterator i = minHashes.begin(); i != minHashes.end(); i++ )
         {
             if ( minHashesRef.count(*i) == 1 )
             {
@@ -162,7 +162,7 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
         }
         
         output->pairs[i].score = float(common) / denominator;
-        output->pairs[i].file = index.getReference(i).name;
+        output->pairs[i].file = sketch.getReference(i).name;
     }
     
     return output;

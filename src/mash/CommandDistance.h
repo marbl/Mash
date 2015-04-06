@@ -2,7 +2,7 @@
 #define INCLUDED_CommandDistance
 
 #include "Command.h"
-#include "Index.h"
+#include "Sketch.h"
 
 class CommandDistance : public Command
 {
@@ -10,7 +10,7 @@ public:
     
     struct CompareInput
     {
-        CompareInput(const Index::Hash_set & minHashesRefNew, const std::string nameRefNew, const std::string fileNew, int kmerSizeNew, int minsNew, bool concatNew)
+        CompareInput(const Sketch::Hash_set & minHashesRefNew, const std::string nameRefNew, const std::string fileNew, int kmerSizeNew, int minsNew, bool concatNew)
             :
             minHashesRef(minHashesRefNew),
             nameRef(nameRefNew),
@@ -20,7 +20,7 @@ public:
             concat(concatNew)
             {}
         
-        const Index::Hash_set & minHashesRef;
+        const Sketch::Hash_set & minHashesRef;
         std::string nameRef;
         const std::string file;
         int kmerSize;
@@ -50,6 +50,6 @@ private:
 };
 
 CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data);
-void getMinHashesForFile(Index::Hash_set & minHashes, const std::string & file, int kmerSize, int mins);
+void getMinHashesForFile(Sketch::Hash_set & minHashes, const std::string & file, int kmerSize, int mins);
 
 #endif

@@ -1,5 +1,5 @@
-#ifndef Index_h
-#define Index_h
+#ifndef Sketch_h
+#define Sketch_h
 
 #include <capnp/message.h>
 #include <capnp/serialize.h>
@@ -18,7 +18,7 @@ static const int capnpHeaderLength = strlen(capnpHeader);
 static const char * suffixSketch = ".msh";
 static const char * suffixSketchWindowed = ".msw";
 
-class Index
+class Sketch
 {
 public:
     
@@ -51,8 +51,8 @@ public:
         uint32_t position;
     };
     
-    typedef std::unordered_map < Index::hash_t, std::vector<Index::PositionHash> > LociByHash_umap;
-    typedef std::unordered_set<Index::hash_t> Hash_set;
+    typedef std::unordered_map < Sketch::hash_t, std::vector<Sketch::PositionHash> > LociByHash_umap;
+    typedef std::unordered_set<Sketch::hash_t> Hash_set;
     
     struct Reference
     {
@@ -98,9 +98,9 @@ private:
     std::string file;
 };
 
-void addMinHashes(Index::Hash_set & lociByHash, std::priority_queue<Index::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins);
-Index::hash_t getHash(const char * seq, int length);
-void getMinHashPositions(std::vector<Index::PositionHash> & loci, char * seq, uint32_t length, int kmerSize, int minHashesPerWindow, int windowSize, int verbosity = 0);
+void addMinHashes(Sketch::Hash_set & lociByHash, std::priority_queue<Sketch::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins);
+Sketch::hash_t getHash(const char * seq, int length);
+void getMinHashPositions(std::vector<Sketch::PositionHash> & loci, char * seq, uint32_t length, int kmerSize, int minHashesPerWindow, int windowSize, int verbosity = 0);
 bool hasSuffix(std::string const & whole, std::string const & suffix);
 
 int def(int fdSource, int fdDest, int level);

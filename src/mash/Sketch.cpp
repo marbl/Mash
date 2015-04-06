@@ -1,4 +1,4 @@
-#include "Index.h"
+#include "Sketch.h"
 #include <unistd.h>
 #include <zlib.h>
 #include <stdio.h>
@@ -21,14 +21,14 @@ KSEQ_INIT(gzFile, gzread)
 
 using namespace std;
 
-typedef map < Index::hash_t, vector<Index::PositionHash> > LociByHash_map;
+typedef map < Sketch::hash_t, vector<Sketch::PositionHash> > LociByHash_map;
 
-const vector<Index::Locus> & Index::getLociByHash(hash_t hash) const
+const vector<Sketch::Locus> & Sketch::getLociByHash(hash_t hash) const
 {
     return lociByHash.at(hash);
 }
 
-int Index::getReferenceIndex(string id) const
+int Sketch::getReferenceIndex(string id) const
 {
     if ( referenceIndecesById.count(id) == 1 )
     {
@@ -40,13 +40,13 @@ int Index::getReferenceIndex(string id) const
     }
 }
 
-void Index::initFromBase(const std::string & fileSeq, bool windowed)
+void Sketch::initFromBase(const std::string & fileSeq, bool windowed)
 {
-    file = fileSeq + (windowed ? suffixWindowed : suffix);
+    file = fileSeq + (windowed ? suffixSketchWindowed : suffixSketch);
     initFromCapnp(file.c_str());
 }
 
-int Index::initFromCapnp(const char * file, bool headerOnly)
+int Sketch::initFromCapnp(const char * file, bool headerOnly)
 {
     // use a pipe to decompress input to Cap'n Proto
     
@@ -221,7 +221,7 @@ int Index::initFromCapnp(const char * file, bool headerOnly)
     return 0;
 }
 
-int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, int minHashesPerWindowNew, bool windowedNew, int windowSizeNew, bool concat, int verbosity)
+int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int minHashesPerWindowNew, bool windowedNew, int windowSizeNew, bool concat, int verbosity)
 {
     kmerSize = kmerSizeNew;
     minHashesPerWindow = minHashesPerWindowNew;
@@ -229,7 +229,7 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, int m
     windowed = windowedNew;
     concatenated = concat;
     
-    priority_queue<Index::hash_t> minHashesQueue; // only used for non-windowed
+    priority_queue<Sketch::hash_t> minHashesQueue; // only used for non-windowed
     
     int l;
     int count = 0;
@@ -329,24 +329,24 @@ int Index::initFromSequence(const vector<string> & files, int kmerSizeNew, int m
     return 0;
 }
 
-bool Index::initHeaderFromBaseIfValid(const std::string & fileSeq, bool windowed)
+bool Sketch::initHeaderFromBaseIfValid(const std::string & fileSeq, bool windowed)
 {
-    file = fileSeq + (windowed ? suffixWindowed : suffix);
+    file = fileSeq + (windowed ? suffixSketchWindowed : suffixSketch);
     
     struct stat fileInfoSeq;
-    struct stat fileInfoIndex;
+    struct stat fileInfoSketch;
     
     if ( stat(fileSeq.c_str(), &fileInfoSeq) == -1 )
     {
         return false;
     }
     
-    if ( stat(file.c_str(), &fileInfoIndex) == -1 )
+    if ( stat(file.c_str(), &fileInfoSketch) == -1 )
     {
         return false;
     }
     
-    if ( fileInfoSeq.st_mtime > fileInfoIndex.st_mtime )
+    if ( fileInfoSeq.st_mtime > fileInfoSketch.st_mtime )
     {
         return false;
     }
@@ -355,12 +355,12 @@ bool Index::initHeaderFromBaseIfValid(const std::string & fileSeq, bool windowed
     return true;
 }
 
-bool Index::writeToFile() const
+bool Sketch::writeToFile() const
 {
     return writeToCapnp(file.c_str()) == 0;
 }
 
-int Index::writeToCapnp(const char * file) const
+int Sketch::writeToCapnp(const char * file) const
 {
     // use a pipe to compress Cap'n Proto output
     
@@ -489,7 +489,7 @@ int Index::writeToCapnp(const char * file) const
     return 0; // TODO
 }
 
-void Index::createTables()
+void Sketch::createTables()
 {
     for ( int i = 0; i < references.size(); i++ )
     {
@@ -507,7 +507,7 @@ void Index::createTables()
     }
 }
 
-void addMinHashes(Index::Hash_set & minHashes, priority_queue<Index::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins)
+void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins)
 {
     //cout << "mins: " << mins << endl << endl;
     
@@ -542,7 +542,7 @@ void addMinHashes(Index::Hash_set & minHashes, priority_queue<Index::hash_t> & m
             break;
         }
         
-        Index::hash_t hash = getHash(seq + i, kmerSize);
+        Sketch::hash_t hash = getHash(seq + i, kmerSize);
         
         //if ( i % 1000000 == 0 )
         {
@@ -570,9 +570,9 @@ void addMinHashes(Index::Hash_set & minHashes, priority_queue<Index::hash_t> & m
     }
 }
 
-Index::hash_t getHash(const char * seq, int length)
+Sketch::hash_t getHash(const char * seq, int length)
 {
-    Index::hash_t hash = 0;
+    Sketch::hash_t hash = 0;
     
 #ifdef ARCH_32
     uint32_t data[4];
@@ -587,7 +587,7 @@ Index::hash_t getHash(const char * seq, int length)
     return hash;
 }
 
-void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * seq, uint32_t length, int kmerSize, int minHashesPerWindow, int windowSize, int verbosity)
+void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * seq, uint32_t length, int kmerSize, int minHashesPerWindow, int windowSize, int verbosity)
 {
     int mins = minHashesPerWindow;
     int nextValidKmer = 0;
@@ -610,11 +610,11 @@ void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * se
     }
     
     if ( verbosity > 1 ) cout << seq << endl << endl;
-    map<Index::hash_t, deque<CandidateLocus>> candidatesByHash;
+    map<Sketch::hash_t, deque<CandidateLocus>> candidatesByHash;
     
-    queue<map<Index::hash_t, deque<CandidateLocus>>::iterator> windowQueue;
-    map<Index::hash_t, deque<CandidateLocus>>::iterator maxMinmer = candidatesByHash.end();
-    map<Index::hash_t, deque<CandidateLocus>>::iterator newCandidates;
+    queue<map<Sketch::hash_t, deque<CandidateLocus>>::iterator> windowQueue;
+    map<Sketch::hash_t, deque<CandidateLocus>>::iterator maxMinmer = candidatesByHash.end();
+    map<Sketch::hash_t, deque<CandidateLocus>>::iterator newCandidates;
     
     int unique = 0;
     
@@ -648,7 +648,7 @@ void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * se
         
         if ( i >= nextValidKmer )
         {
-            Index::hash_t hash = getHash(seq + i, kmerSize);
+            Sketch::hash_t hash = getHash(seq + i, kmerSize);
             
             if ( verbosity > 1 )
             {
@@ -662,8 +662,8 @@ void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * se
                 cout << "   " << i << '\t' << hash << endl;
             }
             
-            pair<map<Index::hash_t, deque<CandidateLocus>>::iterator, bool> inserted =
-                candidatesByHash.insert(pair<Index::hash_t, deque<CandidateLocus>>(hash, deque<CandidateLocus>()));
+            pair<map<Sketch::hash_t, deque<CandidateLocus>>::iterator, bool> inserted =
+                candidatesByHash.insert(pair<Sketch::hash_t, deque<CandidateLocus>>(hash, deque<CandidateLocus>()));
             newCandidates = inserted.first;
             newCandidates->second.push_back(CandidateLocus(i));
             
@@ -700,7 +700,7 @@ void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * se
         }
         
         windowQueue.push(newCandidates);
-        map<Index::hash_t, deque<CandidateLocus>>::iterator windowFront = candidatesByHash.end();
+        map<Sketch::hash_t, deque<CandidateLocus>>::iterator windowFront = candidatesByHash.end();
         
         if ( windowQueue.size() > windowSize )
         {
@@ -717,7 +717,7 @@ void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * se
             if ( frontCandidates.front().isMinmer )
             {
                 if ( verbosity > 1 ) cout << "   \t   minmer: " << frontCandidates.front().position << '\t' << windowFront->first << endl;
-                positionHashes.push_back(Index::PositionHash(frontCandidates.front().position, windowFront->first));
+                positionHashes.push_back(Sketch::PositionHash(frontCandidates.front().position, windowFront->first));
             }
             
             if ( frontCandidates.size() > 1 )
@@ -751,7 +751,7 @@ void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * se
         {
             // first complete window; mark minmers
             
-            for ( map<Index::hash_t, deque<CandidateLocus>>::iterator j = candidatesByHash.begin(); j != maxMinmer; j++ )
+            for ( map<Sketch::hash_t, deque<CandidateLocus>>::iterator j = candidatesByHash.begin(); j != maxMinmer; j++ )
             {
                 j->second.front().isMinmer = true;
             }
@@ -771,7 +771,7 @@ void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * se
         
         if ( verbosity > 1 )
         {
-            for ( map<Index::hash_t, deque<CandidateLocus>>::iterator j = candidatesByHash.begin(); j != candidatesByHash.end(); j++ )
+            for ( map<Sketch::hash_t, deque<CandidateLocus>>::iterator j = candidatesByHash.begin(); j != candidatesByHash.end(); j++ )
             {
                 cout << "   \t" << j->first;
                 
@@ -799,7 +799,7 @@ void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * se
     //
     while ( windowQueue.size() > 0 )
     {
-        map<Index::hash_t, deque<CandidateLocus>>::iterator windowFront = windowQueue.front();
+        map<Sketch::hash_t, deque<CandidateLocus>>::iterator windowFront = windowQueue.front();
         windowQueue.pop();
         
         if ( windowFront != candidatesByHash.end() )
@@ -811,7 +811,7 @@ void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * se
                 if ( frontCandidates.front().isMinmer )
                 {
                     if ( verbosity > 1 ) cout << "   \t   minmer:" << frontCandidates.front().position << '\t' << windowFront->first << endl;
-                    positionHashes.push_back(Index::PositionHash(frontCandidates.front().position, windowFront->first));
+                    positionHashes.push_back(Sketch::PositionHash(frontCandidates.front().position, windowFront->first));
                 }
                 
                 frontCandidates.pop_front();

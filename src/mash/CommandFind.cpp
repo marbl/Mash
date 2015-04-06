@@ -1,5 +1,5 @@
 #include "CommandFind.h"
-#include "Index.h"
+#include "Sketch.h"
 #include <zlib.h>
 #include "kseq.h"
 #include <iostream>
@@ -25,7 +25,7 @@ CommandFind::CommandFind()
     addOption("threshold", Option(Option::Number, "t", "Threshold. This fraction of the query sequence's min-hashes must appear in a query-sized window of a reference sequence for the match to be reported.", "0.2", 0.0, 1.0));
     addOption("threads", Option(Option::Integer, "p", "Parallelism. This many threads will be spawned to perform the find, each one handling on query sequence at a time.", "1"));
     addOption("best", Option(Option::Integer, "b", "Best hit count. This many of the best hits will be reported (0 to report all hits). Score ties are broken by keeping the hit to the earlier reference or to the left-most position.", "0"));
-    addOption("self", Option(Option::Boolean, "self", "Allow self matches if query ID appears in reference index.", ""));
+    addOption("self", Option(Option::Boolean, "self", "Allow self matches if query ID appears in reference.", ""));
 }
 
 int CommandFind::run() const
@@ -41,12 +41,12 @@ int CommandFind::run() const
     int best = options.at("best").getArgumentAsNumber();
     bool selfMatches = options.at("self").active;
     
-    Index index;
+    Sketch sketch;
     const string & fileReference = arguments[0];
     
     if ( hasSuffix(fileReference, suffixSketchWindowed) )
     {
-        index.initFromCapnp(fileReference.c_str());
+        sketch.initFromCapnp(fileReference.c_str());
     }
     else
     {
@@ -54,24 +54,24 @@ int CommandFind::run() const
         int mins = options.at("minsWindowed").getArgumentAsNumber();
         int windowSize = options.at("window").getArgumentAsNumber();
         
-        bool indexFileExists = index.initHeaderFromBaseIfValid(fileReference, true);
+        bool sketchFileExists = sketch.initHeaderFromBaseIfValid(fileReference, true);
         
         if
         (
-            (options.at("kmer").active && kmerSize != index.getKmerSize()) ||
-            (options.at("minsWindowed").active && mins != index.getMinHashesPerWindow()) ||
-            (options.at("window").active && windowSize != index.getWindowSize())
+            (options.at("kmer").active && kmerSize != sketch.getKmerSize()) ||
+            (options.at("minsWindowed").active && mins != sketch.getMinHashesPerWindow()) ||
+            (options.at("window").active && windowSize != sketch.getWindowSize())
         )
         {
-            indexFileExists = false;
+            sketchFileExists = false;
         }
         
-        if ( indexFileExists )
+        if ( sketchFileExists )
         {
-            index.initFromBase(arguments[0], true);
-            kmerSize = index.getKmerSize();
-            mins = index.getMinHashesPerWindow();
-            windowSize = index.getWindowSize();
+            sketch.initFromBase(arguments[0], true);
+            kmerSize = sketch.getKmerSize();
+            mins = sketch.getMinHashesPerWindow();
+            windowSize = sketch.getWindowSize();
         }
         else
         {
@@ -79,9 +79,9 @@ int CommandFind::run() const
             refArgVector.push_back(fileReference);
         
             cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
-            index.initFromSequence(refArgVector, kmerSize, mins, true, windowSize, false);
+            sketch.initFromSequence(refArgVector, kmerSize, mins, true, windowSize, false);
         
-            if ( index.writeToFile() )
+            if ( sketch.writeToFile() )
             {
                 cerr << "Sketch saved for subsequent runs." << endl;
             }
@@ -115,7 +115,7 @@ int CommandFind::run() const
         
         while ((l = kseq_read(seq)) >= 0)
         {
-            if ( l < index.getKmerSize() )
+            if ( l < sketch.getKmerSize() )
             {
                 continue;
             }
@@ -125,12 +125,12 @@ int CommandFind::run() const
             //printf("seq: %s\n", seq->seq.s);
             //if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
             
-            threadPool.runWhenThreadAvailable(new FindInput(index, seq->name.s, seq->seq.s, l, threshold, best, selfMatches));
+            threadPool.runWhenThreadAvailable(new FindInput(sketch, seq->name.s, seq->seq.s, l, threshold, best, selfMatches));
             
             while ( threadPool.outputAvailable() )
             {
                 //cout << "popping\n";
-                writeOutput(index, threadPool.popOutputWhenAvailable());
+                writeOutput(sketch, threadPool.popOutputWhenAvailable());
             }
         }
         
@@ -146,13 +146,13 @@ int CommandFind::run() const
     
     while ( threadPool.running() )
     {
-        writeOutput(index, threadPool.popOutputWhenAvailable());
+        writeOutput(sketch, threadPool.popOutputWhenAvailable());
     }
     
     return 0;
 }
 
-void CommandFind::writeOutput(const Index & index, FindOutput * output) const
+void CommandFind::writeOutput(const Sketch & sketch, FindOutput * output) const
 {
     //cout << output->seqId << endl;
     
@@ -171,7 +171,7 @@ void CommandFind::writeOutput(const Index & index, FindOutput * output) const
         const FindOutput::Hit & hit = hits.at(i);
         cout <<
             output->seqId << '\t' <<
-            index.getReference(hit.ref).name << '\t' <<
+            sketch.getReference(hit.ref).name << '\t' <<
             hit.start << '\t' <<
             hit.end << '\t' <<
             (hit.minusStrand ? '-' : '+') << '\t' <<
@@ -209,17 +209,17 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
     
     bool verbose = false;
     
-    Index::Hash_set minHashes;
+    Sketch::Hash_set minHashes;
     
-    const Index & index = input->index;
-    int kmerSize = index.getKmerSize();
-    int mins = index.getMinHashesPerWindow();
+    const Sketch & sketch = input->sketch;
+    int kmerSize = sketch.getKmerSize();
+    int mins = sketch.getMinHashesPerWindow();
     int length = input->length;
     char * seq = input->seq;
     float threshold = input->threshold;
-    int windowSize = index.getWindowSize();
+    int windowSize = sketch.getWindowSize();
     int best = input->best;
-    int selfIndexRef = index.getReferenceIndex(input->seqId);
+    int selfIndexRef = sketch.getReferenceIndex(input->seqId);
     bool selfMatches = input->selfMatches;
     
     output->seqId = input->seqId;
@@ -253,7 +253,7 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
     
     //getMinHashes(minHashes, seq, length, 0, kmerSize, mins);
     
-    vector<Index::PositionHash> positionHashes;
+    vector<Sketch::PositionHash> positionHashes;
     getMinHashPositions(positionHashes, seq, length, kmerSize, mins, windowSize, 0);
     //
     for ( int i = 0; i < positionHashes.size(); i++ )
@@ -271,18 +271,18 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
     //
     PositionsBySequence_umap hits;
     //
-    for ( Index::Hash_set::const_iterator i = minHashes.begin(); i != minHashes.end(); i++ )
+    for ( Sketch::Hash_set::const_iterator i = minHashes.begin(); i != minHashes.end(); i++ )
     {
-        Index::hash_t hash = *i;
+        Sketch::hash_t hash = *i;
         //cout << "Hash " << hash << endl;
         
-        if ( index.hasLociByHash(hash) )
+        if ( sketch.hasLociByHash(hash) )
         {
-            const vector<Index::Locus> loci = index.getLociByHash(hash);
+            const vector<Sketch::Locus> loci = sketch.getLociByHash(hash);
             
             for ( int j = 0; j < loci.size(); j++ )
             {
-                const Index::Locus & locus = loci.at(j);
+                const Sketch::Locus & locus = loci.at(j);
                 
                 if ( verbose ) cout << "Match for hash " << hash << "\t" << locus.sequence << "\t" << locus.position << endl;
                 
@@ -346,7 +346,7 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
                 )
             )
             {
-                if ( verbose ) cout << input->seqId << '\t' << index.getReference(i->first).name << '\t' << *windowStart << '\t' << *j << '\t' << float(windowCount) / mins << endl;
+                if ( verbose ) cout << input->seqId << '\t' << sketch.getReference(i->first).name << '\t' << *windowStart << '\t' << *j << '\t' << float(windowCount) / mins << endl;
                 
                 output->hits.push(CommandFind::FindOutput::Hit(i->first, *windowStart, *j, minusStrand, score));
                 

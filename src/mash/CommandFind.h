@@ -2,7 +2,7 @@
 #define INCLUDED_CommandFind
 
 #include "Command.h"
-#include "Index.h"
+#include "Sketch.h"
 #include <string.h>
 #include <queue>
 
@@ -14,7 +14,7 @@ public:
     {
         FindInput
         (
-            const Index & indexNew,
+            const Sketch & sketchNew,
             const char * seqIdNew,
             const char * seqNew,
             uint32_t lengthNew,
@@ -22,7 +22,7 @@ public:
             int bestNew,
             bool selfMatchesNew
         ) :
-        index(indexNew),
+        sketch(sketchNew),
         length(lengthNew),
         threshold(thresholdNew),
         seqId(seqIdNew),
@@ -38,7 +38,7 @@ public:
             delete [] seq;
         }
         
-        const Index & index;
+        const Sketch & sketch;
         std::string seqId;
         char * seq;
         uint32_t length;
@@ -77,7 +77,7 @@ public:
     
 private:
     
-    void writeOutput(const Index & index, FindOutput * output) const;
+    void writeOutput(const Sketch & sketch, FindOutput * output) const;
 };
 
 CommandFind::FindOutput * find(CommandFind::FindInput * data);

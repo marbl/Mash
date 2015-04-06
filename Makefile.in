@@ -15,7 +15,7 @@ SOURCES=\
 	src/mash/CommandFind.cpp \
 	src/mash/CommandSketch.cpp \
 	src/mash/CommandList.cpp \
-	src/mash/Index.cpp \
+	src/mash/Sketch.cpp \
 	src/mash/MurmurHash3.cpp \
 	src/mash/mash.cpp \
 
