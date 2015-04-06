@@ -43,8 +43,7 @@ int CommandDistance::run() const
     if
     (
         (options.at("kmer").active && kmerSize != index.getKmerSize()) ||
-        (options.at("mins").active && mins != index.getMinHashesPerWindow()) ||
-        concat != index.getConcatenated()
+        (options.at("mins").active && mins != index.getMinHashesPerWindow())
     )
     {
         indexFileExists = false;
@@ -53,6 +52,8 @@ int CommandDistance::run() const
     if ( indexFileExists )
     {
         index.initFromBase(arguments[0], false);
+        kmerSize = index.getKmerSize();
+        mins = index.getMinHashesPerWindow();
     }
     else
     {

@@ -363,7 +363,7 @@ bool Index::writeToFile() const
 int Index::writeToCapnp(const char * file) const
 {
     // use a pipe to compress Cap'n Proto output
-    cout << "writing" << endl;
+    
     int fds[2];
     int piped = pipe(fds);
     
@@ -833,6 +833,17 @@ void getMinHashPositions(vector<Index::PositionHash> & positionHashes, char * se
     
     if ( verbosity > 0 ) cout << "   " << positionHashes.size() << " minmers across " << length - windowSize - kmerSize + 2 << " windows (" << unique << " windows with distinct minmer sets)." << endl << endl;
 }
+
+bool hasSuffix(string const & whole, string const & suffix)
+{
+    if (whole.length() >= suffix.length())
+    {
+        return 0 == whole.compare(whole.length() - suffix.length(), suffix.length(), suffix);
+    }
+    
+    return false;
+}
+
 
 // The following functions are adapted from http://www.zlib.net/zpipe.c
 

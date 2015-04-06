@@ -15,14 +15,13 @@ CommandFind::CommandFind()
 : Command()
 {
     name = "find";
-    description = "Compare query sequences to a reference index. <input> can be fasta or fastq, gzipped or not, and can be a list of files or \"-\" to read from standard input.";
+    description = "Compare query sequences to a reference. <reference> can be a fasta file (gzipped or not) or a mash windowed sketch file (.msw). If it is fasta and a sketch file does not exist (or is out of date), one will be written with the current options. <query> can be fasta or fastq, gzipped or not. Multiple query files can be provided, or \"-\" can be given to read from standard input.";
     argumentString = "<reference> <query> [<query>] ...";
     
     useOption("help");
     useOption("kmer");
     useOption("window");
     useOption("minsWindowed");
-    addOption("index", Option(Option::File, "s", "Sketch to use. If not specified, a sketch with the prefix <reference> will be used, creating if necessary.", ""));
     addOption("threshold", Option(Option::Number, "t", "Threshold. This fraction of the query sequence's min-hashes must appear in a query-sized window of a reference sequence for the match to be reported.", "0.2", 0.0, 1.0));
     addOption("threads", Option(Option::Integer, "p", "Parallelism. This many threads will be spawned to perform the find, each one handling on query sequence at a time.", "1"));
     addOption("best", Option(Option::Integer, "b", "Best hit count. This many of the best hits will be reported (0 to report all hits). Score ties are broken by keeping the hit to the earlier reference or to the left-most position.", "0"));
@@ -43,10 +42,11 @@ int CommandFind::run() const
     bool selfMatches = options.at("self").active;
     
     Index index;
+    const string & fileReference = arguments[0];
     
-    if ( options.at("index").argument.length() )
+    if ( hasSuffix(fileReference, suffixWindowed) )
     {
-    	index.initFromCapnp(options.at("index").argument.c_str());
+    	index.initFromCapnp(fileReference.c_str());
     }
     else
     {
@@ -54,7 +54,7 @@ int CommandFind::run() const
 		int mins = options.at("minsWindowed").getArgumentAsNumber();
 		int windowSize = options.at("window").getArgumentAsNumber();
 		
-		bool indexFileExists = index.initHeaderFromBaseIfValid(arguments[0], true);
+		bool indexFileExists = index.initHeaderFromBaseIfValid(fileReference, true);
 		
 		if
 		(
@@ -69,13 +69,16 @@ int CommandFind::run() const
 		if ( indexFileExists )
 		{
 			index.initFromBase(arguments[0], true);
+			kmerSize = index.getKmerSize();
+			mins = index.getMinHashesPerWindow();
+			windowSize = index.getWindowSize();
 		}
 		else
 		{
 			vector<string> refArgVector;
-			refArgVector.push_back(arguments[0]);
+			refArgVector.push_back(fileReference);
 		
-			cerr << "Sketch for " << arguments[0] << " not found or out of date; creating..." << endl;
+			cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
 			index.initFromSequence(refArgVector, kmerSize, mins, true, windowSize, false);
 		
 			if ( index.writeToFile() )
@@ -84,7 +87,7 @@ int CommandFind::run() const
 			}
 			else
 			{
-				cerr << "The sketch for " << arguments[0] << " could not be saved; it will be sketched again next time." << endl;
+				cerr << "The sketch for " << fileReference << " could not be saved; it will be sketched again next time." << endl;
 			}
 		}
     }

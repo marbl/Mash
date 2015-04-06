@@ -101,6 +101,7 @@ private:
 void addMinHashes(Index::Hash_set & lociByHash, std::priority_queue<Index::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins);
 Index::hash_t getHash(const char * seq, int length);
 void getMinHashPositions(std::vector<Index::PositionHash> & loci, char * seq, uint32_t length, int kmerSize, int minHashesPerWindow, int windowSize, int verbosity = 0);
+bool hasSuffix(std::string const & whole, std::string const & suffix);
 
 int def(int fdSource, int fdDest, int level);
 int inf(int fdSource, int fdDest);
