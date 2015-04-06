@@ -500,9 +500,9 @@ void Index::createTables()
     {
         for ( int j = 0; j < positionHashesByReference.at(i).size(); j++ )
         {
-        	const PositionHash & positionHash = positionHashesByReference.at(i).at(j);
-        	
-	        lociByHash[positionHash.hash].push_back(Locus(i, positionHash.position));
+            const PositionHash & positionHash = positionHashesByReference.at(i).at(j);
+            
+            lociByHash[positionHash.hash].push_back(Locus(i, positionHash.position));
         }
     }
 }
