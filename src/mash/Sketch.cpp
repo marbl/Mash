@@ -46,6 +46,11 @@ void Sketch::initFromBase(const std::string & fileSeq, bool windowed)
     initFromCapnp(file.c_str());
 }
 
+void handler(int)
+{
+    exit(0);
+}
+
 int Sketch::initFromCapnp(const char * file, bool headerOnly)
 {
     // use a pipe to decompress input to Cap'n Proto
@@ -67,6 +72,8 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly)
         return 1;
     }
     
+    void (* handlerOld)(int) = signal(SIGTERM, handler);
+    
     if ( forked == 0 )
     {
         // read from zipped fd and write to pipe
@@ -78,6 +85,7 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly)
         if ( fd < 0 )
         {
             cerr << "ERROR: could not open " << file << " for reading." << endl;
+            kill(getppid(), SIGTERM);
             exit(1);
         }
         
@@ -89,29 +97,21 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly)
         if ( strcmp(buffer, capnpHeader) != 0 )
         {
             cerr << "ERROR: '" << file << "' does not look like a mash index" << endl;
-            exit(1);
+            kill(getppid(), SIGTERM);
+            _Exit(1);
         }
         
         int ret = inf(fd, fds[1]);
-        if (ret != Z_OK) zerr(ret);
-        close(fd);
-        
-        gzFile fileIn = gzopen(file, "rb");
-        
-        int bytesRead;
-        
-        // eat header
         //
-        gzread(fileIn, buffer, capnpHeaderLength);
-        
-        while ( (bytesRead = gzread(fileIn, buffer, sizeof(buffer))) > 0)
+        if (ret != Z_OK)
         {
-            write(fds[1], buffer, bytesRead);
+            zerr(ret);
+            _Exit(ret);
         }
         
-        gzclose(fileIn);
+        close(fd);
         close(fds[1]);
-        exit(0);
+        _Exit(0);
     }
     
     // read from pipe
@@ -217,6 +217,8 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly)
     close(fds[0]);
     
     createIndex();
+    
+    signal(SIGTERM, handlerOld);
     
     return 0;
 }
@@ -381,6 +383,8 @@ int Sketch::writeToCapnp(const char * file) const
         return 1;
     }
     
+    void (* handlerOld)(int) = signal(SIGTERM, handler);
+    
     if ( forked == 0 )
     {
         // read from pipe and write to compressed file
@@ -392,6 +396,7 @@ int Sketch::writeToCapnp(const char * file) const
         if ( fd < 0 )
         {
             cerr << "ERROR: could not open " << file << " for writing.\n";
+            kill(getppid(), SIGTERM);
             exit(1);
         }
         
@@ -400,23 +405,15 @@ int Sketch::writeToCapnp(const char * file) const
         write(fd, capnpHeader, capnpHeaderLength);
         
         int ret = def(fds[0], fd, Z_DEFAULT_COMPRESSION);
-        if (ret != Z_OK) zerr(ret);
-        exit(ret);
-        
-        char buffer[1024];
-        gzFile fileOut = gzopen(file, "ab");
-        
-        int bytesRead;
-        
-        while ( (bytesRead = read(fds[0], buffer, sizeof(buffer))) > 0)
+        //
+        if (ret != Z_OK)
         {
-            printf("compressing: %s\n", buffer);
-            gzwrite(fileOut, buffer, bytesRead);
+            zerr(ret);
+            _Exit(ret);
         }
         
-        gzclose(fileOut);
         close(fds[0]);
-        exit(0);
+        _Exit(0);
     }
     
     // write to pipe
@@ -486,7 +483,9 @@ int Sketch::writeToCapnp(const char * file) const
     writeMessageToFd(fds[1], message);
     close(fds[1]);
     
-    return 0; // TODO
+    signal(SIGTERM, handlerOld);
+    
+    return 0;
 }
 
 void Sketch::createIndex()
