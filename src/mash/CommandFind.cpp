@@ -108,6 +108,12 @@ int CommandFind::run() const
         else
         {
             inStream = fopen(arguments[i].c_str(), "r");
+			
+			if ( inStream == NULL )
+			{
+				cerr << "ERROR: could not open " << arguments[i] << " for reading." << endl;
+				exit(1);
+			}
         }
         
         gzFile fp = gzdopen(fileno(inStream), "r");

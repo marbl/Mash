@@ -2,12 +2,9 @@
 #include "Sketch.h"
 #include <iostream>
 #include <zlib.h>
-#include "kseq.h"
 #include "ThreadPool.h"
 
 using namespace::std;
-
-KSEQ_INIT(gzFile, gzread)
 
 CommandDistance::CommandDistance()
 : Command()

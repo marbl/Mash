@@ -239,6 +239,13 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int 
     for ( int i = 0; i < files.size(); i++ )
     {
         gzFile fp = gzopen(files[i].c_str(), "r");
+        
+        if ( fp == NULL )
+        {
+            cerr << "ERROR: could not open " << files[i] << " for reading." << endl;
+            exit(1);
+        }
+        
         kseq_t *seq = kseq_init(fp);
         
         if ( concat )
