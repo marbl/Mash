@@ -83,7 +83,7 @@ public:
     
 private:
     
-    void createTables();
+    void createIndex();
     
     std::vector<Reference> references;
     std::unordered_map<std::string, int> referenceIndecesById;

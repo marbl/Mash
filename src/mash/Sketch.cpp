@@ -216,7 +216,7 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly)
     */
     close(fds[0]);
     
-    createTables();
+    createIndex();
     
     return 0;
 }
@@ -324,7 +324,7 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int 
     }
     */
     
-    createTables();
+    createIndex();
     
     return 0;
 }
@@ -489,7 +489,7 @@ int Sketch::writeToCapnp(const char * file) const
     return 0; // TODO
 }
 
-void Sketch::createTables()
+void Sketch::createIndex()
 {
     for ( int i = 0; i < references.size(); i++ )
     {
@@ -509,7 +509,9 @@ void Sketch::createTables()
 
 void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins)
 {
-    //cout << "mins: " << mins << endl << endl;
+    // Determine the 'mins' smallest hashes, including those already provided
+    // (potentially replacing them). This allows min-hash sets across multiple
+    // sequences to be determined.
     
     // uppercase
     //
@@ -543,11 +545,6 @@ void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> &
         }
         
         Sketch::hash_t hash = getHash(seq + i, kmerSize);
-        
-        //if ( i % 1000000 == 0 )
-        {
-            //printf("   At position %d\n", i);
-        }
         
         if
         (
@@ -589,9 +586,21 @@ Sketch::hash_t getHash(const char * seq, int length)
 
 void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * seq, uint32_t length, int kmerSize, int minHashesPerWindow, int windowSize, int verbosity)
 {
+    // Find positions whose hashes are min-hashes in any window of a sequence
+    
     int mins = minHashesPerWindow;
     int nextValidKmer = 0;
     
+    if ( windowSize > length - kmerSize + 1 )
+    {
+        windowSize = length - kmerSize + 1;
+    }
+    
+    if ( verbosity > 1 ) cout << seq << endl << endl;
+    
+    // Associate positions with flags so they can be marked as min-hashes
+    // at any point while the window is moved across them
+    //
     struct CandidateLocus
     {
         CandidateLocus(int positionNew)
@@ -604,22 +613,41 @@ void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * s
         bool isMinmer;
     };
     
-    if ( windowSize > length - kmerSize + 1 )
-    {
-        windowSize = length - kmerSize + 1;
-    }
-    
-    if ( verbosity > 1 ) cout << seq << endl << endl;
+    // All potential min-hash loci in the current window organized by their
+    // hashes so repeats can be grouped and so the sorted keys can be used to
+    // keep track of the current h bottom hashes. A deque is used here (rather
+    // than a standard queue) for each list of candidate loci for the sake of
+    // debug output; the performance difference seems to be negligible.
+    //
     map<Sketch::hash_t, deque<CandidateLocus>> candidatesByHash;
     
+    // Keep references to the candidate loci in the map in the order of the
+    // current window, allowing them to be popped off in the correct order as
+    // the window is incremented.
+    //
     queue<map<Sketch::hash_t, deque<CandidateLocus>>::iterator> windowQueue;
+    
+    // Keep a reference to the "hth" min-hash to determine efficiently whether
+    // new hashes are min-hashes. It must be decremented when a hash is inserted
+    // before it.
+    //
     map<Sketch::hash_t, deque<CandidateLocus>>::iterator maxMinmer = candidatesByHash.end();
+    
+    // A reference to the list of potential candidates that has just been pushed
+    // onto the back of the rolling window. During the loop, it will be assigned
+    // to either an existing list (if the kmer is repeated), a new list, or a
+    // dummy iterator (for invalid kmers).
+    //
     map<Sketch::hash_t, deque<CandidateLocus>>::iterator newCandidates;
     
     int unique = 0;
     
     for ( int i = 0; i < length - kmerSize + 1; i++ )
     {
+        // Increment the next valid kmer if needed. Invalid kmers must still be
+        // processed to keep the queue filled, but will be associated with a
+        // dummy iterator. (Currently disabled to allow all kmers; see below)
+        //
         if ( i >= nextValidKmer )
         {
             for ( int j = i; j < i + kmerSize; j++ )
@@ -628,7 +656,10 @@ void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * s
                 
                 if ( c != 'A' && c != 'C' && c != 'G' && c != 'T' )
                 {
+                    // Uncomment to skip invalid kmers
+                    //
                     //nextValidKmer = j + 1;
+                    
                     break;
                 }
             }
@@ -662,9 +693,15 @@ void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * s
                 cout << "   " << i << '\t' << hash << endl;
             }
             
+            // Get the list of candidate loci for the current hash (if it is a
+            // repeat) or insert a new list.
+            //
             pair<map<Sketch::hash_t, deque<CandidateLocus>>::iterator, bool> inserted =
                 candidatesByHash.insert(pair<Sketch::hash_t, deque<CandidateLocus>>(hash, deque<CandidateLocus>()));
             newCandidates = inserted.first;
+            
+            // Add the new candidate locus to the list
+            //
             newCandidates->second.push_back(CandidateLocus(i));
             
             if
@@ -696,10 +733,21 @@ void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * s
         }
         else
         {
+            // Invalid kmer; use a dummy iterator to pad the queue
+            
             newCandidates = candidatesByHash.end();
         }
         
+        // Push the new reference to the list of candidate loci for the new kmer
+        // on the back of the window to roll it.
+        //
         windowQueue.push(newCandidates);
+        
+        // A reference to the front of the window, to be popped off if the
+        // window has grown to full size. This reference can be a dummy if the
+        // window is not full size or if the front of the window is a dummy
+        // representing an invalid kmer.
+        //
         map<Sketch::hash_t, deque<CandidateLocus>>::iterator windowFront = candidatesByHash.end();
         
         if ( windowQueue.size() > windowSize )
@@ -723,7 +771,11 @@ void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * s
             if ( frontCandidates.size() > 1 )
             {
                 frontCandidates.pop_front();
-            
+                
+                // Since this is a repeated hash, only the locus in the front of
+                // the list was considered min-hash loci. Check if the new front
+                // will become a min-hash so it can be flagged.
+                //
                 if ( maxMinmer == candidatesByHash.end() || ( i >= windowSize && windowFront->first <= maxMinmer->first) )
                 {
                     frontCandidates.front().isMinmer = true;
@@ -731,6 +783,10 @@ void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * s
             }
             else
             {
+                // The list for this hash is no longer needed; destroy it,
+                // repositioning the reference to the hth min-hash if
+                // necessary.
+                
                 if ( maxMinmer != candidatesByHash.end() && windowFront->first <= maxMinmer->first )
                 {
                     maxMinmer++;
@@ -749,7 +805,7 @@ void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * s
         
         if ( i == windowSize - 1 )
         {
-            // first complete window; mark minmers
+            // first complete window; mark min-hashes
             
             for ( map<Sketch::hash_t, deque<CandidateLocus>>::iterator j = candidatesByHash.begin(); j != maxMinmer; j++ )
             {
@@ -764,6 +820,9 @@ void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * s
             unique++;
         }
         
+        // Mark the candidate that was pushed on the back of the window queue
+        // earlier as a min-hash if necessary
+        //
         if ( newCandidates != candidatesByHash.end() && i >= windowSize && (maxMinmer == candidatesByHash.end() || newCandidates->first <= maxMinmer->first) )
         {
             newCandidates->second.front().isMinmer = true;
