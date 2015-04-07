@@ -16,11 +16,11 @@ CommandDistance::CommandDistance()
     description = "Compute the global distance of each query sequence to the reference. Both the reference and queries can be fasta or fastq, gzipped or not. The reference can also be a mash sketch file (.msh). If the reference is fasta/fastq and a sketch file does not exist (or is out of date), one will be written with the current options and used for future runs if possible. The score is computed as the number of matching min-hashes divided by -m, or the larger number of kmers if both sequences have fewer than -m.";
     argumentString = "<reference> <query> [<query>] ...";
     
-    addOption("help", Option(Option::Boolean, "h", "Help", ""));
-    addOption("threads", Option(Option::Number, "p", "Parallelism. This many threads will be spawned, each one handling one input file at a time.", "1"));
-    addOption("kmer", Option(Option::Number, "k", "Kmer size. Hashes will be based on strings of this many nucleotides.", "11"));
-    addOption("mins", Option(Option::Number, "m", "Min-hashes per input file.", "10000"));
-    addOption("concat", Option(Option::Boolean, "c", "Concatenate multi-fasta seqeunces (and use files for names). Kmers across boundaries will not be considered. Not compatible with -w.", ""));
+    useOption("help");
+    useOption("threads");
+    useOption("kmer");
+    useOption("mins");
+    useOption("concat");
 }
 
 int CommandDistance::run() const

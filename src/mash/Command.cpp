@@ -84,6 +84,8 @@ Command::Command()
     addAvailableOption("minsWindowed", Option(Option::Integer, "n", "Min-hashes per window (only used with -w).", "10"));
     addAvailableOption("verbose", Option(Option::Boolean, "v", "Verbose", ""));
     addAvailableOption("silent", Option(Option::Boolean, "s", "Silent", ""));
+    addAvailableOption("concat", Option(Option::Boolean, "c", "Concatenate multi-fasta seqeunces (and use files for names). Kmers across boundaries will not be considered. Not compatible with -w.", ""));
+    addAvailableOption("threads", Option(Option::Integer, "p", "Parallelism. This many threads will be spawned, each one handling on query sequence at a time.", "1"));
 }
 
 void Command::print() const
