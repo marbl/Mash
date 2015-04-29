@@ -39,6 +39,11 @@ int CommandDistance::run() const
     
     if ( hasSuffix(fileReference, suffixSketch) )
     {
+        if ( options.at("kmer").active || options.at("mins").active || options.at("concat").active )
+        {
+            cerr << "\nWARNING: The options " << options.at("kmer").identifier << ", " << options.at("mins").identifier << " and " << options.at("concat").identifier << " are ignored when a sketch is provided; these are inherited from the sketch.\n\n";
+        }
+        
         sketch.initFromCapnp(fileReference.c_str());
     }
     else
@@ -54,7 +59,7 @@ int CommandDistance::run() const
             sketchFileExists = false;
         }
     
-        if ( sketchFileExists )
+        if ( false && sketchFileExists )
         {
             sketch.initFromBase(fileReference, false);
             kmerSize = sketch.getKmerSize();
@@ -65,9 +70,9 @@ int CommandDistance::run() const
             vector<string> refArgVector;
             refArgVector.push_back(fileReference);
         
-            cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
+            //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
             sketch.initFromSequence(refArgVector, kmerSize, mins, false, 0, concat);
-        
+            /*
             if ( sketch.writeToFile() )
             {
                 cerr << "Sketch saved for subsequent runs." << endl;
@@ -75,7 +80,7 @@ int CommandDistance::run() const
             else
             {
                 cerr << "The sketch for " << fileReference << " could not be saved; it will be sketched again next time." << endl;
-            }
+            }*/
         }
     }
     
@@ -83,9 +88,33 @@ int CommandDistance::run() const
     
     for ( int i = 1; i < arguments.size(); i++ )
     {
+        if ( hasSuffix(arguments[i], suffixSketch) )
+        {
+            Sketch sketchQuery;
+            sketchQuery.initFromCapnp(arguments[i].c_str(), true);
+            
+            if ( sketchQuery.getKmerSize() != sketch.getKmerSize() )
+            {
+                cerr << "WARNING: The query sketch " << arguments[i] << " has a kmer size (" << sketchQuery.getKmerSize() << ") that does not match the reference sketch (" << sketch.getKmerSize() << "). This query will be skipped.\n";
+                continue;
+            }
+            
+            if ( sketchQuery.getMinHashesPerWindow() != sketch.getMinHashesPerWindow() )
+            {
+                cerr << "WARNING: The query sketch " << arguments[i] << " has a min-hash count (" << sketchQuery.getMinHashesPerWindow() << ") that does not match the reference sketch (" << sketch.getMinHashesPerWindow() << "). This query will be skipped.\n";
+                continue;
+            }
+            
+            if ( sketchQuery.getConcatenated() != sketch.getConcatenated() )
+            {
+                cerr << "WARNING: The query sketch " << arguments[i] << " is concatenated, but the reference is not. This query will be skipped.\n";
+                continue;
+            }
+        }
+        
         for ( int j = 0; j < sketch.getReferenceCount(); j++ )
         {
-            threadPool.runWhenThreadAvailable(new CompareInput(sketch.getReference(j).hashes, sketch.getReference(j).name, arguments[i], kmerSize, mins, concat));
+            threadPool.runWhenThreadAvailable(new CompareInput(sketch.getReference(j).hashes, sketch.getReference(j).name, arguments[i], sketch.getKmerSize(), sketch.getMinHashesPerWindow(), sketch.getConcatenated()));
         
             while ( threadPool.outputAvailable() )
             {
@@ -119,10 +148,19 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
     
     CommandDistance::CompareOutput * output = new CommandDistance::CompareOutput();
     Sketch sketch;
-    vector<string> fileVector;
-    fileVector.push_back(file);
     
-    sketch.initFromSequence(fileVector, data->kmerSize, data->mins, false, 0, data->concat);
+    if ( hasSuffix(file, suffixSketch) )
+    {
+        sketch.initFromCapnp(file.c_str());
+    }
+    else
+    {
+        vector<string> fileVector;
+        fileVector.push_back(file);
+    
+        sketch.initFromSequence(fileVector, data->kmerSize, data->mins, false, 0, data->concat);
+    }
+    
     output->nameRef = data->nameRef;
     output->pairs.resize(sketch.getReferenceCount());
     
@@ -142,7 +180,7 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
         
         int denominator;
         
-        if ( minHashesRef.size() >= data->mins & minHashes.size() >= data->mins )
+        if ( minHashesRef.size() >= data->mins && minHashes.size() >= data->mins )
         {
             denominator = data->mins;
         }
