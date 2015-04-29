@@ -53,7 +53,7 @@ int CommandSketch::run() const
     
     string prefix = options.at("prefix").argument.length() > 0 ? options.at("prefix").argument : arguments[0];
     
-    sketch.writeToCapnp((prefix + suffixSketch).c_str());
+    sketch.writeToCapnp((prefix + (windowed ? suffixSketchWindowed : suffixSketch)).c_str());
     
     return 0;
 }
