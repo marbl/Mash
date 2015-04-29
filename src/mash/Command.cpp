@@ -86,6 +86,9 @@ Command::Command()
     addAvailableOption("silent", Option(Option::Boolean, "s", "Silent", ""));
     addAvailableOption("concat", Option(Option::Boolean, "c", "Concatenate multi-fasta seqeunces (and use files for names). Kmers across boundaries will not be considered. Not compatible with -w.", ""));
     addAvailableOption("threads", Option(Option::Integer, "p", "Parallelism. This many threads will be spawned, each one handling on query sequence at a time.", "1"));
+    addAvailableOption("pacbio", Option(Option::Boolean, "pacbio", "Use default settings for PacBio sequences.", ""));
+    addAvailableOption("illumina", Option(Option::Boolean, "illumina", "Use default settings for Illumina sequences.", ""));
+    addAvailableOption("nanopore", Option(Option::Boolean, "nanopore", "Use default settings for Oxford Nanopore sequences.", ""));
 }
 
 void Command::print() const

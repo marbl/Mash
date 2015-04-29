@@ -20,6 +20,9 @@ CommandSketch::CommandSketch()
     useOption("verbose");
     useOption("silent");
     useOption("concat");
+    useOption("illumina");
+    useOption("pacbio");
+    useOption("nanopore");
     addOption("prefix", Option(Option::File, "o", "Output prefix (first input file used if unspecified). The suffix '.msh' will be appended.", ""));
 }
 

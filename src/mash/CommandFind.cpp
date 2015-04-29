@@ -44,8 +44,20 @@ int CommandFind::run() const
     Sketch sketch;
     const string & fileReference = arguments[0];
     
+    if ( hasSuffix(fileReference, suffixSketch ) )
+    {
+    	cerr << "ERROR: Reference (" << fileReference << ") looks like a sketch but is not windowed.\n";
+    	return 1;
+    }
+    
     if ( hasSuffix(fileReference, suffixSketchWindowed) )
     {
+        if ( options.at("kmer").active || options.at("minsWindowed").active || options.at("window").active )
+        {
+            cerr << "ERROR: The options " << options.at("kmer").identifier << ", " << options.at("minsWindowed").identifier << " and " << options.at("window").identifier << " cannot be used when a sketch is provided; these are inherited from the sketch.\n";
+            return 1;
+        }
+        
         sketch.initFromCapnp(fileReference.c_str());
     }
     else
@@ -66,7 +78,7 @@ int CommandFind::run() const
             sketchFileExists = false;
         }
         
-        if ( sketchFileExists )
+        if ( false && sketchFileExists )
         {
             sketch.initFromBase(arguments[0], true);
             kmerSize = sketch.getKmerSize();
@@ -77,10 +89,12 @@ int CommandFind::run() const
         {
             vector<string> refArgVector;
             refArgVector.push_back(fileReference);
-        
-            cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
+        	
+            //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
+            cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...\n";
+            
             sketch.initFromSequence(refArgVector, kmerSize, mins, true, windowSize, false);
-        
+        	/*
             if ( sketch.writeToFile() )
             {
                 cerr << "Sketch saved for subsequent runs." << endl;
@@ -88,7 +102,7 @@ int CommandFind::run() const
             else
             {
                 cerr << "The sketch for " << fileReference << " could not be saved; it will be sketched again next time." << endl;
-            }
+            }*/
         }
     }
     

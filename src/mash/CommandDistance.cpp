@@ -41,7 +41,8 @@ int CommandDistance::run() const
     {
         if ( options.at("kmer").active || options.at("mins").active || options.at("concat").active )
         {
-            cerr << "\nWARNING: The options " << options.at("kmer").identifier << ", " << options.at("mins").identifier << " and " << options.at("concat").identifier << " are ignored when a sketch is provided; these are inherited from the sketch.\n\n";
+            cerr << "ERROR: The options " << options.at("kmer").identifier << ", " << options.at("mins").identifier << " and " << options.at("concat").identifier << " cannot be used when a sketch is provided; these are inherited from the sketch.\n";
+            return 1;
         }
         
         sketch.initFromCapnp(fileReference.c_str());
@@ -71,6 +72,8 @@ int CommandDistance::run() const
             refArgVector.push_back(fileReference);
         
             //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
+            cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...\n";
+            
             sketch.initFromSequence(refArgVector, kmerSize, mins, false, 0, concat);
             /*
             if ( sketch.writeToFile() )
@@ -95,19 +98,19 @@ int CommandDistance::run() const
             
             if ( sketchQuery.getKmerSize() != sketch.getKmerSize() )
             {
-                cerr << "WARNING: The query sketch " << arguments[i] << " has a kmer size (" << sketchQuery.getKmerSize() << ") that does not match the reference sketch (" << sketch.getKmerSize() << "). This query will be skipped.\n";
+                cerr << "\nWARNING: The query sketch " << arguments[i] << " has a kmer size (" << sketchQuery.getKmerSize() << ") that does not match the reference sketch (" << sketch.getKmerSize() << "). This query will be skipped.\n\n";
                 continue;
             }
             
             if ( sketchQuery.getMinHashesPerWindow() != sketch.getMinHashesPerWindow() )
             {
-                cerr << "WARNING: The query sketch " << arguments[i] << " has a min-hash count (" << sketchQuery.getMinHashesPerWindow() << ") that does not match the reference sketch (" << sketch.getMinHashesPerWindow() << "). This query will be skipped.\n";
+                cerr << "\nWARNING: The query sketch " << arguments[i] << " has a min-hash count (" << sketchQuery.getMinHashesPerWindow() << ") that does not match the reference sketch (" << sketch.getMinHashesPerWindow() << "). This query will be skipped.\n\n";
                 continue;
             }
             
             if ( sketchQuery.getConcatenated() != sketch.getConcatenated() )
             {
-                cerr << "WARNING: The query sketch " << arguments[i] << " is concatenated, but the reference is not. This query will be skipped.\n";
+                cerr << "\nWARNING: The query sketch " << arguments[i] << " is concatenated, but the reference is not. This query will be skipped.\n\n";
                 continue;
             }
         }
