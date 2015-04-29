@@ -25,7 +25,7 @@ CommandFind::CommandFind()
     useOption("threads");
     addOption("threshold", Option(Option::Number, "t", "Threshold. This fraction of the query sequence's min-hashes must appear in a query-sized window of a reference sequence for the match to be reported.", "0.2", 0.0, 1.0));
     addOption("best", Option(Option::Integer, "b", "Best hit count. This many of the best hits will be reported (0 to report all hits). Score ties are broken by keeping the hit to the earlier reference or to the left-most position.", "0"));
-    addOption("self", Option(Option::Boolean, "self", "Allow self matches if query ID appears in reference.", ""));
+    addOption("self", Option(Option::Boolean, "self", "Ignore self matches if query ID appears in reference.", ""));
 }
 
 int CommandFind::run() const
@@ -39,7 +39,7 @@ int CommandFind::run() const
     float threshold = options.at("threshold").getArgumentAsNumber();
     int threads = options.at("threads").getArgumentAsNumber();
     int best = options.at("best").getArgumentAsNumber();
-    bool selfMatches = options.at("self").active;
+    bool selfMatches = ! options.at("self").active;
     
     Sketch sketch;
     const string & fileReference = arguments[0];
