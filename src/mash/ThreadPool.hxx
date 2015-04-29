@@ -69,10 +69,8 @@ bool ThreadPool<TypeInput, TypeOutput>::outputAvailable() const
 {
     bool available;
     
-    //std::cout << "OA locking\n";
     pthread_mutex_lock(mutexOutput);
     available = outputQueueHead != 0 && outputQueueHead->ready;
-    //std::cout << "OA unlocking\n";
     pthread_mutex_unlock(mutexOutput);
     
     return available;
@@ -81,18 +79,16 @@ bool ThreadPool<TypeInput, TypeOutput>::outputAvailable() const
 template <class TypeInput, class TypeOutput>
 TypeOutput * ThreadPool<TypeInput, TypeOutput>::popOutputWhenAvailable()
 {
-    //std::cout << "pop locking output\n";
     pthread_mutex_lock(mutexOutput);
     
     if ( outputQueueHead == 0 )
     {
         // TODO: error?
-        //std::cout << "ERROR: waiting for output when no output queued\n";
+        std::cout << "ERROR: waiting for output when no output queued\n";
         pthread_mutex_unlock(mutexOutput);
         return 0;
     }
     
-    //std::cout << "Waiting for output\n";
     while ( ! outputQueueHead->ready )
     {
         pthread_cond_wait(condOutput, mutexOutput);
@@ -109,7 +105,6 @@ TypeOutput * ThreadPool<TypeInput, TypeOutput>::popOutputWhenAvailable()
     
     delete outputQueueHead;
     outputQueueHead = next;
-    //std::cout << "pop new head: " << outputQueueHead << std::endl;
     pthread_mutex_unlock(mutexOutput);
     
     return output;
@@ -118,7 +113,6 @@ TypeOutput * ThreadPool<TypeInput, TypeOutput>::popOutputWhenAvailable()
 template <class TypeInput, class TypeOutput>
 void ThreadPool<TypeInput, TypeOutput>::runWhenThreadAvailable(TypeInput * input)
 {
-    //std::cout << "waiting for thread\n";
     pthread_mutex_lock(mutexInput);
     
     while ( inputCurrent != 0 )
@@ -126,24 +120,18 @@ void ThreadPool<TypeInput, TypeOutput>::runWhenThreadAvailable(TypeInput * input
         pthread_cond_wait(condInput, mutexInput);
     }
     
-    //std::cout << "setting input\n";
-    
     inputCurrent = input;
     
-    //std::cout << "Enqueuing output\n";
     // enqueue output while input locked (to preserve order)
     //
     OutputQueueNode * outputQueueNode = new OutputQueueNode();
     outputQueueNode->next = 0;
     outputQueueNode->ready = false;
     //
-    //std::cout << "locking output\n";
     pthread_mutex_lock(mutexOutput);
     //
-    //std::cout << "output locked\n";
     if ( outputQueueHead == 0 )
     {
-        //std::cout << "output queue empty; setting head\n";
         outputQueueHead = outputQueueNode;
     }
     //
@@ -151,7 +139,6 @@ void ThreadPool<TypeInput, TypeOutput>::runWhenThreadAvailable(TypeInput * input
     //
     if ( outputQueueTail != 0 )
     {
-        //std::cout << "setting tail\n";
         outputQueueTail->next = outputQueueNode;
     }
     //
@@ -180,7 +167,6 @@ bool ThreadPool<TypeInput, TypeOutput>::running() const
 template <class TypeInput, class TypeOutput>
 void * ThreadPool<TypeInput, TypeOutput>::thread(void * arg)
 {
-    //std::cout << "Thread created" << std::endl;
     ThreadPool * threadPool = (ThreadPool *)arg;
     TypeInput * input;
     OutputQueueNode * outputQueueNode;
@@ -189,7 +175,6 @@ void * ThreadPool<TypeInput, TypeOutput>::thread(void * arg)
     {
         // wait for input
         //
-        //std::cout << "Waiting for input\n";
         pthread_mutex_lock(threadPool->mutexInput);
         //
         while ( ! threadPool->finished && threadPool->inputCurrent == 0 )
@@ -203,7 +188,6 @@ void * ThreadPool<TypeInput, TypeOutput>::thread(void * arg)
             return 0;
         }
         //
-        //std::cout << "Taking input " << threadPool->inputCurrent << std::endl;
         input = threadPool->inputCurrent;
         outputQueueNode = threadPool->outputQueueNodeCurrent;
         threadPool->inputCurrent = 0;
@@ -211,8 +195,6 @@ void * ThreadPool<TypeInput, TypeOutput>::thread(void * arg)
         pthread_mutex_unlock(threadPool->mutexInput);
         
         pthread_cond_broadcast(threadPool->condInput);
-        
-        //std::cout << "Running\n";
         
         // run function
         //
@@ -222,7 +204,6 @@ void * ThreadPool<TypeInput, TypeOutput>::thread(void * arg)
         
         // signal output
         //
-        //std::cout << "outputting\n";
         outputQueueNode->ready = true;
         //
         pthread_mutex_lock(threadPool->mutexOutput);
