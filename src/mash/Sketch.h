@@ -99,7 +99,7 @@ private:
 };
 
 void addMinHashes(Sketch::Hash_set & lociByHash, std::priority_queue<Sketch::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins);
-Sketch::hash_t getHash(const char * seq, int length);
+Sketch::hash_t getHash(const char * seq, int length, bool canonical = false);
 void getMinHashPositions(std::vector<Sketch::PositionHash> & loci, char * seq, uint32_t length, int kmerSize, int minHashesPerWindow, int windowSize, int verbosity = 0);
 bool hasSuffix(std::string const & whole, std::string const & suffix);
 

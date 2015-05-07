@@ -550,7 +550,7 @@ void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> &
             break;
         }
         
-        Sketch::hash_t hash = getHash(seq + i, kmerSize);
+        Sketch::hash_t hash = getHash(seq + i, kmerSize, true);
         
         if
         (
@@ -573,9 +573,61 @@ void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> &
     }
 }
 
-Sketch::hash_t getHash(const char * seq, int length)
+Sketch::hash_t getHash(const char * seq, int length, bool canonical)
 {
     Sketch::hash_t hash = 0;
+    
+    if ( canonical )
+    {
+        //for ( int i = 0; i < length; i++ ) { cout << *(seq + i); } cout << endl;
+        
+        char * seqMinus = new char[length];
+        bool useRevComp = true;
+        bool prefixEqual = true;
+        
+        for ( int i = 0; i < length; i++ )
+        {
+            char baseMinus = seq[length - i - 1];
+            
+            switch ( baseMinus )
+            {
+                case 'A': baseMinus = 'T'; break;
+                case 'C': baseMinus = 'G'; break;
+                case 'G': baseMinus = 'C'; break;
+                case 'T': baseMinus = 'A'; break;
+                default: break;
+            }
+            
+            //cout << baseMinus;
+            
+            if ( prefixEqual && baseMinus > seq[i] )
+            {
+                useRevComp = false;
+                break;
+            }
+            
+            if ( prefixEqual && baseMinus < seq[i] )
+            {
+                prefixEqual = false;
+            }
+            
+            seqMinus[i] = baseMinus;
+        }
+        
+        //cout << endl;
+        //cout << seq << endl;
+        
+        if ( useRevComp )
+        {
+            seq = seqMinus;
+        }
+        else
+        {
+            canonical = false;
+        }
+        
+        //for ( int i = 0; i < length; i++ ) { cout << *(seq + i); } cout << endl << endl;
+    }
     
 #ifdef ARCH_32
     uint32_t data[4];
@@ -586,7 +638,12 @@ Sketch::hash_t getHash(const char * seq, int length)
     MurmurHash3_x64_128(seq, length, seed, data);
     hash = data[0];
 #endif    
-
+    
+    if ( canonical )
+    {
+        delete [] seq;
+    }
+    
     return hash;
 }
 
