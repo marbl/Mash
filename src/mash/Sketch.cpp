@@ -529,6 +529,24 @@ void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> &
         }
     }
     
+    char * seqMinus = new char[length];
+    
+    for ( int i = 0; i < length; i++ )
+    {
+        char baseMinus = seq[length - i - 1];
+        
+        switch ( baseMinus )
+        {
+            case 'A': baseMinus = 'T'; break;
+            case 'C': baseMinus = 'G'; break;
+            case 'G': baseMinus = 'C'; break;
+            case 'T': baseMinus = 'A'; break;
+            default: break;
+        }
+        
+        seqMinus[i] = baseMinus;
+    }
+    
     for ( int i = 0; i < length - kmerSize + 1; i++ )
     {
         // repeatedly skip kmers with bad characters
@@ -550,7 +568,32 @@ void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> &
             break;
         }
         
-        Sketch::hash_t hash = getHash(seq + i, kmerSize, true);
+        bool useRevComp = true;
+        bool prefixEqual = true;
+    
+        for ( int j = 0; j < kmerSize; j++ )
+        {
+            char base = seq[i + j];
+            char baseMinus = seqMinus[length - i - kmerSize + j];
+            
+            //cout << base << '\t' << baseMinus << endl;
+            if ( prefixEqual && baseMinus > base )
+            {
+                useRevComp = false;
+                break;
+            }
+            
+            if ( prefixEqual && baseMinus < base )
+            {
+                prefixEqual = false;
+            }
+        }
+        
+        //for ( int j = i; j < i + kmerSize; j++ ) { cout << *(seq + j); } cout << endl;
+        
+        Sketch::hash_t hash = getHash(useRevComp ? seqMinus + length - i - kmerSize : seq + i, kmerSize, true);
+        
+        //cout << endl;
         
         if
         (
@@ -571,63 +614,15 @@ void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> &
             }
         }
     }
+    
+    delete [] seqMinus;
 }
 
 Sketch::hash_t getHash(const char * seq, int length, bool canonical)
 {
     Sketch::hash_t hash = 0;
     
-    if ( canonical )
-    {
-        //for ( int i = 0; i < length; i++ ) { cout << *(seq + i); } cout << endl;
-        
-        char * seqMinus = new char[length];
-        bool useRevComp = true;
-        bool prefixEqual = true;
-        
-        for ( int i = 0; i < length; i++ )
-        {
-            char baseMinus = seq[length - i - 1];
-            
-            switch ( baseMinus )
-            {
-                case 'A': baseMinus = 'T'; break;
-                case 'C': baseMinus = 'G'; break;
-                case 'G': baseMinus = 'C'; break;
-                case 'T': baseMinus = 'A'; break;
-                default: break;
-            }
-            
-            //cout << baseMinus;
-            
-            if ( prefixEqual && baseMinus > seq[i] )
-            {
-                useRevComp = false;
-                break;
-            }
-            
-            if ( prefixEqual && baseMinus < seq[i] )
-            {
-                prefixEqual = false;
-            }
-            
-            seqMinus[i] = baseMinus;
-        }
-        
-        //cout << endl;
-        //cout << seq << endl;
-        
-        if ( useRevComp )
-        {
-            seq = seqMinus;
-        }
-        else
-        {
-            canonical = false;
-        }
-        
-        //for ( int i = 0; i < length; i++ ) { cout << *(seq + i); } cout << endl << endl;
-    }
+    //for ( int i = 0; i < length; i++ ) { cout << *(seq + i); } cout << endl;
     
 #ifdef ARCH_32
     uint32_t data[4];
@@ -638,11 +633,6 @@ Sketch::hash_t getHash(const char * seq, int length, bool canonical)
     MurmurHash3_x64_128(seq, length, seed, data);
     hash = data[0];
 #endif    
-    
-    if ( canonical )
-    {
-        delete [] seq;
-    }
     
     return hash;
 }
