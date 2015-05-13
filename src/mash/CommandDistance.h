@@ -10,17 +10,18 @@ public:
     
     struct CompareInput
     {
-        CompareInput(const Sketch::Hash_set & minHashesRefNew, const std::string nameRefNew, const std::string fileNew, int kmerSizeNew, int minsNew, bool concatNew)
+        CompareInput(const Sketch & sketchRefNew, Sketch * sketchQueryNew, const std::string fileNew, int kmerSizeNew, int minsNew, bool concatNew)
             :
-            minHashesRef(minHashesRefNew),
-            nameRef(nameRefNew),
+            sketchRef(sketchRefNew),
+            sketchQuery(sketchQueryNew),
             file(fileNew),
             kmerSize(kmerSizeNew),
             mins(minsNew),
             concat(concatNew)
             {}
         
-        const Sketch::Hash_set & minHashesRef;
+        const Sketch & sketchRef;
+        Sketch * sketchQuery;
         std::string nameRef;
         const std::string file;
         int kmerSize;
@@ -33,10 +34,10 @@ public:
         struct PairOutput
         {
             float score;
-            std::string file;
+            std::string nameRef;
+            std::string nameQuery;
         };
         
-        std::string nameRef;
         std::vector<PairOutput> pairs;
     };
     

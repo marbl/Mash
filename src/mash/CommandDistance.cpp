@@ -39,9 +39,9 @@ int CommandDistance::run() const
     
     if ( hasSuffix(fileReference, suffixSketch) )
     {
-        if ( options.at("kmer").active || options.at("mins").active || options.at("concat").active )
+        if ( options.at("kmer").active || options.at("mins").active )
         {
-            cerr << "ERROR: The options " << options.at("kmer").identifier << ", " << options.at("mins").identifier << " and " << options.at("concat").identifier << " cannot be used when a sketch is provided; these are inherited from the sketch.\n";
+            cerr << "ERROR: The options " << options.at("kmer").identifier << " and " << options.at("mins").identifier << " cannot be used when a sketch is provided; these are inherited from the sketch.\n";
             return 1;
         }
         
@@ -50,7 +50,7 @@ int CommandDistance::run() const
     else
     {
         bool sketchFileExists = sketch.initHeaderFromBaseIfValid(fileReference, false);
-    
+        
         if
         (
             (options.at("kmer").active && kmerSize != sketch.getKmerSize()) ||
@@ -59,7 +59,7 @@ int CommandDistance::run() const
         {
             sketchFileExists = false;
         }
-    
+        
         if ( false && sketchFileExists )
         {
             sketch.initFromBase(fileReference, false);
@@ -70,7 +70,7 @@ int CommandDistance::run() const
         {
             vector<string> refArgVector;
             refArgVector.push_back(fileReference);
-        
+            
             //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
             cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...\n";
             
@@ -91,38 +91,39 @@ int CommandDistance::run() const
     
     for ( int i = 1; i < arguments.size(); i++ )
     {
+        // If the input is a sketch file, load in the main thread; otherwise,
+        // leave it to the child. Either way, the child will delete.
+        //
+        Sketch * sketchQuery = new Sketch();
+        
         if ( hasSuffix(arguments[i], suffixSketch) )
         {
-            Sketch sketchQuery;
-            sketchQuery.initFromCapnp(arguments[i].c_str(), true);
+            // init header to check params
+            //
+            sketchQuery->initFromCapnp(arguments[i].c_str(), true);
             
-            if ( sketchQuery.getKmerSize() != sketch.getKmerSize() )
+            if ( sketchQuery->getKmerSize() != sketch.getKmerSize() )
             {
-                cerr << "\nWARNING: The query sketch " << arguments[i] << " has a kmer size (" << sketchQuery.getKmerSize() << ") that does not match the reference sketch (" << sketch.getKmerSize() << "). This query will be skipped.\n\n";
+                cerr << "\nWARNING: The query sketch " << arguments[i] << " has a kmer size (" << sketchQuery->getKmerSize() << ") that does not match the reference sketch (" << sketch.getKmerSize() << "). This query will be skipped.\n\n";
                 continue;
             }
             
-            if ( sketchQuery.getMinHashesPerWindow() != sketch.getMinHashesPerWindow() )
+            if ( sketchQuery->getMinHashesPerWindow() != sketch.getMinHashesPerWindow() )
             {
-                cerr << "\nWARNING: The query sketch " << arguments[i] << " has a min-hash count (" << sketchQuery.getMinHashesPerWindow() << ") that does not match the reference sketch (" << sketch.getMinHashesPerWindow() << "). This query will be skipped.\n\n";
+                cerr << "\nWARNING: The query sketch " << arguments[i] << " has a min-hash count (" << sketchQuery->getMinHashesPerWindow() << ") that does not match the reference sketch (" << sketch.getMinHashesPerWindow() << "). This query will be skipped.\n\n";
                 continue;
             }
             
-            if ( sketchQuery.getConcatenated() != sketch.getConcatenated() )
-            {
-                cerr << "\nWARNING: The query sketch " << arguments[i] << " is concatenated, but the reference is not. This query will be skipped.\n\n";
-                continue;
-            }
+            // init fully
+            //
+            sketchQuery->initFromCapnp(arguments[i].c_str());
         }
         
-        for ( int j = 0; j < sketch.getReferenceCount(); j++ )
-        {
-            threadPool.runWhenThreadAvailable(new CompareInput(sketch.getReference(j).hashes, sketch.getReference(j).name, arguments[i], sketch.getKmerSize(), sketch.getMinHashesPerWindow(), sketch.getConcatenated()));
+        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, arguments[i], sketch.getKmerSize(), sketch.getMinHashesPerWindow(), concat));
         
-            while ( threadPool.outputAvailable() )
-            {
-                writeOutput(threadPool.popOutputWhenAvailable());
-            }
+        while ( threadPool.outputAvailable() )
+        {
+            writeOutput(threadPool.popOutputWhenAvailable());
         }
     }
     
@@ -138,7 +139,7 @@ void CommandDistance::writeOutput(CompareOutput * output) const
 {
     for ( int i = 0; i < output->pairs.size(); i++ )
     {
-        cout << output->pairs.at(i).score << '\t' << output->nameRef << '\t' << output->pairs.at(i).file << endl;
+        cout << output->pairs.at(i).score << '\t' << output->pairs.at(i).nameRef << '\t' << output->pairs.at(i).nameQuery << endl;
     }
     
     delete output;
@@ -146,62 +147,68 @@ void CommandDistance::writeOutput(CompareOutput * output) const
 
 CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
 {
-    const Sketch::Hash_set & minHashesRef = data->minHashesRef;
-    const string file = data->file;
+    const Sketch & sketchRef = data->sketchRef;
+    Sketch * sketchQuery = data->sketchQuery;
     
     CommandDistance::CompareOutput * output = new CommandDistance::CompareOutput();
-    Sketch sketch;
     
-    if ( hasSuffix(file, suffixSketch) )
+    if ( sketchQuery->getReferenceCount() == 0 )
     {
-        sketch.initFromCapnp(file.c_str());
-    }
-    else
-    {
+        // input was sequence file; sketch now
+        
         vector<string> fileVector;
-        fileVector.push_back(file);
-    
-        sketch.initFromSequence(fileVector, data->kmerSize, data->mins, false, 0, data->concat);
+        fileVector.push_back(data->file);
+        
+        sketchQuery->initFromSequence(fileVector, data->kmerSize, data->mins, false, 0, data->concat);
     }
     
-    output->nameRef = data->nameRef;
-    output->pairs.resize(sketch.getReferenceCount());
+    output->pairs.resize(sketchRef.getReferenceCount() * sketchQuery->getReferenceCount());
     
-    for ( int i = 0; i < sketch.getReferenceCount(); i++ )
+    for ( int i = 0; i < sketchQuery->getReferenceCount(); i++ )
     {
-        int common = 0;
+        const Sketch::Hash_set & minHashesQuery = sketchQuery->getReference(i).hashes;
         
-        const Sketch::Hash_set & minHashes = sketch.getReference(i).hashes;
-        
-        for ( Sketch::Hash_set::const_iterator i = minHashes.begin(); i != minHashes.end(); i++ )
+        for ( int j = 0; j < sketchRef.getReferenceCount(); j++ )
         {
-            if ( minHashesRef.count(*i) == 1 )
+            int common = 0;
+            
+            const Sketch::Hash_set & minHashesRef = sketchRef.getReference(j).hashes;
+            
+            for ( Sketch::Hash_set::const_iterator k = minHashesQuery.begin(); k != minHashesQuery.end(); k++ )
             {
-                common++;
+                if ( minHashesRef.count(*k) == 1 )
+                {
+                    common++;
+                }
             }
-        }
-        
-        int denominator;
-        
-        if ( minHashesRef.size() >= data->mins && minHashes.size() >= data->mins )
-        {
-            denominator = data->mins;
-        }
-        else
-        {
-            if ( minHashesRef.size() > minHashes.size() )
+            
+            int denominator;
+            
+            if ( minHashesRef.size() >= data->mins && minHashesQuery.size() >= data->mins )
             {
-                denominator = minHashesRef.size();
+                denominator = data->mins;
             }
             else
             {
-                denominator = minHashes.size();
+                if ( minHashesRef.size() > minHashesQuery.size() )
+                {
+                    denominator = minHashesRef.size();
+                }
+                else
+                {
+                    denominator = minHashesQuery.size();
+                }
             }
+            
+            int pairIndex = i * sketchRef.getReferenceCount() + j;
+            
+            output->pairs[pairIndex].score = float(common) / denominator;
+            output->pairs[pairIndex].nameRef = sketchRef.getReference(j).name;
+            output->pairs[pairIndex].nameQuery = sketchQuery->getReference(i).name;
         }
-        
-        output->pairs[i].score = float(common) / denominator;
-        output->pairs[i].file = sketch.getReference(i).name;
     }
+    
+    delete data->sketchQuery;
     
     return output;
 }
