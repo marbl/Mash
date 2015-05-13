@@ -269,6 +269,11 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int 
             if ( ! concat )
             {
                 references.resize(references.size() + 1);
+                
+                while ( minHashesQueue.size() )
+                {
+                    minHashesQueue.pop();
+                }
             }
             
             if ( verbosity > 0 && windowed ) cout << '>' << seq->name.s << " (" << l << "nt)" << endl << endl;
