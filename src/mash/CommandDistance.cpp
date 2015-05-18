@@ -193,7 +193,7 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
             
             int pairIndex = i * sketchRef.getReferenceCount() + j;
             
-            output->pairs[pairIndex].score = float(common) / minHashCount;
+            output->pairs[pairIndex].score = 1. - float(common) / minHashCount;
             output->pairs[pairIndex].nameRef = sketchRef.getReference(j).name;
             output->pairs[pairIndex].nameQuery = sketchQuery->getReference(i).name;
         }
