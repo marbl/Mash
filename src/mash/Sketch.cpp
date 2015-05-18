@@ -14,6 +14,7 @@
 #include "Command.h" // TEMP for column printing
 #include <sys/stat.h>
 #include <signal.h>
+#include <algorithm>
 
 #define SET_BINARY_MODE(file)
 #define CHUNK 16384
