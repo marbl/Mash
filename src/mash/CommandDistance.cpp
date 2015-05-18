@@ -174,11 +174,11 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
             
             if ( refSmaller )
             {
-                sketchRef.getMinHashesSubsetByReference(j, minHashCount, minHashesSubset);
+                sketchQuery->getMinHashesSubsetByReference(i, minHashCount, minHashesSubset);
             }
             else
             {
-                sketchQuery->getMinHashesSubsetByReference(i, minHashCount, minHashesSubset);
+                sketchRef.getMinHashesSubsetByReference(j, minHashCount, minHashesSubset);
             }
             
             int common = 0;
