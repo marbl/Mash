@@ -10,13 +10,13 @@ public:
     
     struct CompareInput
     {
-        CompareInput(const Sketch & sketchRefNew, Sketch * sketchQueryNew, const std::string fileNew, int kmerSizeNew, int minsNew, bool concatNew)
+        CompareInput(const Sketch & sketchRefNew, Sketch * sketchQueryNew, const std::string fileNew, int kmerSizeNew, float factorNew, bool concatNew)
             :
             sketchRef(sketchRefNew),
             sketchQuery(sketchQueryNew),
             file(fileNew),
             kmerSize(kmerSizeNew),
-            mins(minsNew),
+            factor(factorNew),
             concat(concatNew)
             {}
         
@@ -25,7 +25,7 @@ public:
         std::string nameRef;
         const std::string file;
         int kmerSize;
-        int mins;
+        float factor;
         bool concat;
     };
     

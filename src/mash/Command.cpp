@@ -77,14 +77,13 @@ void Command::addOption(string name, Option option)
 Command::Command()
 {
     addAvailableOption("help", Option(Option::Boolean, "h", "Help", ""));
-    addAvailableOption("kmer", Option(Option::Integer, "k", "Kmer size. Hashes will be based on strings of this many nucleotides.", "11", 1, 32));
+    addAvailableOption("kmer", Option(Option::Integer, "k", "Kmer size. Hashes will be based on strings of this many nucleotides.", "15", 1, 32));
     addAvailableOption("windowed", Option(Option::Boolean, "w", "Windowed", ""));
     addAvailableOption("window", Option(Option::Integer, "l", "Window length. Hashes that are minima in any window of this size will be stored.", "1000"));
-    addAvailableOption("mins", Option(Option::Integer, "m", "Min-hashes (not used with -w)", "10000"));
-    addAvailableOption("minsWindowed", Option(Option::Integer, "n", "Min-hashes per window (only used with -w).", "10"));
+    addAvailableOption("factor", Option(Option::Integer, "c", "Compression level. The number of min-hashes in each sketch will be the total number of kmers divided by this number.", "100"));
     addAvailableOption("verbose", Option(Option::Boolean, "v", "Verbose", ""));
     addAvailableOption("silent", Option(Option::Boolean, "s", "Silent", ""));
-    addAvailableOption("concat", Option(Option::Boolean, "c", "Concatenate multi-fasta seqeunces (and use files for names). Kmers across boundaries will not be considered. Not compatible with -w.", ""));
+    addAvailableOption("concat", Option(Option::Boolean, "f", "Sketch whole files, rather than individual sequences. Not compatible with -w.", ""));
     addAvailableOption("threads", Option(Option::Integer, "p", "Parallelism. This many threads will be spawned, each one handling on query sequence at a time.", "1"));
     addAvailableOption("pacbio", Option(Option::Boolean, "pacbio", "Use default settings for PacBio sequences.", ""));
     addAvailableOption("illumina", Option(Option::Boolean, "illumina", "Use default settings for Illumina sequences.", ""));

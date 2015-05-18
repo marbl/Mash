@@ -16,7 +16,7 @@ CommandDistance::CommandDistance()
     useOption("help");
     useOption("threads");
     useOption("kmer");
-    useOption("mins");
+    useOption("factor");
     useOption("concat");
 }
 
@@ -30,7 +30,7 @@ int CommandDistance::run() const
     
     int threads = options.at("threads").getArgumentAsNumber();
     int kmerSize = options.at("kmer").getArgumentAsNumber();
-    int mins = options.at("mins").getArgumentAsNumber();
+    float factor = options.at("factor").getArgumentAsNumber();
     bool concat = options.at("concat").active;
     
     Sketch sketch;
@@ -39,9 +39,9 @@ int CommandDistance::run() const
     
     if ( hasSuffix(fileReference, suffixSketch) )
     {
-        if ( options.at("kmer").active || options.at("mins").active )
+        if ( options.at("kmer").active )
         {
-            cerr << "ERROR: The options " << options.at("kmer").identifier << " and " << options.at("mins").identifier << " cannot be used when a sketch is provided; these are inherited from the sketch.\n";
+            cerr << "ERROR: The option " << options.at("kmer").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch.\n";
             return 1;
         }
         
@@ -53,8 +53,7 @@ int CommandDistance::run() const
         
         if
         (
-            (options.at("kmer").active && kmerSize != sketch.getKmerSize()) ||
-            (options.at("mins").active && mins != sketch.getMinHashesPerWindow())
+            (options.at("kmer").active && kmerSize != sketch.getKmerSize())
         )
         {
             sketchFileExists = false;
@@ -64,7 +63,6 @@ int CommandDistance::run() const
         {
             sketch.initFromBase(fileReference, false);
             kmerSize = sketch.getKmerSize();
-            mins = sketch.getMinHashesPerWindow();
         }
         else
         {
@@ -74,7 +72,7 @@ int CommandDistance::run() const
             //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
             cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...\n";
             
-            sketch.initFromSequence(refArgVector, kmerSize, mins, false, 0, concat);
+            sketch.initFromSequence(refArgVector, kmerSize, factor, false, 0, concat);
             /*
             if ( sketch.writeToFile() )
             {
@@ -108,18 +106,12 @@ int CommandDistance::run() const
                 continue;
             }
             
-            if ( sketchQuery->getMinHashesPerWindow() != sketch.getMinHashesPerWindow() )
-            {
-                cerr << "\nWARNING: The query sketch " << arguments[i] << " has a min-hash count (" << sketchQuery->getMinHashesPerWindow() << ") that does not match the reference sketch (" << sketch.getMinHashesPerWindow() << "). This query will be skipped.\n\n";
-                continue;
-            }
-            
             // init fully
             //
             sketchQuery->initFromCapnp(arguments[i].c_str());
         }
         
-        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, arguments[i], sketch.getKmerSize(), sketch.getMinHashesPerWindow(), concat));
+        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, arguments[i], sketch.getKmerSize(), sketch.getFactor(), concat));
         
         while ( threadPool.outputAvailable() )
         {
@@ -159,50 +151,49 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
         vector<string> fileVector;
         fileVector.push_back(data->file);
         
-        sketchQuery->initFromSequence(fileVector, data->kmerSize, data->mins, false, 0, data->concat);
+        sketchQuery->initFromSequence(fileVector, data->kmerSize, data->factor, false, 0, data->concat);
     }
     
     output->pairs.resize(sketchRef.getReferenceCount() * sketchQuery->getReferenceCount());
     
     for ( int i = 0; i < sketchQuery->getReferenceCount(); i++ )
     {
-        const Sketch::Hash_set & minHashesQuery = sketchQuery->getReference(i).hashes;
-        
         for ( int j = 0; j < sketchRef.getReferenceCount(); j++ )
         {
+            // Keep a reference the smaller of the two hash vectors (whether ref or query)
+            // and get a set of the same size from the other so they can be queried.
+            
+            bool refSmaller = sketchRef.getReference(j).hashesSorted.size() < sketchQuery->getReference(i).hashesSorted.size();
+            
+            const vector<Sketch::hash_t> & hashesSorted = refSmaller ?
+                sketchRef.getReference(j).hashesSorted :
+                sketchQuery->getReference(i).hashesSorted;
+            
+            int minHashCount = hashesSorted.size();
+            Sketch::Hash_set minHashesSubset;
+            
+            if ( refSmaller )
+            {
+                sketchRef.getMinHashesSubsetByReference(j, minHashCount, minHashesSubset);
+            }
+            else
+            {
+                sketchQuery->getMinHashesSubsetByReference(i, minHashCount, minHashesSubset);
+            }
+            
             int common = 0;
             
-            const Sketch::Hash_set & minHashesRef = sketchRef.getReference(j).hashes;
-            
-            for ( Sketch::Hash_set::const_iterator k = minHashesQuery.begin(); k != minHashesQuery.end(); k++ )
+            for ( int k = 0; k < minHashCount; k++ )
             {
-                if ( minHashesRef.count(*k) == 1 )
+                if ( minHashesSubset.count(hashesSorted.at(k)) == 1 )
                 {
                     common++;
                 }
             }
             
-            int denominator;
-            
-            if ( minHashesRef.size() >= data->mins && minHashesQuery.size() >= data->mins )
-            {
-                denominator = data->mins;
-            }
-            else
-            {
-                if ( minHashesRef.size() > minHashesQuery.size() )
-                {
-                    denominator = minHashesRef.size();
-                }
-                else
-                {
-                    denominator = minHashesQuery.size();
-                }
-            }
-            
             int pairIndex = i * sketchRef.getReferenceCount() + j;
             
-            output->pairs[pairIndex].score = float(common) / denominator;
+            output->pairs[pairIndex].score = float(common) / minHashCount;
             output->pairs[pairIndex].nameRef = sketchRef.getReference(j).name;
             output->pairs[pairIndex].nameQuery = sketchQuery->getReference(i).name;
         }

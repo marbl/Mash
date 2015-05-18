@@ -21,7 +21,7 @@ CommandFind::CommandFind()
     useOption("help");
     useOption("kmer");
     useOption("window");
-    useOption("minsWindowed");
+    useOption("factor");
     useOption("threads");
     addOption("threshold", Option(Option::Number, "t", "Threshold. This fraction of the query sequence's min-hashes must appear in a query-sized window of a reference sequence for the match to be reported.", "0.2", 0.0, 1.0));
     addOption("best", Option(Option::Integer, "b", "Best hit count. This many of the best hits will be reported (0 to report all hits). Score ties are broken by keeping the hit to the earlier reference or to the left-most position.", "0"));
@@ -63,15 +63,16 @@ int CommandFind::run() const
     else
     {
         int kmerSize = options.at("kmer").getArgumentAsNumber();
-        int mins = options.at("minsWindowed").getArgumentAsNumber();
+        float factor = options.at("factor").getArgumentAsNumber();
         int windowSize = options.at("window").getArgumentAsNumber();
+        int mins = windowSize / factor;
         
         bool sketchFileExists = sketch.initHeaderFromBaseIfValid(fileReference, true);
         
         if
         (
             (options.at("kmer").active && kmerSize != sketch.getKmerSize()) ||
-            (options.at("minsWindowed").active && mins != sketch.getMinHashesPerWindow()) ||
+            (options.at("factor").active && mins != sketch.getMinHashesPerWindow()) ||
             (options.at("window").active && windowSize != sketch.getWindowSize())
         )
         {
@@ -93,7 +94,7 @@ int CommandFind::run() const
             //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
             cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...\n";
             
-            sketch.initFromSequence(refArgVector, kmerSize, mins, true, windowSize, false);
+            sketch.initFromSequence(refArgVector, kmerSize, factor, true, windowSize, false);
         	/*
             if ( sketch.writeToFile() )
             {

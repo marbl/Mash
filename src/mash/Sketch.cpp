@@ -28,6 +28,18 @@ const vector<Sketch::Locus> & Sketch::getLociByHash(hash_t hash) const
     return lociByHash.at(hash);
 }
 
+void Sketch::getMinHashesSubsetByReference(int reference, int countToGet, Hash_set & minHashesToFill) const
+{
+    const vector<hash_t> & hashesSorted = references.at(reference).hashesSorted;
+    
+    minHashesToFill.clear();
+    
+    for ( int i = 0; i < countToGet; i++ )
+    {
+        minHashesToFill.insert(hashesSorted.at(i));
+    }
+}
+
 int Sketch::getReferenceIndex(string id) const
 {
     if ( referenceIndecesById.count(id) == 1 )
@@ -160,9 +172,11 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly)
         
         capnp::List<uint64_t>::Reader hashesReader = referenceReader.getHashes();
         
+        references[i].hashesSorted.resize(hashesReader.size());
+        
         for ( int j = 0; j < hashesReader.size(); j++ )
         {
-            references[i].hashes.insert(hashesReader[j]);
+            references[i].hashesSorted[j] = hashesReader[j];
         }
     }
     
@@ -223,21 +237,24 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly)
     return 0;
 }
 
-int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int minHashesPerWindowNew, bool windowedNew, int windowSizeNew, bool concat, int verbosity)
+int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, float factorNew, bool windowedNew, int windowSizeNew, bool concat, int verbosity)
 {
     kmerSize = kmerSizeNew;
-    minHashesPerWindow = minHashesPerWindowNew;
+    factor = factorNew;
     windowSize = windowSizeNew;
     windowed = windowedNew;
+    minHashesPerWindow = windowed ? windowSize / factor : 0;
     concatenated = concat;
-    
-    priority_queue<Sketch::hash_t> minHashesQueue; // only used for non-windowed
     
     int l;
     int count = 0;
     
     for ( int i = 0; i < files.size(); i++ )
     {
+        Hash_set minHashes;
+        priority_queue<Sketch::hash_t> minHashesQueue; // only used for non-windowed
+        long long int totalSize = 0;
+        
         gzFile fp = gzopen(files[i].c_str(), "r");
         
         if ( fp == NULL )
@@ -265,10 +282,15 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int 
             {
                 positionHashesByReference.resize(count + 1);
             }
+            else
+            {
+                totalSize += l;
+            }
             
             if ( ! concat )
             {
                 references.resize(references.size() + 1);
+                minHashes.clear();
                 
                 while ( minHashesQueue.size() )
                 {
@@ -301,11 +323,17 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int 
             }
             else
             {
-                addMinHashes(reference.hashes, minHashesQueue, seq->seq.s, l, kmerSize, minHashesPerWindow);
+                addMinHashes(minHashes, minHashesQueue, seq->seq.s, l, kmerSize, totalSize / factor);
             }
             
             if ( ! concat )
             {
+                if ( ! windowed )
+                {
+                    totalSize = 0;
+                    setMinHashesForReference(references.size() - 1, minHashes);
+                }
+                
                 count++;
             }
         }
@@ -318,6 +346,11 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int 
         
         if ( concat )
         {
+            if ( ! windowed )
+            {
+                setMinHashesForReference(references.size() - 1, minHashes);
+            }
+            
             count++;
         }
         
@@ -447,16 +480,16 @@ int Sketch::writeToCapnp(const char * file) const
         referenceBuilder.setComment(references[i].comment);
         referenceBuilder.setLength(references[i].length);
         
-        if ( references[i].hashes.size() != 0 )
+        if ( references[i].hashesSorted.size() != 0 )
         {
-            const Hash_set & hashes = references[i].hashes;
+            const vector<hash_t> & hashes = references[i].hashesSorted;
             capnp::List<uint64_t>::Builder hashesBuilder = referenceBuilder.initHashes(hashes.size());
             
             int index = 0;
             
-            for ( Hash_set::const_iterator j = hashes.begin(); j != hashes.end(); j++ )
+            for ( int j = 0; j != hashes.size(); j++ )
             {
-                hashesBuilder.set(index, *j);
+                hashesBuilder.set(index, hashes.at(j));
                 index++;
             }
         }
@@ -518,6 +551,19 @@ void Sketch::createIndex()
     }
 }
 
+void Sketch::setMinHashesForReference(int referenceIndex, const Hash_set & hashes)
+{
+    Reference & reference = references[referenceIndex];
+    reference.hashesSorted.clear();
+    
+    for ( Hash_set::const_iterator i = hashes.begin(); i != hashes.end(); i++ )
+    {
+        reference.hashesSorted.push_back(*i);
+    }
+    
+    sort(reference.hashesSorted.begin(), reference.hashesSorted.end());
+}
+
 void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins)
 {
     // Determine the 'mins' smallest hashes, including those already provided
@@ -534,28 +580,13 @@ void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> &
         }
     }
     
-    char * seqMinus = new char[length];
-    
-    for ( int i = 0; i < length; i++ )
-    {
-        char baseMinus = seq[length - i - 1];
-        
-        switch ( baseMinus )
-        {
-            case 'A': baseMinus = 'T'; break;
-            case 'C': baseMinus = 'G'; break;
-            case 'G': baseMinus = 'C'; break;
-            case 'T': baseMinus = 'A'; break;
-            default: break;
-        }
-        
-        seqMinus[i] = baseMinus;
-    }
+    char * seqRev = new char[length];
+    reverseComplement(seq, seqRev, length);
     
     for ( int i = 0; i < length - kmerSize + 1; i++ )
     {
         // repeatedly skip kmers with bad characters
-        //
+        
         for ( int j = i; j < i + kmerSize && i + kmerSize <= length; j++ )
         {
             char c = seq[j];
@@ -575,13 +606,17 @@ void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> &
         
         bool useRevComp = true;
         bool prefixEqual = true;
-    
+        
+        bool debug = false;
+        if ( debug ) {for ( int j = i; j < i + kmerSize; j++ ) { cout << *(seq + j); } cout << endl;}
+        
         for ( int j = 0; j < kmerSize; j++ )
         {
             char base = seq[i + j];
-            char baseMinus = seqMinus[length - i - kmerSize + j];
+            char baseMinus = seqRev[length - i - kmerSize + j];
             
-            //cout << base << '\t' << baseMinus << endl;
+            if ( debug ) cout << baseMinus;
+            
             if ( prefixEqual && baseMinus > base )
             {
                 useRevComp = false;
@@ -594,11 +629,11 @@ void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> &
             }
         }
         
-        //for ( int j = i; j < i + kmerSize; j++ ) { cout << *(seq + j); } cout << endl;
+        if ( debug ) cout << endl;
         
-        Sketch::hash_t hash = getHash(useRevComp ? seqMinus + length - i - kmerSize : seq + i, kmerSize, true);
+        Sketch::hash_t hash = getHash(useRevComp ? seqRev + length - i - kmerSize : seq + i, kmerSize);
         
-        //cout << endl;
+        if ( debug ) cout << endl;
         
         if
         (
@@ -620,10 +655,10 @@ void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> &
         }
     }
     
-    delete [] seqMinus;
+    delete [] seqRev;
 }
 
-Sketch::hash_t getHash(const char * seq, int length, bool canonical)
+Sketch::hash_t getHash(const char * seq, int length)
 {
     Sketch::hash_t hash = 0;
     
@@ -961,6 +996,24 @@ bool hasSuffix(string const & whole, string const & suffix)
     return false;
 }
 
+void reverseComplement(const char * src, char * dest, int length)
+{
+    for ( int i = 0; i < length; i++ )
+    {
+        char base = src[i];
+        
+        switch ( base )
+        {
+            case 'A': base = 'T'; break;
+            case 'C': base = 'G'; break;
+            case 'G': base = 'C'; break;
+            case 'T': base = 'A'; break;
+            default: break;
+        }
+        
+        dest[length - i - 1] = base;
+    }
+}
 
 // The following functions are adapted from http://www.zlib.net/zpipe.c
 

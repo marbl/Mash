@@ -15,8 +15,7 @@ CommandSketch::CommandSketch()
     useOption("kmer");
     useOption("windowed");
     useOption("window");
-    useOption("mins");
-    useOption("minsWindowed");
+    useOption("factor");
     useOption("verbose");
     useOption("silent");
     useOption("concat");
@@ -36,7 +35,7 @@ int CommandSketch::run() const
     
     int kmer = options.at("kmer").getArgumentAsNumber();
     bool windowed = options.at("windowed").active;
-    int minHashesPerWindow = windowed ? options.at("minsWindowed").getArgumentAsNumber() : options.at("mins").getArgumentAsNumber();
+    float factor = options.at("factor").getArgumentAsNumber();
     int windowSize = options.at("window").getArgumentAsNumber();
     int verbosity = options.at("silent").active ? 0 : options.at("verbose").active ? 2 : 1;
     bool concat = options.at("concat").active;
@@ -49,11 +48,11 @@ int CommandSketch::run() const
     
     Sketch sketch;
     
-    sketch.initFromSequence(arguments, kmer, minHashesPerWindow, windowed, windowSize, concat, verbosity);
+    sketch.initFromSequence(arguments, kmer, factor, windowed, windowSize, concat, verbosity);
     
     string prefix = options.at("prefix").argument.length() > 0 ? options.at("prefix").argument : arguments[0];
     
-    sketch.writeToCapnp((prefix + (windowed ? suffixSketchWindowed : suffixSketch)).c_str());
+    //sketch.writeToCapnp((prefix + (windowed ? suffixSketchWindowed : suffixSketch)).c_str());
     
     return 0;
 }
