@@ -83,7 +83,7 @@ Command::Command()
     addAvailableOption("factor", Option(Option::Integer, "c", "Compression level. The number of min-hashes in each sketch will be the total number of kmers divided by this number.", "100"));
     addAvailableOption("verbose", Option(Option::Boolean, "v", "Verbose", ""));
     addAvailableOption("silent", Option(Option::Boolean, "s", "Silent", ""));
-    addAvailableOption("concat", Option(Option::Boolean, "f", "Sketch whole files, rather than individual sequences. Not compatible with -w.", ""));
+    addAvailableOption("concat", Option(Option::Boolean, "f", "Sketch whole files, rather than individual sequences.", ""));
     addAvailableOption("threads", Option(Option::Integer, "p", "Parallelism. This many threads will be spawned, each one handling on query sequence at a time.", "1"));
     addAvailableOption("pacbio", Option(Option::Boolean, "pacbio", "Use default settings for PacBio sequences.", ""));
     addAvailableOption("illumina", Option(Option::Boolean, "illumina", "Use default settings for Illumina sequences.", ""));

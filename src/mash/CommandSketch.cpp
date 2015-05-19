@@ -13,15 +13,15 @@ CommandSketch::CommandSketch()
     
     useOption("help");
     useOption("kmer");
-    useOption("windowed");
-    useOption("window");
+    //useOption("windowed");
+    //useOption("window");
     useOption("factor");
-    useOption("verbose");
-    useOption("silent");
+    //useOption("verbose");
+    //useOption("silent");
     useOption("concat");
-    useOption("illumina");
-    useOption("pacbio");
-    useOption("nanopore");
+    //useOption("illumina");
+    //useOption("pacbio");
+    //useOption("nanopore");
     addOption("prefix", Option(Option::File, "o", "Output prefix (first input file used if unspecified). The suffix '.msh' will be appended.", ""));
 }
 
@@ -34,16 +34,25 @@ int CommandSketch::run() const
     }
     
     int kmer = options.at("kmer").getArgumentAsNumber();
-    bool windowed = options.at("windowed").active;
+    bool windowed = false;//options.at("windowed").active;
     float factor = options.at("factor").getArgumentAsNumber();
-    int windowSize = options.at("window").getArgumentAsNumber();
-    int verbosity = options.at("silent").active ? 0 : options.at("verbose").active ? 2 : 1;
+    int windowSize = 0;//options.at("window").getArgumentAsNumber();
+    int verbosity = 0;//options.at("silent").active ? 0 : options.at("verbose").active ? 2 : 1;
     bool concat = options.at("concat").active;
     
     if ( concat && windowed )
     {
         cerr << "ERROR: " << options.at("concat").identifier << " and " << options.at("windowed").identifier << " are incompatible." << endl;
         return 1;
+    }
+    
+    for ( int i = 0; i < arguments.size(); i++ )
+    {
+        if ( hasSuffix(arguments[i], suffixSketch) )
+        {
+            cerr << "ERROR: " << arguments[i] << " looks like it is already sketched.\n";
+            exit(1);
+        }
     }
     
     Sketch sketch;
