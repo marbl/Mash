@@ -13,7 +13,6 @@
 #include <set>
 #include "Command.h" // TEMP for column printing
 #include <sys/stat.h>
-#include <signal.h>
 #include <algorithm>
 
 #define SET_BINARY_MODE(file)
@@ -59,84 +58,16 @@ void Sketch::initFromBase(const std::string & fileSeq, bool windowed)
     initFromCapnp(file.c_str());
 }
 
-void handler(int)
-{
-    exit(0);
-}
-
 int Sketch::initFromCapnp(const char * file, bool headerOnly)
 {
-    // use a pipe to decompress input to Cap'n Proto
-    
-    int fds[2];
-    int piped = pipe(fds);
-    
-    if ( piped < 0 )
-    {
-        cerr << "ERROR: could not open pipe for decompression\n";
-        return 1;
-    }
-    
-    int forked = fork();
-    
-    if ( forked < 0 )
-    {
-        cerr << "ERROR: could not fork for decompression" << endl;
-        return 1;
-    }
-    
-    void (* handlerOld)(int) = signal(SIGTERM, handler);
-    
-    if ( forked == 0 )
-    {
-        // read from zipped fd and write to pipe
-        
-        close(fds[0]); // other process's end of pipe
-        
-        int fd = open(file, O_RDONLY);
-        
-        if ( fd < 0 )
-        {
-            cerr << "ERROR: could not open " << file << " for reading." << endl;
-            kill(getppid(), SIGTERM);
-            exit(1);
-        }
-        
-        char buffer[1024];
-        
-        read(fd, buffer, capnpHeaderLength);
-        buffer[capnpHeaderLength] = 0;
-        
-        if ( strcmp(buffer, capnpHeader) != 0 )
-        {
-            cerr << "ERROR: '" << file << "' does not look like a mash index" << endl;
-            kill(getppid(), SIGTERM);
-            _Exit(1);
-        }
-        
-        int ret = inf(fd, fds[1]);
-        //
-        if (ret != Z_OK)
-        {
-            zerr(ret);
-            _Exit(ret);
-        }
-        
-        close(fd);
-        close(fds[1]);
-        _Exit(0);
-    }
-    
-    // read from pipe
-    
-    close(fds[1]); // other process's end of pipe
+    int fd = open(file, O_RDONLY);
     
     capnp::ReaderOptions readerOptions;
     
     readerOptions.traversalLimitInWords = 1000000000000;
     readerOptions.nestingLimit = 1000000;
     
-    capnp::StreamFdMessageReader * message = new capnp::StreamFdMessageReader(fds[0], readerOptions);
+    capnp::StreamFdMessageReader * message = new capnp::StreamFdMessageReader(fd, readerOptions);
     capnp::MinHash::Reader reader = message->getRoot<capnp::MinHash>();
     
     kmerSize = reader.getKmerSize();
@@ -146,8 +77,7 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly)
     
     if ( headerOnly )
     {
-        close(fds[0]);
-        kill(forked, SIGKILL);
+        close(fd);
         
         try
         {
@@ -229,11 +159,10 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly)
     
     cout << endl;
     */
-    close(fds[0]);
+    close(fd);
+    delete message;
     
     createIndex();
-    
-    signal(SIGTERM, handlerOld);
     
     return 0;
 }
@@ -410,61 +339,13 @@ bool Sketch::writeToFile() const
 
 int Sketch::writeToCapnp(const char * file) const
 {
-    // use a pipe to compress Cap'n Proto output
+    int fd = open(file, O_CREAT | O_WRONLY | O_TRUNC, 0644);
     
-    int fds[2];
-    int piped = pipe(fds);
-    
-    if ( piped < 0 )
+    if ( fd < 0 )
     {
-        cerr << "ERROR: could not open pipe for compression\n";
-        return 1;
+        cerr << "ERROR: could not open " << file << " for writing.\n";
+        exit(1);
     }
-    
-    int forked = fork();
-    
-    if ( forked < 0 )
-    {
-        cerr << "ERROR: could not fork for compression\n";
-        return 1;
-    }
-    
-    void (* handlerOld)(int) = signal(SIGTERM, handler);
-    
-    if ( forked == 0 )
-    {
-        // read from pipe and write to compressed file
-        
-        close(fds[1]); // other process's end of pipe
-        
-        int fd = open(file, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-        
-        if ( fd < 0 )
-        {
-            cerr << "ERROR: could not open " << file << " for writing.\n";
-            kill(getppid(), SIGTERM);
-            exit(1);
-        }
-        
-        // write header
-        //
-        write(fd, capnpHeader, capnpHeaderLength);
-        
-        int ret = def(fds[0], fd, Z_DEFAULT_COMPRESSION);
-        //
-        if (ret != Z_OK)
-        {
-            zerr(ret);
-            _Exit(ret);
-        }
-        
-        close(fds[0]);
-        _Exit(0);
-    }
-    
-    // write to pipe
-    
-    close(fds[0]); // other process's end of pipe
     
     capnp::MallocMessageBuilder message;
     capnp::MinHash::Builder builder = message.initRoot<capnp::MinHash>();
@@ -526,10 +407,8 @@ int Sketch::writeToCapnp(const char * file) const
     builder.setWindowSize(windowSize);
     builder.setConcatenated(concatenated);
     
-    writeMessageToFd(fds[1], message);
-    close(fds[1]);
-    
-    signal(SIGTERM, handlerOld);
+    writeMessageToFd(fd, message);
+    close(fd);
     
     return 0;
 }

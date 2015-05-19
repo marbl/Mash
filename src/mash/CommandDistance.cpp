@@ -103,6 +103,7 @@ int CommandDistance::run() const
             if ( sketchQuery->getKmerSize() != sketch.getKmerSize() )
             {
                 cerr << "\nWARNING: The query sketch " << arguments[i] << " has a kmer size (" << sketchQuery->getKmerSize() << ") that does not match the reference sketch (" << sketch.getKmerSize() << "). This query will be skipped.\n\n";
+                delete sketchQuery;
                 continue;
             }
             
