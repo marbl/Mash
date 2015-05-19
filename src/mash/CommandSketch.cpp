@@ -8,7 +8,7 @@ CommandSketch::CommandSketch()
 : Command()
 {
     name = "sketch";
-    description = "Create a reference sketch";
+    description = "Create a sketch, which is a reduced representation of a sequence or set of sequences (based on min-hashes) that can be used for fast distance calculations. By default, the output will be the input file with a '.msh' extension (see -o).";
     argumentString = "fast(a|q)[.gz] ...";
     
     useOption("help");
