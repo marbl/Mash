@@ -169,13 +169,13 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly)
     return 0;
 }
 
-int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, float errorNew, bool windowedNew, int windowSizeNew, bool concat, bool noncanonicalNew, int verbosity)
+int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int sketchSizeNew, bool windowedNew, int windowSizeNew, bool concat, bool noncanonicalNew, int verbosity)
 {
     kmerSize = kmerSizeNew;
-    error = errorNew;
+    error = 0;//errorNew;
     windowSize = windowSizeNew;
     windowed = windowedNew;
-    minHashesPerWindow = (1. / error) * (1. / error); // TODO: windowed?
+    minHashesPerWindow = sketchSizeNew; //(1. / error) * (1. / error); // TODO: windowed?
     concatenated = concat;
     noncanonical = noncanonicalNew;
     

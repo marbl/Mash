@@ -16,7 +16,7 @@ CommandDistance::CommandDistance()
     useOption("help");
     useOption("threads");
     useOption("kmer");
-    useOption("error");
+    useOption("sketchSize");
     useOption("concat");
     useOption("noncanonical");
     addOption("list", Option(Option::Boolean, "l", "Query files are lists of file names.", ""));
@@ -32,7 +32,7 @@ int CommandDistance::run() const
     
     int threads = options.at("threads").getArgumentAsNumber();
     int kmerSize = options.at("kmer").getArgumentAsNumber();
-    float error = options.at("error").getArgumentAsNumber();
+    int sketchSize = options.at("sketchSize").getArgumentAsNumber();
     bool concat = options.at("concat").active;
     bool list = options.at("list").active;
     bool noncanonical = options.at("noncanonical").active;
@@ -82,7 +82,7 @@ int CommandDistance::run() const
             //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
             cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...\n";
             
-            sketch.initFromSequence(refArgVector, kmerSize, error, false, 0, concat, noncanonical);
+            sketch.initFromSequence(refArgVector, kmerSize, sketchSize, false, 0, concat, noncanonical);
             /*
             if ( sketch.writeToFile() )
             {
@@ -143,7 +143,7 @@ int CommandDistance::run() const
             sketchQuery->initFromCapnp(queryFiles[i].c_str());
         }
         
-        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, queryFiles[i], sketch.getKmerSize(), sketch.getError(), concat, sketch.getNoncanonical()));
+        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, queryFiles[i], sketch.getKmerSize(), sketchSize, concat, sketch.getNoncanonical()));
         
         while ( threadPool.outputAvailable() )
         {
@@ -183,7 +183,7 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
         vector<string> fileVector;
         fileVector.push_back(data->file);
         
-        sketchQuery->initFromSequence(fileVector, data->kmerSize, data->error, false, 0, data->concat, data->noncanonical);
+        sketchQuery->initFromSequence(fileVector, data->kmerSize, data->sketchSize, false, 0, data->concat, data->noncanonical);
     }
     
     output->pairs.resize(sketchRef.getReferenceCount() * sketchQuery->getReferenceCount());

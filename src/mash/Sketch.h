@@ -79,7 +79,7 @@ public:
     bool hasLociByHash(hash_t hash) const {return lociByHash.count(hash);}
     void initFromBase(const std::string & file, bool windowed);
     int initFromCapnp(const char * file, bool headerOnly = false);
-    int initFromSequence(const std::vector<std::string> & files, int kmerSizeNew, float errorNew, bool windowedNew, int windowSizeNew, bool concat, bool noncanonicalNew, int verbosity = 0);
+    int initFromSequence(const std::vector<std::string> & files, int kmerSizeNew, int sketchSizeNew, bool windowedNew, int windowSizeNew, bool concat, bool noncanonicalNew, int verbosity = 0);
     bool initHeaderFromBaseIfValid(const std::string & file, bool windowed);
     bool writeToFile() const;
     int writeToCapnp(const char * file) const;

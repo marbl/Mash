@@ -15,7 +15,7 @@ CommandSketch::CommandSketch()
     useOption("kmer");
     //useOption("windowed");
     //useOption("window");
-    useOption("error");
+    useOption("sketchSize");
     //useOption("verbose");
     //useOption("silent");
     useOption("concat");
@@ -37,7 +37,7 @@ int CommandSketch::run() const
     
     int kmer = options.at("kmer").getArgumentAsNumber();
     bool windowed = false;//options.at("windowed").active;
-    float error = options.at("error").getArgumentAsNumber();
+    int sketchSize = options.at("sketchSize").getArgumentAsNumber();
     int windowSize = 0;//options.at("window").getArgumentAsNumber();
     int verbosity = 0;//options.at("silent").active ? 0 : options.at("verbose").active ? 2 : 1;
     bool concat = options.at("concat").active;
@@ -75,7 +75,7 @@ int CommandSketch::run() const
         }
     }
     
-    sketch.initFromSequence(files, kmer, error, windowed, windowSize, concat, noncanonical, verbosity);
+    sketch.initFromSequence(files, kmer, sketchSize, windowed, windowSize, concat, noncanonical, verbosity);
     
     string prefix = options.at("prefix").argument.length() > 0 ? options.at("prefix").argument : arguments[0];
     

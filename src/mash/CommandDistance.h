@@ -10,13 +10,13 @@ public:
     
     struct CompareInput
     {
-        CompareInput(const Sketch & sketchRefNew, Sketch * sketchQueryNew, const std::string fileNew, int kmerSizeNew, float errorNew, bool concatNew, bool noncanonicalNew)
+        CompareInput(const Sketch & sketchRefNew, Sketch * sketchQueryNew, const std::string fileNew, int kmerSizeNew, float sketchSizeNew, bool concatNew, bool noncanonicalNew)
             :
             sketchRef(sketchRefNew),
             sketchQuery(sketchQueryNew),
             file(fileNew),
             kmerSize(kmerSizeNew),
-            error(errorNew),
+            sketchSize(sketchSizeNew),
             concat(concatNew),
             noncanonical(noncanonicalNew)
             {}
@@ -26,7 +26,7 @@ public:
         std::string nameRef;
         const std::string file;
         int kmerSize;
-        float error;
+        int sketchSize;
         bool concat;
         bool noncanonical;
     };

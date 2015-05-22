@@ -82,6 +82,7 @@ Command::Command()
     addAvailableOption("windowed", Option(Option::Boolean, "w", "Windowed", ""));
     addAvailableOption("window", Option(Option::Integer, "l", "Window length. Hashes that are minima in any window of this size will be stored.", "1000"));
     addAvailableOption("error", Option(Option::Number, "e", "Error bound. The (maximum) number of min-hashes in each sketch will be one divided by this number squared.", "0.01"));
+    addAvailableOption("sketchSize", Option(Option::Integer, "s", "Sketch size. Each sketch will have at most this many unique min-hashes.", "10000"));
     addAvailableOption("verbose", Option(Option::Boolean, "v", "Verbose", ""));
     addAvailableOption("silent", Option(Option::Boolean, "s", "Silent", ""));
     addAvailableOption("concat", Option(Option::Boolean, "f", "Sketch whole files, rather than individual sequences.", ""));
