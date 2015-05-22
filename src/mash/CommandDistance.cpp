@@ -18,6 +18,7 @@ CommandDistance::CommandDistance()
     useOption("kmer");
     useOption("error");
     useOption("concat");
+    useOption("noncanonical");
     addOption("list", Option(Option::Boolean, "l", "Query files are lists of file names.", ""));
 }
 
@@ -34,6 +35,7 @@ int CommandDistance::run() const
     float error = options.at("error").getArgumentAsNumber();
     bool concat = options.at("concat").active;
     bool list = options.at("list").active;
+    bool noncanonical = options.at("noncanonical").active;
     
     Sketch sketch;
     
@@ -44,6 +46,12 @@ int CommandDistance::run() const
         if ( options.at("kmer").active )
         {
             cerr << "ERROR: The option " << options.at("kmer").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch.\n";
+            return 1;
+        }
+        
+        if ( options.at("noncanonical").active )
+        {
+            cerr << "ERROR: The option " << options.at("noncanonical").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch.\n";
             return 1;
         }
         
@@ -74,7 +82,7 @@ int CommandDistance::run() const
             //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
             cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...\n";
             
-            sketch.initFromSequence(refArgVector, kmerSize, error, false, 0, concat);
+            sketch.initFromSequence(refArgVector, kmerSize, error, false, 0, concat, noncanonical);
             /*
             if ( sketch.writeToFile() )
             {
@@ -123,12 +131,19 @@ int CommandDistance::run() const
                 continue;
             }
             
+            if ( sketchQuery->getNoncanonical() != sketch.getNoncanonical() )
+            {
+                cerr << "\nWARNING: The query sketch " << queryFiles[i] << " is " << (sketchQuery->getNoncanonical() ? "noncanonical" : "canonical") << " but the reference sketch is not. This query will be skipped.\n\n";
+                delete sketchQuery;
+                continue;
+            }
+            
             // init fully
             //
             sketchQuery->initFromCapnp(queryFiles[i].c_str());
         }
         
-        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, queryFiles[i], sketch.getKmerSize(), sketch.getError(), concat));
+        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, queryFiles[i], sketch.getKmerSize(), sketch.getError(), concat, sketch.getNoncanonical()));
         
         while ( threadPool.outputAvailable() )
         {
@@ -168,7 +183,7 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
         vector<string> fileVector;
         fileVector.push_back(data->file);
         
-        sketchQuery->initFromSequence(fileVector, data->kmerSize, data->error, false, 0, data->concat);
+        sketchQuery->initFromSequence(fileVector, data->kmerSize, data->error, false, 0, data->concat, data->noncanonical);
     }
     
     output->pairs.resize(sketchRef.getReferenceCount() * sketchQuery->getReferenceCount());

@@ -85,6 +85,7 @@ Command::Command()
     addAvailableOption("verbose", Option(Option::Boolean, "v", "Verbose", ""));
     addAvailableOption("silent", Option(Option::Boolean, "s", "Silent", ""));
     addAvailableOption("concat", Option(Option::Boolean, "f", "Sketch whole files, rather than individual sequences.", ""));
+    addAvailableOption("noncanonical", Option(Option::Boolean, "n", "Non-canonical. By default, canonical DNA kmers (alphabetical minima of forward-reverse pairs) are used, and kmers with non-acgtACGT characters are ignored. This option uses kmers as they appear and allows all characters.", ""));
     addAvailableOption("threads", Option(Option::Integer, "p", "Parallelism. This many threads will be spawned, each one handling on query sequence at a time.", "1"));
     addAvailableOption("pacbio", Option(Option::Boolean, "pacbio", "Use default settings for PacBio sequences.", ""));
     addAvailableOption("illumina", Option(Option::Boolean, "illumina", "Use default settings for Illumina sequences.", ""));

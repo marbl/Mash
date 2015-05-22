@@ -75,6 +75,7 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly)
     minHashesPerWindow = reader.getMinHashesPerWindow();
     windowSize = reader.getWindowSize();
     concatenated = reader.getConcatenated();
+    noncanonical = reader.getNoncanonical();
     
     if ( headerOnly )
     {
@@ -168,7 +169,7 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly)
     return 0;
 }
 
-int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, float errorNew, bool windowedNew, int windowSizeNew, bool concat, int verbosity)
+int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, float errorNew, bool windowedNew, int windowSizeNew, bool concat, bool noncanonicalNew, int verbosity)
 {
     kmerSize = kmerSizeNew;
     error = errorNew;
@@ -176,6 +177,7 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, floa
     windowed = windowedNew;
     minHashesPerWindow = (1. / error) * (1. / error); // TODO: windowed?
     concatenated = concat;
+    noncanonical = noncanonicalNew;
     
     int l;
     int count = 0;
@@ -249,7 +251,7 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, floa
             }
             else
             {
-                addMinHashes(minHashes, minHashesQueue, seq->seq.s, l, kmerSize, minHashesPerWindow);
+                addMinHashes(minHashes, minHashesQueue, seq->seq.s, l, kmerSize, minHashesPerWindow, noncanonical);
             }
             
             if ( ! concat )
@@ -402,6 +404,7 @@ int Sketch::writeToCapnp(const char * file) const
     builder.setMinHashesPerWindow(minHashesPerWindow);
     builder.setWindowSize(windowSize);
     builder.setConcatenated(concatenated);
+    builder.setNoncanonical(noncanonical);
     
     writeMessageToFd(fd, message);
     close(fd);
@@ -440,7 +443,7 @@ void Sketch::setMinHashesForReference(int referenceIndex, const Hash_set & hashe
     sort(reference.hashesSorted.begin(), reference.hashesSorted.end());
 }
 
-void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins)
+void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins, bool noncanonical)
 {
     // Determine the 'mins' smallest hashes, including those already provided
     // (potentially replacing them). This allows min-hash sets across multiple
@@ -457,55 +460,72 @@ void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> &
     }
     
     char * seqRev = new char[length];
-    reverseComplement(seq, seqRev, length);
+    
+    if ( ! noncanonical )
+    {
+        reverseComplement(seq, seqRev, length);
+    }
     
     for ( int i = 0; i < length - kmerSize + 1; i++ )
     {
-        // repeatedly skip kmers with bad characters
-        
-        for ( int j = i; j < i + kmerSize && i + kmerSize <= length; j++ )
-        {
-            char c = seq[j];
-            
-            if ( c != 'A' && c != 'C' && c != 'G' && c != 'T' )
-            {
-                i = j + 1; // skip to past the bad character
-                break;
-            }
-        }
-        
-        if ( i + kmerSize > length )
-        {
-            // skipped to end
-            break;
-        }
-        
-        bool useRevComp = true;
-        bool prefixEqual = true;
-        
+        bool useRevComp = false;
         bool debug = false;
-        if ( debug ) {for ( int j = i; j < i + kmerSize; j++ ) { cout << *(seq + j); } cout << endl;}
         
-        for ( int j = 0; j < kmerSize; j++ )
+        if ( ! noncanonical )
         {
-            char base = seq[i + j];
-            char baseMinus = seqRev[length - i - kmerSize + j];
+            // repeatedly skip kmers with bad characters
             
-            if ( debug ) cout << baseMinus;
+            bool bad = false;
             
-            if ( prefixEqual && baseMinus > base )
+            for ( int j = i; j < i + kmerSize && i + kmerSize <= length; j++ )
             {
-                useRevComp = false;
+                char c = seq[j];
+            
+                if ( c != 'A' && c != 'C' && c != 'G' && c != 'T' )
+                {
+                    i = j; // skip to past the bad character
+                    bad = true;
+                    break;
+                }
+            }
+            
+            if ( bad )
+            {
+                continue;
+            }
+        
+            if ( i + kmerSize > length )
+            {
+                // skipped to end
                 break;
             }
             
-            if ( prefixEqual && baseMinus < base )
-            {
-                prefixEqual = false;
-            }
-        }
+            useRevComp = true;
+            bool prefixEqual = true;
         
-        if ( debug ) cout << endl;
+            if ( debug ) {for ( int j = i; j < i + kmerSize; j++ ) { cout << *(seq + j); } cout << endl;}
+        
+            for ( int j = 0; j < kmerSize; j++ )
+            {
+                char base = seq[i + j];
+                char baseMinus = seqRev[length - i - kmerSize + j];
+            
+                if ( debug ) cout << baseMinus;
+            
+                if ( prefixEqual && baseMinus > base )
+                {
+                    useRevComp = false;
+                    break;
+                }
+            
+                if ( prefixEqual && baseMinus < base )
+                {
+                    prefixEqual = false;
+                }
+            }
+        
+            if ( debug ) cout << endl;
+        }
         
         Sketch::hash_t hash = getHash(useRevComp ? seqRev + length - i - kmerSize : seq + i, kmerSize);
         
@@ -531,7 +551,10 @@ void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> &
         }
     }
     
-    delete [] seqRev;
+    if ( ! noncanonical )
+    {
+        delete [] seqRev;
+    }
 }
 
 Sketch::hash_t getHash(const char * seq, int length)

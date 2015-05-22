@@ -75,10 +75,11 @@ public:
     int getReferenceIndex(std::string id) const;
     int getKmerSize() const {return kmerSize;}
     int getWindowSize() const {return windowSize;}
+    bool getNoncanonical() const {return noncanonical;}
     bool hasLociByHash(hash_t hash) const {return lociByHash.count(hash);}
     void initFromBase(const std::string & file, bool windowed);
     int initFromCapnp(const char * file, bool headerOnly = false);
-    int initFromSequence(const std::vector<std::string> & files, int kmerSizeNew, float errorNew, bool windowedNew, int windowSizeNew, bool concat, int verbosity = 0);
+    int initFromSequence(const std::vector<std::string> & files, int kmerSizeNew, float errorNew, bool windowedNew, int windowSizeNew, bool concat, bool noncanonicalNew, int verbosity = 0);
     bool initHeaderFromBaseIfValid(const std::string & file, bool windowed);
     bool writeToFile() const;
     int writeToCapnp(const char * file) const;
@@ -99,10 +100,11 @@ private:
     int windowSize;
     bool windowed;
     bool concatenated;
+    bool noncanonical;
     std::string file;
 };
 
-void addMinHashes(Sketch::Hash_set & lociByHash, std::priority_queue<Sketch::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins);
+void addMinHashes(Sketch::Hash_set & lociByHash, std::priority_queue<Sketch::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins, bool noncanonical = false);
 Sketch::hash_t getHash(const char * seq, int length);
 void getMinHashPositions(std::vector<Sketch::PositionHash> & loci, char * seq, uint32_t length, int kmerSize, int minHashesPerWindow, int windowSize, int verbosity = 0);
 bool hasSuffix(std::string const & whole, std::string const & suffix);

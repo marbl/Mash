@@ -22,6 +22,7 @@ CommandSketch::CommandSketch()
     //useOption("illumina");
     //useOption("pacbio");
     //useOption("nanopore");
+    useOption("noncanonical");
     addOption("prefix", Option(Option::File, "o", "Output prefix (first input file used if unspecified). The suffix '.msh' will be appended.", ""));
     addOption("list", Option(Option::Boolean, "l", "Input files are lists of file names.", ""));
 }
@@ -40,6 +41,7 @@ int CommandSketch::run() const
     int windowSize = 0;//options.at("window").getArgumentAsNumber();
     int verbosity = 0;//options.at("silent").active ? 0 : options.at("verbose").active ? 2 : 1;
     bool concat = options.at("concat").active;
+    bool noncanonical = options.at("noncanonical").active;
     bool list = options.at("list").active;
     
     if ( concat && windowed )
@@ -73,7 +75,7 @@ int CommandSketch::run() const
         }
     }
     
-    sketch.initFromSequence(files, kmer, error, windowed, windowSize, concat, verbosity);
+    sketch.initFromSequence(files, kmer, error, windowed, windowSize, concat, noncanonical, verbosity);
     
     string prefix = options.at("prefix").argument.length() > 0 ? options.at("prefix").argument : arguments[0];
     

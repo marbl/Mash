@@ -94,7 +94,7 @@ int CommandFind::run() const
             //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
             cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...\n";
             
-            sketch.initFromSequence(refArgVector, kmerSize, factor, true, windowSize, false);
+            sketch.initFromSequence(refArgVector, kmerSize, factor, true, windowSize, false, false);
         	/*
             if ( sketch.writeToFile() )
             {
