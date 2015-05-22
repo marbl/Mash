@@ -192,40 +192,9 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
     {
         for ( int j = 0; j < sketchRef.getReferenceCount(); j++ )
         {
-            // Keep a reference the smaller of the two hash vectors (whether ref or query)
-            // and get a set of the same size from the other so they can be queried.
-            
-            bool refSmaller = sketchRef.getReference(j).hashesSorted.size() < sketchQuery->getReference(i).hashesSorted.size();
-            
-            const vector<Sketch::hash_t> & hashesSorted = refSmaller ?
-                sketchRef.getReference(j).hashesSorted :
-                sketchQuery->getReference(i).hashesSorted;
-            
-            int minHashCount = hashesSorted.size();
-            Sketch::Hash_set minHashesSubset;
-            
-            if ( refSmaller )
-            {
-                sketchQuery->getMinHashesSubsetByReference(i, minHashCount, minHashesSubset);
-            }
-            else
-            {
-                sketchRef.getMinHashesSubsetByReference(j, minHashCount, minHashesSubset);
-            }
-            
-            int common = 0;
-            
-            for ( int k = 0; k < minHashCount; k++ )
-            {
-                if ( minHashesSubset.count(hashesSorted.at(k)) == 1 )
-                {
-                    common++;
-                }
-            }
-            
             int pairIndex = i * sketchRef.getReferenceCount() + j;
             
-            output->pairs[pairIndex].score = 1. - float(common) / minHashCount;
+            output->pairs[pairIndex].score = compareSketches(sketchRef.getReference(j).hashesSorted, sketchQuery->getReference(i).hashesSorted);
             output->pairs[pairIndex].nameRef = sketchRef.getReference(j).name;
             output->pairs[pairIndex].nameQuery = sketchQuery->getReference(i).name;
         }
@@ -234,4 +203,35 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
     delete data->sketchQuery;
     
     return output;
+}
+
+float compareSketches(const vector<Sketch::hash_t> & hashesSortedRef, const vector<Sketch::hash_t> & hashesSortedQuery)
+{
+    int common = 0;
+    int denom = hashesSortedRef.size() < hashesSortedQuery.size() ?
+        hashesSortedRef.size() :
+        hashesSortedQuery.size();
+    
+    int i = 0;
+    int j = 0;
+    
+    for ( int steps = 0; steps < denom; steps++ )
+    {
+        if ( hashesSortedRef.at(i) < hashesSortedQuery.at(j) )
+        {
+            i++;
+        }
+        else if ( hashesSortedRef.at(i) > hashesSortedQuery.at(j) )
+        {
+            j++;
+        }
+        else
+        {
+            i++;
+            j++;
+            common++;
+        }
+    }
+    
+    return 1. - float(common) / denom;
 }

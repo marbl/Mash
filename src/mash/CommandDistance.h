@@ -53,6 +53,6 @@ private:
 };
 
 CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data);
-void getMinHashesForFile(Sketch::Hash_set & minHashes, const std::string & file, int kmerSize, int mins);
+float compareSketches(const std::vector<Sketch::hash_t> & hashesSortedRef, const std::vector<Sketch::hash_t> & hashesSortedQuery);
 
 #endif
