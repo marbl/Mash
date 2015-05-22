@@ -76,6 +76,7 @@ private:
     std::map<std::string, std::string> optionNamesByIdentifier;
 };
 
+void splitFile(const std::string & file, std::vector<std::string> & lines);
 void printColumns(std::vector<std::vector<std::string>> columns, int indent = 3, int spacing = 3, const char * missing = "-");
 
 #endif

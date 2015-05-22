@@ -18,6 +18,7 @@ CommandDistance::CommandDistance()
     useOption("kmer");
     useOption("error");
     useOption("concat");
+    addOption("list", Option(Option::Boolean, "l", "Query files are lists of file names.", ""));
 }
 
 int CommandDistance::run() const
@@ -32,6 +33,7 @@ int CommandDistance::run() const
     int kmerSize = options.at("kmer").getArgumentAsNumber();
     float error = options.at("error").getArgumentAsNumber();
     bool concat = options.at("concat").active;
+    bool list = options.at("list").active;
     
     Sketch sketch;
     
@@ -87,32 +89,46 @@ int CommandDistance::run() const
     
     ThreadPool<CompareInput, CompareOutput> threadPool(compare, threads);
     
+    vector<string> queryFiles;
+    
     for ( int i = 1; i < arguments.size(); i++ )
+    {
+        if ( list )
+        {
+            splitFile(arguments[i], queryFiles);
+        }
+        else
+        {
+            queryFiles.push_back(arguments[i]);
+        }
+    }
+    
+    for ( int i = 0; i < queryFiles.size(); i++ )
     {
         // If the input is a sketch file, load in the main thread; otherwise,
         // leave it to the child. Either way, the child will delete.
         //
         Sketch * sketchQuery = new Sketch();
         
-        if ( hasSuffix(arguments[i], suffixSketch) )
+        if ( hasSuffix(queryFiles[i], suffixSketch) )
         {
             // init header to check params
             //
-            sketchQuery->initFromCapnp(arguments[i].c_str(), true);
+            sketchQuery->initFromCapnp(queryFiles[i].c_str(), true);
             
             if ( sketchQuery->getKmerSize() != sketch.getKmerSize() )
             {
-                cerr << "\nWARNING: The query sketch " << arguments[i] << " has a kmer size (" << sketchQuery->getKmerSize() << ") that does not match the reference sketch (" << sketch.getKmerSize() << "). This query will be skipped.\n\n";
+                cerr << "\nWARNING: The query sketch " << queryFiles[i] << " has a kmer size (" << sketchQuery->getKmerSize() << ") that does not match the reference sketch (" << sketch.getKmerSize() << "). This query will be skipped.\n\n";
                 delete sketchQuery;
                 continue;
             }
             
             // init fully
             //
-            sketchQuery->initFromCapnp(arguments[i].c_str());
+            sketchQuery->initFromCapnp(queryFiles[i].c_str());
         }
         
-        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, arguments[i], sketch.getKmerSize(), sketch.getError(), concat));
+        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, queryFiles[i], sketch.getKmerSize(), sketch.getError(), concat));
         
         while ( threadPool.outputAvailable() )
         {

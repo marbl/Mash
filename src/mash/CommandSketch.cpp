@@ -23,6 +23,7 @@ CommandSketch::CommandSketch()
     //useOption("pacbio");
     //useOption("nanopore");
     addOption("prefix", Option(Option::File, "o", "Output prefix (first input file used if unspecified). The suffix '.msh' will be appended.", ""));
+    addOption("list", Option(Option::Boolean, "l", "Input files are lists of file names.", ""));
 }
 
 int CommandSketch::run() const
@@ -39,6 +40,7 @@ int CommandSketch::run() const
     int windowSize = 0;//options.at("window").getArgumentAsNumber();
     int verbosity = 0;//options.at("silent").active ? 0 : options.at("verbose").active ? 2 : 1;
     bool concat = options.at("concat").active;
+    bool list = options.at("list").active;
     
     if ( concat && windowed )
     {
@@ -57,7 +59,21 @@ int CommandSketch::run() const
     
     Sketch sketch;
     
-    sketch.initFromSequence(arguments, kmer, error, windowed, windowSize, concat, verbosity);
+    vector<string> files;
+    
+    for ( int i = 0; i < arguments.size(); i++ )
+    {
+        if ( list )
+        {
+            splitFile(arguments[i], files);
+        }
+        else
+        {
+            files.push_back(arguments[i]);
+        }
+    }
+    
+    sketch.initFromSequence(files, kmer, error, windowed, windowSize, concat, verbosity);
     
     string prefix = options.at("prefix").argument.length() > 0 ? options.at("prefix").argument : arguments[0];
     

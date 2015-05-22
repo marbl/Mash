@@ -1,6 +1,7 @@
 #include <iostream>
 #include <sys/ioctl.h>
 #include <sstream>
+#include <fstream>
 
 #include "Command.h"
 
@@ -218,6 +219,18 @@ void Command::useOption(string name)
 void Command::addAvailableOption(string name, Option option)
 {
     optionsAvailable[name] = option;
+}
+
+void splitFile(const string & file, vector<string> & lines)
+{
+	string line;
+	
+	ifstream in(file);
+	
+	while ( getline(in, line) )
+	{
+		lines.push_back(line);
+	}
 }
 
 void printColumns(vector<vector<string>> columns, int indent, int spacing, const char * missing)
