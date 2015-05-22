@@ -71,6 +71,7 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly)
     capnp::MinHash::Reader reader = message->getRoot<capnp::MinHash>();
     
     kmerSize = reader.getKmerSize();
+    error = reader.getError();
     minHashesPerWindow = reader.getMinHashesPerWindow();
     windowSize = reader.getWindowSize();
     concatenated = reader.getConcatenated();
@@ -167,13 +168,13 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly)
     return 0;
 }
 
-int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, float factorNew, bool windowedNew, int windowSizeNew, bool concat, int verbosity)
+int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, float errorNew, bool windowedNew, int windowSizeNew, bool concat, int verbosity)
 {
     kmerSize = kmerSizeNew;
-    factor = factorNew;
+    error = errorNew;
     windowSize = windowSizeNew;
     windowed = windowedNew;
-    minHashesPerWindow = windowed ? windowSize / factor : 0;
+    minHashesPerWindow = (1. / error) * (1. / error); // TODO: windowed?
     concatenated = concat;
     
     int l;
@@ -183,7 +184,6 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, floa
     {
         Hash_set minHashes;
         priority_queue<Sketch::hash_t> minHashesQueue; // only used for non-windowed
-        long long int totalSize = 0;
         
         gzFile fp = gzopen(files[i].c_str(), "r");
         
@@ -211,10 +211,6 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, floa
             if ( windowed )
             {
                 positionHashesByReference.resize(count + 1);
-            }
-            else
-            {
-                totalSize += l;
             }
             
             if ( ! concat )
@@ -253,14 +249,13 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, floa
             }
             else
             {
-                addMinHashes(minHashes, minHashesQueue, seq->seq.s, l, kmerSize, totalSize / factor);
+                addMinHashes(minHashes, minHashesQueue, seq->seq.s, l, kmerSize, minHashesPerWindow);
             }
             
             if ( ! concat )
             {
                 if ( ! windowed )
                 {
-                    totalSize = 0;
                     setMinHashesForReference(references.size() - 1, minHashes);
                 }
                 
@@ -403,6 +398,7 @@ int Sketch::writeToCapnp(const char * file) const
     }
     
     builder.setKmerSize(kmerSize);
+    builder.setError(error);
     builder.setMinHashesPerWindow(minHashesPerWindow);
     builder.setWindowSize(windowSize);
     builder.setConcatenated(concatenated);

@@ -16,7 +16,7 @@ CommandDistance::CommandDistance()
     useOption("help");
     useOption("threads");
     useOption("kmer");
-    useOption("factor");
+    useOption("error");
     useOption("concat");
 }
 
@@ -30,7 +30,7 @@ int CommandDistance::run() const
     
     int threads = options.at("threads").getArgumentAsNumber();
     int kmerSize = options.at("kmer").getArgumentAsNumber();
-    float factor = options.at("factor").getArgumentAsNumber();
+    float error = options.at("error").getArgumentAsNumber();
     bool concat = options.at("concat").active;
     
     Sketch sketch;
@@ -72,7 +72,7 @@ int CommandDistance::run() const
             //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
             cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...\n";
             
-            sketch.initFromSequence(refArgVector, kmerSize, factor, false, 0, concat);
+            sketch.initFromSequence(refArgVector, kmerSize, error, false, 0, concat);
             /*
             if ( sketch.writeToFile() )
             {
@@ -112,7 +112,7 @@ int CommandDistance::run() const
             sketchQuery->initFromCapnp(arguments[i].c_str());
         }
         
-        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, arguments[i], sketch.getKmerSize(), sketch.getFactor(), concat));
+        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, arguments[i], sketch.getKmerSize(), sketch.getError(), concat));
         
         while ( threadPool.outputAvailable() )
         {
@@ -152,7 +152,7 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
         vector<string> fileVector;
         fileVector.push_back(data->file);
         
-        sketchQuery->initFromSequence(fileVector, data->kmerSize, data->factor, false, 0, data->concat);
+        sketchQuery->initFromSequence(fileVector, data->kmerSize, data->error, false, 0, data->concat);
     }
     
     output->pairs.resize(sketchRef.getReferenceCount() * sketchQuery->getReferenceCount());

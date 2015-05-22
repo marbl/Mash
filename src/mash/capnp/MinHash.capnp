@@ -36,6 +36,7 @@ struct MinHash
 	windowSize @1 : UInt32;
 	minHashesPerWindow @2 : UInt32;
 	concatenated @3 : Bool;
+	error @6 : Float32;
 	
 	referenceList @4 : ReferenceList;
 	locusList @5 : LocusList;

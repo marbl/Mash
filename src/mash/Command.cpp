@@ -80,7 +80,7 @@ Command::Command()
     addAvailableOption("kmer", Option(Option::Integer, "k", "Kmer size. Hashes will be based on strings of this many nucleotides.", "15", 1, 32));
     addAvailableOption("windowed", Option(Option::Boolean, "w", "Windowed", ""));
     addAvailableOption("window", Option(Option::Integer, "l", "Window length. Hashes that are minima in any window of this size will be stored.", "1000"));
-    addAvailableOption("factor", Option(Option::Integer, "c", "Compression level. The number of min-hashes in each sketch will be the total number of kmers divided by this number.", "100"));
+    addAvailableOption("error", Option(Option::Number, "e", "Error bound. The (maximum) number of min-hashes in each sketch will be one divided by this number squared.", "0.01"));
     addAvailableOption("verbose", Option(Option::Boolean, "v", "Verbose", ""));
     addAvailableOption("silent", Option(Option::Boolean, "s", "Silent", ""));
     addAvailableOption("concat", Option(Option::Boolean, "f", "Sketch whole files, rather than individual sequences.", ""));

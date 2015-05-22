@@ -15,7 +15,7 @@ CommandSketch::CommandSketch()
     useOption("kmer");
     //useOption("windowed");
     //useOption("window");
-    useOption("factor");
+    useOption("error");
     //useOption("verbose");
     //useOption("silent");
     useOption("concat");
@@ -35,7 +35,7 @@ int CommandSketch::run() const
     
     int kmer = options.at("kmer").getArgumentAsNumber();
     bool windowed = false;//options.at("windowed").active;
-    float factor = options.at("factor").getArgumentAsNumber();
+    float error = options.at("error").getArgumentAsNumber();
     int windowSize = 0;//options.at("window").getArgumentAsNumber();
     int verbosity = 0;//options.at("silent").active ? 0 : options.at("verbose").active ? 2 : 1;
     bool concat = options.at("concat").active;
@@ -57,7 +57,7 @@ int CommandSketch::run() const
     
     Sketch sketch;
     
-    sketch.initFromSequence(arguments, kmer, factor, windowed, windowSize, concat, verbosity);
+    sketch.initFromSequence(arguments, kmer, error, windowed, windowSize, concat, verbosity);
     
     string prefix = options.at("prefix").argument.length() > 0 ? options.at("prefix").argument : arguments[0];
     

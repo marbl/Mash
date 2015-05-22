@@ -65,7 +65,7 @@ public:
     };
     
     bool getConcatenated() const {return concatenated;}
-    float getFactor() const {return factor;}
+    float getError() const {return error;}
     int getHashCount() const {return lociByHash.size();}
     const std::vector<Locus> & getLociByHash(hash_t hash) const;
 	void getMinHashesSubsetByReference(int reference, int countToGet, Hash_set & minHashesToFill) const;
@@ -78,7 +78,7 @@ public:
     bool hasLociByHash(hash_t hash) const {return lociByHash.count(hash);}
     void initFromBase(const std::string & file, bool windowed);
     int initFromCapnp(const char * file, bool headerOnly = false);
-    int initFromSequence(const std::vector<std::string> & files, int kmerSizeNew, float factorNew, bool windowedNew, int windowSizeNew, bool concat, int verbosity = 0);
+    int initFromSequence(const std::vector<std::string> & files, int kmerSizeNew, float errorNew, bool windowedNew, int windowSizeNew, bool concat, int verbosity = 0);
     bool initHeaderFromBaseIfValid(const std::string & file, bool windowed);
     bool writeToFile() const;
     int writeToCapnp(const char * file) const;
@@ -94,7 +94,7 @@ private:
     std::unordered_map<hash_t, std::vector<Locus>> lociByHash;
     
     int kmerSize;
-    float factor;
+    float error;
     int minHashesPerWindow;
     int windowSize;
     bool windowed;
