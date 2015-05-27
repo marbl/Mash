@@ -11,6 +11,7 @@ endif
 
 SOURCES=\
 	src/mash/Command.cpp \
+	src/mash/CommandContain.cpp \
 	src/mash/CommandDistance.cpp \
 	src/mash/CommandFind.cpp \
 	src/mash/CommandSketch.cpp \
