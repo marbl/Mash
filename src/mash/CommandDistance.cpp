@@ -194,7 +194,7 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
         {
             int pairIndex = i * sketchRef.getReferenceCount() + j;
             
-            output->pairs[pairIndex].score = compareSketches(sketchRef.getReference(j).hashesSorted, sketchQuery->getReference(i).hashesSorted);
+            output->pairs[pairIndex].score = compareSketches(sketchRef.getReference(j).hashesSorted, sketchQuery->getReference(i).hashesSorted, sketchRef.getMinHashesPerWindow(), sketchQuery->getMinHashesPerWindow());
             output->pairs[pairIndex].nameRef = sketchRef.getReference(j).name;
             output->pairs[pairIndex].nameQuery = sketchQuery->getReference(i).name;
         }
@@ -205,17 +205,18 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
     return output;
 }
 
-float compareSketches(const vector<Sketch::hash_t> & hashesSortedRef, const vector<Sketch::hash_t> & hashesSortedQuery)
+float compareSketches(const vector<Sketch::hash_t> & hashesSortedRef, const vector<Sketch::hash_t> & hashesSortedQuery, int targetSizeRef, int targetSizeQuery)
 {
-    int common = 0;
-    int denom = hashesSortedRef.size() < hashesSortedQuery.size() ?
-        hashesSortedRef.size() :
-        hashesSortedQuery.size();
+    int targetSize = targetSizeQuery < targetSizeRef ?
+        targetSizeQuery :
+        targetSizeRef;
     
     int i = 0;
     int j = 0;
+    int common = 0;
+    int denom = 0;
     
-    for ( int steps = 0; steps < denom; steps++ )
+    while ( denom < targetSize && i < hashesSortedRef.size() && j < hashesSortedQuery.size() )
     {
         if ( hashesSortedRef.at(i) < hashesSortedQuery.at(j) )
         {
@@ -230,6 +231,28 @@ float compareSketches(const vector<Sketch::hash_t> & hashesSortedRef, const vect
             i++;
             j++;
             common++;
+        }
+        
+        denom++;
+    }
+    
+    if ( denom < targetSize )
+    {
+        // complete the union operation if possible
+        
+        if ( i < hashesSortedRef.size() )
+        {
+            denom += hashesSortedRef.size() - i;
+        }
+        
+        if ( j < hashesSortedQuery.size() )
+        {
+            denom += hashesSortedQuery.size() - j;
+        }
+        
+        if ( denom > targetSize )
+        {
+            denom = targetSize;
         }
     }
     

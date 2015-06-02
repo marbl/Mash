@@ -53,6 +53,6 @@ private:
 };
 
 CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data);
-float compareSketches(const std::vector<Sketch::hash_t> & hashesSortedRef, const std::vector<Sketch::hash_t> & hashesSortedQuery);
+float compareSketches(const std::vector<Sketch::hash_t> & hashesSortedRef, const std::vector<Sketch::hash_t> & hashesSortedQuery, int targetSizeRef, int targetSizeQuery);
 
 #endif
