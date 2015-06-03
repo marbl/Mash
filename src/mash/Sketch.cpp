@@ -58,7 +58,7 @@ void Sketch::initFromBase(const std::string & fileSeq, bool windowed)
     initFromCapnp(file.c_str());
 }
 
-int Sketch::initFromCapnp(const char * file, bool headerOnly)
+int Sketch::initFromCapnp(const char * file, bool headerOnly, bool append)
 {
     int fd = open(file, O_RDONLY);
     
@@ -93,23 +93,28 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly)
     capnp::MinHash::ReferenceList::Reader referenceListReader = reader.getReferenceList();
     
     capnp::List<capnp::MinHash::ReferenceList::Reference>::Reader referencesReader = referenceListReader.getReferences();
-    references.resize(referencesReader.size());
     
-    for ( int i = 0; i < references.size(); i++ )
+    int referencesOffset = append ? references.size() : 0;
+    
+    references.resize(referencesOffset + referencesReader.size());
+    
+    for ( int i = 0; i < referencesReader.size(); i++ )
     {
         capnp::MinHash::ReferenceList::Reference::Reader referenceReader = referencesReader[i];
         
-        references[i].name = referenceReader.getName();
-        references[i].comment = referenceReader.getComment();
-        references[i].length = referenceReader.getLength();
+        Sketch::Reference & reference = references[referencesOffset + i];
+        
+        reference.name = referenceReader.getName();
+        reference.comment = referenceReader.getComment();
+        reference.length = referenceReader.getLength();
         
         capnp::List<uint64_t>::Reader hashesReader = referenceReader.getHashes();
         
-        references[i].hashesSorted.resize(hashesReader.size());
+        reference.hashesSorted.resize(hashesReader.size());
         
         for ( int j = 0; j < hashesReader.size(); j++ )
         {
-            references[i].hashesSorted[j] = hashesReader[j];
+            reference.hashesSorted[j] = hashesReader[j];
         }
     }
     
@@ -122,7 +127,7 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly)
     {
         capnp::MinHash::LocusList::Locus::Reader locusReader = lociReader[i];
         //cout << locusReader.getHash() << '\t' << locusReader.getSequence() << '\t' << locusReader.getPosition() << endl;
-        positionHashesByReference[locusReader.getSequence()].push_back(PositionHash(locusReader.getPosition(), locusReader.getHash()));
+        positionHashesByReference[locusReader.getSequence() + referencesOffset].push_back(PositionHash(locusReader.getPosition(), locusReader.getHash()));
     }
     
     //cout << endl << "References:" << endl << endl;
@@ -201,6 +206,7 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int 
         {
             references.resize(references.size() + 1);
             references[references.size() - 1].name = files[i];
+            references[references.size() - 1].length = 0;
         }
         
         while ((l = kseq_read(seq)) >= 0)
@@ -243,6 +249,10 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int 
                 }
                 
                 reference.length = l;
+            }
+            else
+            {
+                references[references.size() - 1].length += l;
             }
             
             if ( windowed )

@@ -14,6 +14,8 @@ SOURCES=\
 	src/mash/CommandContain.cpp \
 	src/mash/CommandDistance.cpp \
 	src/mash/CommandFind.cpp \
+	src/mash/CommandInfo.cpp \
+	src/mash/CommandPaste.cpp \
 	src/mash/CommandSketch.cpp \
 	src/mash/CommandList.cpp \
 	src/mash/Sketch.cpp \
