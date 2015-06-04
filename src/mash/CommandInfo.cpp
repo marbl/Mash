@@ -45,7 +45,7 @@ int CommandInfo::run() const
     if ( ! header )
     {
         cout << endl;
-        cout << "Sketches:" << endl;
+        cout << "Sketches (" << sketch.getReferenceCount() << "):" << endl;
         
         vector<vector<string>> columns(4);
         
