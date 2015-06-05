@@ -13,7 +13,6 @@
 #include <set>
 #include "Command.h" // TEMP for column printing
 #include <sys/stat.h>
-#include <algorithm>
 
 #define SET_BINARY_MODE(file)
 #define CHUNK 16384

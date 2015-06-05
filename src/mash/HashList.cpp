@@ -1,4 +1,5 @@
 #include "HashList.h"
+#include <algorithm>
 
 hash_u HashList::at(int index) const
 {
