@@ -7,10 +7,10 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
-#include <unordered_set>
-#include <queue>
 
-static const int seed = 42; // TODO: better seed???
+#include "HashList.h"
+#include "HashPriorityQueue.h"
+#include "HashSet.h"
 
 static const char * capnpHeader = "Cap'n Proto";
 static const int capnpHeaderLength = strlen(capnpHeader);
@@ -22,11 +22,7 @@ class Sketch
 {
 public:
     
-#ifdef ARCH_32
-    typedef uint32_t hash_t;
-#else
     typedef uint64_t hash_t;
-#endif
     
     struct PositionHash
     {
@@ -51,8 +47,8 @@ public:
         uint32_t position;
     };
     
-    typedef std::unordered_map < Sketch::hash_t, std::vector<Sketch::PositionHash> > LociByHash_umap;
-    typedef std::unordered_set<Sketch::hash_t> Hash_set;
+    typedef std::unordered_map < hash_t, std::vector<Sketch::PositionHash> > LociByHash_umap;
+    typedef std::unordered_set<hash_t> Hash_set;
     
     struct Reference
     {
@@ -61,14 +57,13 @@ public:
         std::string name;
         std::string comment;
         uint32_t length;
-        std::vector<hash_t> hashesSorted;
+        HashList hashesSorted;
     };
     
     bool getConcatenated() const {return concatenated;}
     float getError() const {return error;}
     int getHashCount() const {return lociByHash.size();}
     const std::vector<Locus> & getLociByHash(hash_t hash) const;
-	void getMinHashesSubsetByReference(int reference, int countToGet, Hash_set & minHashesToFill) const;
     float getMinHashesPerWindow() const {return minHashesPerWindow;}
     const Reference & getReference(int index) const {return references.at(index);}
     int getReferenceCount() const {return references.size();}
@@ -87,7 +82,7 @@ public:
 private:
     
     void createIndex();
-	void setMinHashesForReference(int referenceIndex, const Hash_set & hashes);
+	void setMinHashesForReference(int referenceIndex, const HashSet & hashes);
     
     std::vector<Reference> references;
     std::unordered_map<std::string, int> referenceIndecesById;
@@ -104,8 +99,7 @@ private:
     std::string file;
 };
 
-void addMinHashes(Sketch::Hash_set & lociByHash, std::priority_queue<Sketch::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins, bool noncanonical = false);
-Sketch::hash_t getHash(const char * seq, int length);
+void addMinHashes(HashSet & lociByHash, HashPriorityQueue & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins, bool noncanonical = false);
 void getMinHashPositions(std::vector<Sketch::PositionHash> & loci, char * seq, uint32_t length, int kmerSize, int minHashesPerWindow, int windowSize, int verbosity = 0);
 bool hasSuffix(std::string const & whole, std::string const & suffix);
 void reverseComplement(const char * src, char * dest, int length);

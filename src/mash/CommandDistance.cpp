@@ -205,7 +205,7 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
     return output;
 }
 
-float compareSketches(const vector<Sketch::hash_t> & hashesSortedRef, const vector<Sketch::hash_t> & hashesSortedQuery, int targetSizeRef, int targetSizeQuery)
+float compareSketches(const HashList & hashesSortedRef, const HashList & hashesSortedQuery, int targetSizeRef, int targetSizeQuery)
 {
     int targetSize = targetSizeQuery < targetSizeRef ?
         targetSizeQuery :
@@ -216,13 +216,14 @@ float compareSketches(const vector<Sketch::hash_t> & hashesSortedRef, const vect
     int common = 0;
     int denom = 0;
     
+    cout << hashesSortedRef.size() << '\t'  << hashesSortedQuery.size () << endl;
     while ( denom < targetSize && i < hashesSortedRef.size() && j < hashesSortedQuery.size() )
     {
-        if ( hashesSortedRef.at(i) < hashesSortedQuery.at(j) )
+        if ( hashLessThan(hashesSortedRef.at(i), hashesSortedQuery.at(j), hashesSortedRef.get64()) )
         {
             i++;
         }
-        else if ( hashesSortedRef.at(i) > hashesSortedQuery.at(j) )
+        else if ( hashLessThan(hashesSortedQuery.at(j), hashesSortedRef.at(i), hashesSortedRef.get64()) )
         {
             j++;
         }

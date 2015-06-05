@@ -53,6 +53,6 @@ private:
 };
 
 CommandContain::ContainOutput * contain(CommandContain::ContainInput * data);
-float containSketches(const std::vector<Sketch::hash_t> & hashesSortedRef, const std::vector<Sketch::hash_t> & hashesSortedQuery);
+float containSketches(const HashList & hashesSortedRef, const HashList & hashesSortedQuery);
 
 #endif

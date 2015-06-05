@@ -23,21 +23,9 @@ using namespace std;
 
 typedef map < Sketch::hash_t, vector<Sketch::PositionHash> > LociByHash_map;
 
-const vector<Sketch::Locus> & Sketch::getLociByHash(hash_t hash) const
+const vector<Sketch::Locus> & Sketch::getLociByHash(Sketch::hash_t hash) const
 {
     return lociByHash.at(hash);
-}
-
-void Sketch::getMinHashesSubsetByReference(int reference, int countToGet, Hash_set & minHashesToFill) const
-{
-    const vector<hash_t> & hashesSorted = references.at(reference).hashesSorted;
-    
-    minHashesToFill.clear();
-    
-    for ( int i = 0; i < countToGet; i++ )
-    {
-        minHashesToFill.insert(hashesSorted.at(i));
-    }
 }
 
 int Sketch::getReferenceIndex(string id) const
@@ -108,13 +96,29 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly, bool append)
         reference.comment = referenceReader.getComment();
         reference.length = referenceReader.getLength();
         
-        capnp::List<uint64_t>::Reader hashesReader = referenceReader.getHashes();
+        reference.hashesSorted.setUse64(kmerSize > 16);
         
-        reference.hashesSorted.resize(hashesReader.size());
-        
-        for ( int j = 0; j < hashesReader.size(); j++ )
+        if ( kmerSize > 16 )
         {
-            reference.hashesSorted[j] = hashesReader[j];
+            capnp::List<uint64_t>::Reader hashesReader = referenceReader.getHashes64();
+        
+            reference.hashesSorted.resize(hashesReader.size());
+        
+            for ( int j = 0; j < hashesReader.size(); j++ )
+            {
+                reference.hashesSorted.set64(j, hashesReader[j]);
+            }
+        }
+        else
+        {
+            capnp::List<uint32_t>::Reader hashesReader = referenceReader.getHashes32();
+        
+            reference.hashesSorted.resize(hashesReader.size());
+        
+            for ( int j = 0; j < hashesReader.size(); j++ )
+            {
+                reference.hashesSorted.set32(j, hashesReader[j]);
+            }
         }
     }
     
@@ -127,7 +131,7 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly, bool append)
     {
         capnp::MinHash::LocusList::Locus::Reader locusReader = lociReader[i];
         //cout << locusReader.getHash() << '\t' << locusReader.getSequence() << '\t' << locusReader.getPosition() << endl;
-        positionHashesByReference[locusReader.getSequence() + referencesOffset].push_back(PositionHash(locusReader.getPosition(), locusReader.getHash()));
+        positionHashesByReference[locusReader.getSequence() + referencesOffset].push_back(PositionHash(locusReader.getPosition(), locusReader.getHash64()));
     }
     
     //cout << endl << "References:" << endl << endl;
@@ -189,8 +193,8 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int 
     
     for ( int i = 0; i < files.size(); i++ )
     {
-        Hash_set minHashes;
-        priority_queue<Sketch::hash_t> minHashesQueue; // only used for non-windowed
+        HashSet minHashes(kmerSize);
+        HashPriorityQueue minHashesQueue(kmerSize); // only used for non-windowed
         
         gzFile fp = gzopen(files[i].c_str(), "r");
         
@@ -207,6 +211,7 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int 
             references.resize(references.size() + 1);
             references[references.size() - 1].name = files[i];
             references[references.size() - 1].length = 0;
+            references[references.size() - 1].hashesSorted.setUse64(kmerSize > 16);
         }
         
         while ((l = kseq_read(seq)) >= 0)
@@ -224,12 +229,9 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int 
             if ( ! concat )
             {
                 references.resize(references.size() + 1);
+                references[references.size() - 1].hashesSorted.setUse64(kmerSize > 16);
                 minHashes.clear();
-                
-                while ( minHashesQueue.size() )
-                {
-                    minHashesQueue.pop();
-                }
+                minHashesQueue.clear();
             }
             
             if ( verbosity > 0 && windowed ) cout << '>' << seq->name.s << " (" << l << "nt)" << endl << endl;
@@ -371,15 +373,31 @@ int Sketch::writeToCapnp(const char * file) const
         
         if ( references[i].hashesSorted.size() != 0 )
         {
-            const vector<hash_t> & hashes = references[i].hashesSorted;
-            capnp::List<uint64_t>::Builder hashesBuilder = referenceBuilder.initHashes(hashes.size());
+            const HashList & hashes = references[i].hashesSorted;
             
-            int index = 0;
-            
-            for ( int j = 0; j != hashes.size(); j++ )
+            if ( kmerSize > 16 )
             {
-                hashesBuilder.set(index, hashes.at(j));
-                index++;
+                capnp::List<uint64_t>::Builder hashes64Builder = referenceBuilder.initHashes64(hashes.size());
+            
+                int index = 0;
+            
+                for ( int j = 0; j != hashes.size(); j++ )
+                {
+                    hashes64Builder.set(index, hashes.at(j).hash64);
+                    index++;
+                }
+            }
+            else
+            {
+                capnp::List<uint32_t>::Builder hashes32Builder = referenceBuilder.initHashes32(hashes.size());
+            
+                int index = 0;
+            
+                for ( int j = 0; j != hashes.size(); j++ )
+                {
+                    hashes32Builder.set(index, hashes.at(j).hash32);
+                    index++;
+                }
             }
         }
     }
@@ -405,7 +423,7 @@ int Sketch::writeToCapnp(const char * file) const
             
             locusBuilder.setSequence(i);
             locusBuilder.setPosition(positionHashesByReference.at(i).at(j).position);
-            locusBuilder.setHash(positionHashesByReference.at(i).at(j).hash);
+            locusBuilder.setHash64(positionHashesByReference.at(i).at(j).hash);
         }
     }
     
@@ -440,20 +458,15 @@ void Sketch::createIndex()
     }
 }
 
-void Sketch::setMinHashesForReference(int referenceIndex, const Hash_set & hashes)
+void Sketch::setMinHashesForReference(int referenceIndex, const HashSet & hashes)
 {
-    Reference & reference = references[referenceIndex];
-    reference.hashesSorted.clear();
-    
-    for ( Hash_set::const_iterator i = hashes.begin(); i != hashes.end(); i++ )
-    {
-        reference.hashesSorted.push_back(*i);
-    }
-    
-    sort(reference.hashesSorted.begin(), reference.hashesSorted.end());
+    HashList & hashList = references[referenceIndex].hashesSorted;
+    hashList.clear();
+    hashes.toHashList(hashList);
+    hashList.sort();
 }
 
-void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins, bool noncanonical)
+void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins, bool noncanonical)
 {
     // Determine the 'mins' smallest hashes, including those already provided
     // (potentially replacing them). This allows min-hash sets across multiple
@@ -468,6 +481,8 @@ void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> &
             seq[i] -= 32;
         }
     }
+    
+    bool use64 = kmerSize > 16;
     
     char * seqRev = new char[length];
     
@@ -537,7 +552,7 @@ void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> &
             if ( debug ) cout << endl;
         }
         
-        Sketch::hash_t hash = getHash(useRevComp ? seqRev + length - i - kmerSize : seq + i, kmerSize);
+        hash_u hash = getHash(useRevComp ? seqRev + length - i - kmerSize : seq + i, kmerSize);
         
         if ( debug ) cout << endl;
         
@@ -545,9 +560,9 @@ void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> &
         (
             (
                 minHashesQueue.size() < mins ||
-                hash < minHashesQueue.top()
+                hashLessThan(hash, minHashesQueue.top(), use64)
             )
-            && minHashes.count(hash) == 0
+            && ! minHashes.contains(hash)
         )
         {
             minHashes.insert(hash);
@@ -565,25 +580,6 @@ void addMinHashes(Sketch::Hash_set & minHashes, priority_queue<Sketch::hash_t> &
     {
         delete [] seqRev;
     }
-}
-
-Sketch::hash_t getHash(const char * seq, int length)
-{
-    Sketch::hash_t hash = 0;
-    
-    //for ( int i = 0; i < length; i++ ) { cout << *(seq + i); } cout << endl;
-    
-#ifdef ARCH_32
-    uint32_t data[4];
-    MurmurHash3_x86_32(seq, length, seed, data);
-    hash = data[0];
-#else
-    uint64_t data[2];
-    MurmurHash3_x64_128(seq, length, seed, data);
-    hash = data[0];
-#endif    
-    
-    return hash;
 }
 
 void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * seq, uint32_t length, int kmerSize, int minHashesPerWindow, int windowSize, int verbosity)
@@ -681,7 +677,7 @@ void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * s
         
         if ( i >= nextValidKmer )
         {
-            Sketch::hash_t hash = getHash(seq + i, kmerSize);
+            Sketch::hash_t hash = getHash(seq + i, kmerSize).hash64; // TODO: dynamic
             
             if ( verbosity > 1 )
             {

@@ -205,7 +205,7 @@ CommandContain::ContainOutput * contain(CommandContain::ContainInput * data)
     return output;
 }
 
-float containSketches(const vector<Sketch::hash_t> & hashesSortedRef, const vector<Sketch::hash_t> & hashesSortedQuery)
+float containSketches(const HashList & hashesSortedRef, const HashList & hashesSortedQuery)
 {
     int common = 0;
     int denom = hashesSortedRef.size() < hashesSortedQuery.size() ?
@@ -217,12 +217,12 @@ float containSketches(const vector<Sketch::hash_t> & hashesSortedRef, const vect
     
     for ( int steps = 0; steps < denom && i < hashesSortedRef.size(); steps++ )
     {
-        if ( hashesSortedRef.at(i) < hashesSortedQuery.at(j) )
+        if ( hashLessThan(hashesSortedRef.at(i), hashesSortedQuery.at(j), hashesSortedRef.get64()) )
         {
             i++;
             steps--;
         }
-        else if ( hashesSortedRef.at(i) > hashesSortedQuery.at(j) )
+        else if ( hashLessThan(hashesSortedQuery.at(j), hashesSortedRef.at(i), hashesSortedRef.get64()) )
         {
             j++;
         }

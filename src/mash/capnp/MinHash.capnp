@@ -14,7 +14,8 @@ struct MinHash
 			length @ 2 : UInt32;
 			name @3 : Text;
 			comment @4 : Text;
-			hashes @5 : List(UInt64);
+			hashes32 @5 : List(UInt32);
+			hashes64 @6 : List(UInt64);
 		}
 		
 		references @0 : List(Reference);
@@ -26,7 +27,8 @@ struct MinHash
 		{
 			sequence @0 : UInt32;
 			position @1 : UInt32;
-			hash @2 : UInt64;
+			hash32 @2 : UInt32;
+			hash64 @3 : UInt64;
 		}
 		
 		loci @0 : List(Locus);
