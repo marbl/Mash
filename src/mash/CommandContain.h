@@ -29,6 +29,7 @@ public:
         int sketchSize;
         bool concat;
         bool noncanonical;
+        float error;
     };
     
     struct ContainOutput
@@ -36,6 +37,7 @@ public:
         struct PairOutput
         {
             float score;
+            float error;
             std::string nameRef;
             std::string nameQuery;
         };
@@ -49,10 +51,10 @@ public:
     
 private:
     
-    void writeOutput(ContainOutput * output) const;
+    void writeOutput(ContainOutput * output, float error) const;
 };
 
 CommandContain::ContainOutput * contain(CommandContain::ContainInput * data);
-float containSketches(const HashList & hashesSortedRef, const HashList & hashesSortedQuery);
+float containSketches(const HashList & hashesSortedRef, const HashList & hashesSortedQuery, float & errorToSet);
 
 #endif

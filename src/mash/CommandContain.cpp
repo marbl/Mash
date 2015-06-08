@@ -3,6 +3,7 @@
 #include <iostream>
 #include <zlib.h>
 #include "ThreadPool.h"
+#include <math.h>
 
 using namespace::std;
 
@@ -19,6 +20,7 @@ CommandContain::CommandContain()
     useOption("sketchSize");
     useOption("concat");
     useOption("noncanonical");
+    useOption("error");
     addOption("list", Option(Option::Boolean, "l", "Query files are lists of file names.", ""));
 }
 
@@ -36,6 +38,7 @@ int CommandContain::run() const
     bool concat = options.at("concat").active;
     bool list = options.at("list").active;
     bool noncanonical = options.at("noncanonical").active;
+    float error = options.at("error").getArgumentAsNumber();
     
     Sketch sketch;
     
@@ -147,23 +150,26 @@ int CommandContain::run() const
         
         while ( threadPool.outputAvailable() )
         {
-            writeOutput(threadPool.popOutputWhenAvailable());
+            writeOutput(threadPool.popOutputWhenAvailable(), error);
         }
     }
     
     while ( threadPool.running() )
     {
-        writeOutput(threadPool.popOutputWhenAvailable());
+        writeOutput(threadPool.popOutputWhenAvailable(), error);
     }
     
     return 0;
 }
 
-void CommandContain::writeOutput(ContainOutput * output) const
+void CommandContain::writeOutput(ContainOutput * output, float error) const
 {
     for ( int i = 0; i < output->pairs.size(); i++ )
     {
-        cout << output->pairs.at(i).score << '\t' << output->pairs.at(i).nameRef << '\t' << output->pairs.at(i).nameQuery << endl;
+        if ( output->pairs.at(i).error <= error )
+        {
+            cout << output->pairs.at(i).score << '\t' << output->pairs.at(i).nameRef << '\t' << output->pairs.at(i).nameQuery << '\t' << output->pairs.at(i).error << endl;
+        }
     }
     
     delete output;
@@ -194,7 +200,7 @@ CommandContain::ContainOutput * contain(CommandContain::ContainInput * data)
         {
             int pairIndex = i * sketchRef.getReferenceCount() + j;
             
-            output->pairs[pairIndex].score = containSketches(sketchRef.getReference(j).hashesSorted, sketchQuery->getReference(i).hashesSorted);
+            output->pairs[pairIndex].score = containSketches(sketchRef.getReference(j).hashesSorted, sketchQuery->getReference(i).hashesSorted, output->pairs[pairIndex].error);
             output->pairs[pairIndex].nameRef = sketchRef.getReference(j).name;
             output->pairs[pairIndex].nameQuery = sketchQuery->getReference(i).name;
         }
@@ -205,7 +211,7 @@ CommandContain::ContainOutput * contain(CommandContain::ContainInput * data)
     return output;
 }
 
-float containSketches(const HashList & hashesSortedRef, const HashList & hashesSortedQuery)
+float containSketches(const HashList & hashesSortedRef, const HashList & hashesSortedQuery, float & errorToSet)
 {
     int common = 0;
     int denom = hashesSortedRef.size() < hashesSortedQuery.size() ?
@@ -233,6 +239,8 @@ float containSketches(const HashList & hashesSortedRef, const HashList & hashesS
             common++;
         }
     }
+    
+    errorToSet = 1. / sqrt(j);
     
     return float(common) / j;
 }
