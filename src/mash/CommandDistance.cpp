@@ -216,7 +216,6 @@ float compareSketches(const HashList & hashesSortedRef, const HashList & hashesS
     int common = 0;
     int denom = 0;
     
-    cout << hashesSortedRef.size() << '\t'  << hashesSortedQuery.size () << endl;
     while ( denom < targetSize && i < hashesSortedRef.size() && j < hashesSortedQuery.size() )
     {
         if ( hashLessThan(hashesSortedRef.at(i), hashesSortedQuery.at(j), hashesSortedRef.get64()) )
