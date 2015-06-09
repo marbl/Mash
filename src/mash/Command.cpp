@@ -86,6 +86,9 @@ Command::Command()
     addAvailableOption("verbose", Option(Option::Boolean, "v", "Verbose", ""));
     addAvailableOption("silent", Option(Option::Boolean, "s", "Silent", ""));
     addAvailableOption("concat", Option(Option::Boolean, "f", "Sketch whole files, rather than individual sequences.", ""));
+    addAvailableOption("unique", Option(Option::Boolean, "u", "Remove (most) unique kmers using a Bloom Filter. This is useful for reducing noise from sequencing errors in read sets. The thoroughness of the filtering (at the expense of memory) can be controlled with -m. Implies -f.", ""));
+    addAvailableOption("genome", Option(Option::Integer, "g", "Expected genome size (Mb). Helps pick the Bloom Filter size. Should be within an order of magnitude of the true size. Implies -u.", "5"));
+    addAvailableOption("memory", Option(Option::Integer, "m", "Maximum Bloom Filter memory usage (GB). More memory will allow more thorough detection of unique kmers, so this should be as high as is practical for the computing environment (though it may not actually be used). Implies -u.", "1", 1, 1024));
     addAvailableOption("noncanonical", Option(Option::Boolean, "n", "Non-canonical. By default, canonical DNA kmers (alphabetical minima of forward-reverse pairs) are used, and kmers with non-acgtACGT characters are ignored. This option uses kmers as they appear and allows all characters.", ""));
     addAvailableOption("threads", Option(Option::Integer, "p", "Parallelism. This many threads will be spawned, each one handling on query sequence at a time.", "1"));
     addAvailableOption("pacbio", Option(Option::Boolean, "pacbio", "Use default settings for PacBio sequences.", ""));
@@ -225,14 +228,14 @@ void Command::addAvailableOption(string name, Option option)
 
 void splitFile(const string & file, vector<string> & lines)
 {
-	string line;
-	
-	ifstream in(file);
-	
-	while ( getline(in, line) )
-	{
-		lines.push_back(line);
-	}
+    string line;
+    
+    ifstream in(file);
+    
+    while ( getline(in, line) )
+    {
+        lines.push_back(line);
+    }
 }
 
 void printColumns(vector<vector<string>> columns, int indent, int spacing, const char * missing)

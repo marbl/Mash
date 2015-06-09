@@ -19,6 +19,9 @@ CommandSketch::CommandSketch()
     //useOption("verbose");
     //useOption("silent");
     useOption("concat");
+    useOption("unique");
+    useOption("genome");
+    useOption("memory");
     //useOption("illumina");
     //useOption("pacbio");
     //useOption("nanopore");
@@ -35,16 +38,32 @@ int CommandSketch::run() const
         return 0;
     }
     
-    int kmer = options.at("kmer").getArgumentAsNumber();
-    bool windowed = false;//options.at("windowed").active;
-    int sketchSize = options.at("sketchSize").getArgumentAsNumber();
-    int windowSize = 0;//options.at("window").getArgumentAsNumber();
     int verbosity = 0;//options.at("silent").active ? 0 : options.at("verbose").active ? 2 : 1;
-    bool concat = options.at("concat").active;
-    bool noncanonical = options.at("noncanonical").active;
     bool list = options.at("list").active;
     
-    if ( concat && windowed )
+    Sketch::Parameters parameters;
+    
+    parameters.kmerSize = options.at("kmer").getArgumentAsNumber();
+    parameters.minHashesPerWindow = options.at("sketchSize").getArgumentAsNumber();
+    parameters.concatenated = options.at("concat").active;
+    parameters.noncanonical = options.at("noncanonical").active;
+    parameters.bloomFilter = options.at("unique").active;
+    parameters.genomeSize = options.at("genome").getArgumentAsNumber();
+    parameters.memoryMax = options.at("memory").getArgumentAsNumber();
+    parameters.windowed = false;//options.at("windowed").active;
+    parameters.windowSize = 0;//options.at("window").getArgumentAsNumber();
+    
+    if ( options.at("genome").active || options.at("memory").active )
+    {
+        parameters.bloomFilter = true;
+    }
+    
+    if ( parameters.bloomFilter )
+    {
+        parameters.concatenated = true;
+    }
+    
+    if ( parameters.concatenated && parameters.windowed )
     {
         cerr << "ERROR: " << options.at("concat").identifier << " and " << options.at("windowed").identifier << " are incompatible." << endl;
         return 1;
@@ -75,11 +94,11 @@ int CommandSketch::run() const
         }
     }
     
-    sketch.initFromSequence(files, kmer, sketchSize, windowed, windowSize, concat, noncanonical, verbosity);
+    sketch.initFromSequence(files, parameters, verbosity);
     
     string prefix = options.at("prefix").argument.length() > 0 ? options.at("prefix").argument : arguments[0];
     
-    sketch.writeToCapnp((prefix + (windowed ? suffixSketchWindowed : suffixSketch)).c_str());
+    sketch.writeToCapnp((prefix + (parameters.windowed ? suffixSketchWindowed : suffixSketch)).c_str());
     
     return 0;
 }

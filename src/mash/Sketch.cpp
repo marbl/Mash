@@ -57,12 +57,12 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly, bool append)
     capnp::StreamFdMessageReader * message = new capnp::StreamFdMessageReader(fd, readerOptions);
     capnp::MinHash::Reader reader = message->getRoot<capnp::MinHash>();
     
-    kmerSize = reader.getKmerSize();
-    error = reader.getError();
-    minHashesPerWindow = reader.getMinHashesPerWindow();
-    windowSize = reader.getWindowSize();
-    concatenated = reader.getConcatenated();
-    noncanonical = reader.getNoncanonical();
+    parameters.kmerSize = reader.getKmerSize();
+    parameters.error = reader.getError();
+    parameters.minHashesPerWindow = reader.getMinHashesPerWindow();
+    parameters.windowSize = reader.getWindowSize();
+    parameters.concatenated = reader.getConcatenated();
+    parameters.noncanonical = reader.getNoncanonical();
     
     if ( headerOnly )
     {
@@ -95,9 +95,9 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly, bool append)
         reference.comment = referenceReader.getComment();
         reference.length = referenceReader.getLength();
         
-        reference.hashesSorted.setUse64(kmerSize > 16);
+        reference.hashesSorted.setUse64(parameters.kmerSize > 16);
         
-        if ( kmerSize > 16 )
+        if ( parameters.kmerSize > 16 )
         {
             capnp::List<uint64_t>::Reader hashesReader = referenceReader.getHashes64();
         
@@ -177,23 +177,24 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly, bool append)
     return 0;
 }
 
-int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int sketchSizeNew, bool windowedNew, int windowSizeNew, bool concat, bool noncanonicalNew, int verbosity)
+int Sketch::initFromSequence(const vector<string> & files, const Parameters & parametersNew, int verbosity)
 {
-    kmerSize = kmerSizeNew;
-    error = 0;//errorNew;
-    windowSize = windowSizeNew;
-    windowed = windowedNew;
-    minHashesPerWindow = sketchSizeNew; //(1. / error) * (1. / error); // TODO: windowed?
-    concatenated = concat;
-    noncanonical = noncanonicalNew;
+    parameters = parametersNew;
     
     int l;
     int count = 0;
     
+    bool use64 = parameters.kmerSize > 16;
+    
+    bloom_filter * bloomFilter = 0;
+    
+    uint64_t kmersTotal;
+    uint64_t kmersFiltered;
+    
     for ( int i = 0; i < files.size(); i++ )
     {
-        HashSet minHashes(kmerSize);
-        HashPriorityQueue minHashesQueue(kmerSize); // only used for non-windowed
+        HashSet minHashes(parameters.kmerSize);
+        HashPriorityQueue minHashesQueue(parameters.kmerSize); // only used for non-windowed
         
         gzFile fp = gzopen(files[i].c_str(), "r");
         
@@ -205,42 +206,62 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int 
         
         kseq_t *seq = kseq_init(fp);
         
-        if ( concat )
+        if ( parameters.concatenated )
         {
             references.resize(references.size() + 1);
             references[references.size() - 1].name = files[i];
             references[references.size() - 1].length = 0;
-            references[references.size() - 1].hashesSorted.setUse64(kmerSize > 16);
+            references[references.size() - 1].hashesSorted.setUse64(use64);
+            
+            if ( parameters.bloomFilter )
+            {
+                bloom_parameters bloomParams;
+                
+                bloomParams.projected_element_count = (uint64_t)parameters.genomeSize * 1000000l * 10l; // TODO: error rate based on platform and coverage
+                bloomParams.false_positive_probability = 0.1;
+                bloomParams.maximum_size = (uint64_t)parameters.memoryMax * 1000000000 * 8;
+                bloomParams.compute_optimal_parameters();
+                
+                kmersTotal = 0;
+                kmersFiltered = 0;
+                
+                if ( i == 0 )
+                {
+                    cout << "Bloom table size: " << bloomParams.optimal_parameters.table_size << " Hash functions: " << bloomParams.optimal_parameters.number_of_hashes << endl;
+                }
+                
+                bloomFilter = new bloom_filter(bloomParams);
+            }
         }
         
         while ((l = kseq_read(seq)) >= 0)
         {
-            if ( l < kmerSize )
+            if ( l < parameters.kmerSize )
             {
                 continue;
             }
             
-            if ( windowed )
+            if ( parameters.windowed )
             {
                 positionHashesByReference.resize(count + 1);
             }
             
-            if ( ! concat )
+            if ( ! parameters.concatenated )
             {
                 references.resize(references.size() + 1);
-                references[references.size() - 1].hashesSorted.setUse64(kmerSize > 16);
+                references[references.size() - 1].hashesSorted.setUse64(use64);
                 minHashes.clear();
                 minHashesQueue.clear();
             }
             
-            if ( verbosity > 0 && windowed ) cout << '>' << seq->name.s << " (" << l << "nt)" << endl << endl;
+            if ( verbosity > 0 && parameters.windowed ) cout << '>' << seq->name.s << " (" << l << "nt)" << endl << endl;
             //if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
             //printf("seq: %s\n", seq->seq.s);
             //if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
             
             Reference & reference = references[references.size() - 1];
             
-            if ( ! concat )
+            if ( ! parameters.concatenated )
             {
                 reference.name = seq->name.s;
                 
@@ -256,18 +277,18 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int 
                 references[references.size() - 1].length += l;
             }
             
-            if ( windowed )
+            if ( parameters.windowed )
             {
-                getMinHashPositions(positionHashesByReference[count], seq->seq.s, l, kmerSize, minHashesPerWindow, windowSize, verbosity);
+                getMinHashPositions(positionHashesByReference[count], seq->seq.s, l, parameters, verbosity);
             }
             else
             {
-                addMinHashes(minHashes, minHashesQueue, seq->seq.s, l, kmerSize, minHashesPerWindow, noncanonical);
+                addMinHashes(minHashes, minHashesQueue, bloomFilter, seq->seq.s, l, parameters, kmersTotal, kmersFiltered);
             }
             
-            if ( ! concat )
+            if ( ! parameters.concatenated )
             {
-                if ( ! windowed )
+                if ( ! parameters.windowed )
                 {
                     setMinHashesForReference(references.size() - 1, minHashes);
                 }
@@ -282,11 +303,17 @@ int Sketch::initFromSequence(const vector<string> & files, int kmerSizeNew, int 
             return 1;
         }
         
-        if ( concat )
+        if ( parameters.concatenated )
         {
-            if ( ! windowed )
+            if ( ! parameters.windowed )
             {
                 setMinHashesForReference(references.size() - 1, minHashes);
+            }
+            
+            if ( bloomFilter != 0 )
+            {
+                cout << kmersFiltered << " of " << kmersTotal << " kmers filtered for " << files[i] << endl;
+                delete bloomFilter;
             }
             
             count++;
@@ -374,7 +401,7 @@ int Sketch::writeToCapnp(const char * file) const
         {
             const HashList & hashes = references[i].hashesSorted;
             
-            if ( kmerSize > 16 )
+            if ( parameters.kmerSize > 16 )
             {
                 capnp::List<uint64_t>::Builder hashes64Builder = referenceBuilder.initHashes64(hashes.size());
             
@@ -426,12 +453,12 @@ int Sketch::writeToCapnp(const char * file) const
         }
     }
     
-    builder.setKmerSize(kmerSize);
-    builder.setError(error);
-    builder.setMinHashesPerWindow(minHashesPerWindow);
-    builder.setWindowSize(windowSize);
-    builder.setConcatenated(concatenated);
-    builder.setNoncanonical(noncanonical);
+    builder.setKmerSize(parameters.kmerSize);
+    builder.setError(parameters.error);
+    builder.setMinHashesPerWindow(parameters.minHashesPerWindow);
+    builder.setWindowSize(parameters.windowSize);
+    builder.setConcatenated(parameters.concatenated);
+    builder.setNoncanonical(parameters.noncanonical);
     
     writeMessageToFd(fd, message);
     close(fd);
@@ -465,8 +492,12 @@ void Sketch::setMinHashesForReference(int referenceIndex, const HashSet & hashes
     hashList.sort();
 }
 
-void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, char * seq, uint32_t length, int kmerSize, int mins, bool noncanonical)
+void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, bloom_filter * bloomFilter, char * seq, uint32_t length, const Sketch::Parameters & parameters, uint64_t & kmersTotal, uint64_t & kmersFiltered)
 {
+    int kmerSize = parameters.kmerSize;
+    int mins = parameters.minHashesPerWindow;
+    bool noncanonical = parameters.noncanonical;
+    
     // Determine the 'mins' smallest hashes, including those already provided
     // (potentially replacing them). This allows min-hash sets across multiple
     // sequences to be determined.
@@ -551,6 +582,33 @@ void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, char 
             if ( debug ) cout << endl;
         }
         
+        const char * kmer = useRevComp ? seqRev + length - i - kmerSize : seq + i;
+        bool filter = false;
+        
+        if ( bloomFilter )
+        {
+            kmersTotal++;
+            std::string kmerString(kmer, kmerSize);
+            
+            //cout << kmerString;
+            
+            if ( ! bloomFilter->contains(kmerString) )
+            {
+                filter = true;
+                //cout << " (filtered)";
+            }
+            
+            //cout << endl;
+            
+            bloomFilter->insert(kmerString);
+            
+            if ( filter )
+            {
+                kmersFiltered++;
+                continue;
+            }
+        }
+        
         hash_u hash = getHash(useRevComp ? seqRev + length - i - kmerSize : seq + i, kmerSize);
         
         if ( debug ) cout << endl;
@@ -581,11 +639,14 @@ void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, char 
     }
 }
 
-void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * seq, uint32_t length, int kmerSize, int minHashesPerWindow, int windowSize, int verbosity)
+void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * seq, uint32_t length, const Sketch::Parameters & parameters, int verbosity)
 {
     // Find positions whose hashes are min-hashes in any window of a sequence
     
-    int mins = minHashesPerWindow;
+    int kmerSize = parameters.kmerSize;
+    int mins = parameters.minHashesPerWindow;
+    int windowSize = parameters.windowSize;
+    
     int nextValidKmer = 0;
     
     if ( windowSize > length - kmerSize + 1 )

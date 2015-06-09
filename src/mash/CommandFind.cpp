@@ -46,8 +46,8 @@ int CommandFind::run() const
     
     if ( hasSuffix(fileReference, suffixSketch ) )
     {
-    	cerr << "ERROR: Reference (" << fileReference << ") looks like a sketch but is not windowed.\n";
-    	return 1;
+        cerr << "ERROR: Reference (" << fileReference << ") looks like a sketch but is not windowed.\n";
+        return 1;
     }
     
     if ( hasSuffix(fileReference, suffixSketchWindowed) )
@@ -90,12 +90,19 @@ int CommandFind::run() const
         {
             vector<string> refArgVector;
             refArgVector.push_back(fileReference);
-        	
+            
             //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
             cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...\n";
             
-            sketch.initFromSequence(refArgVector, kmerSize, factor, true, windowSize, false, false);
-        	/*
+            Sketch::Parameters params;
+            
+            params.kmerSize = kmerSize;
+            params.minHashesPerWindow = mins;
+            params.windowed = true;
+            params.windowSize = windowSize;
+            
+            sketch.initFromSequence(refArgVector, params);
+            /*
             if ( sketch.writeToFile() )
             {
                 cerr << "Sketch saved for subsequent runs." << endl;
@@ -123,12 +130,12 @@ int CommandFind::run() const
         else
         {
             inStream = fopen(arguments[i].c_str(), "r");
-			
-			if ( inStream == NULL )
-			{
-				cerr << "ERROR: could not open " << arguments[i] << " for reading." << endl;
-				exit(1);
-			}
+            
+            if ( inStream == NULL )
+            {
+                cerr << "ERROR: could not open " << arguments[i] << " for reading." << endl;
+                exit(1);
+            }
         }
         
         gzFile fp = gzdopen(fileno(inStream), "r");
@@ -275,7 +282,15 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
     //getMinHashes(minHashes, seq, length, 0, kmerSize, mins);
     
     vector<Sketch::PositionHash> positionHashes;
-    getMinHashPositions(positionHashes, seq, length, kmerSize, mins, windowSize, 0);
+    
+    Sketch::Parameters params;
+    
+    params.kmerSize = kmerSize;
+    params.minHashesPerWindow = mins;
+    params.windowed = true;
+    params.windowSize = windowSize;
+    
+    getMinHashPositions(positionHashes, seq, length, params);
     //
     for ( int i = 0; i < positionHashes.size(); i++ )
     {

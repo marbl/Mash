@@ -19,6 +19,9 @@ CommandDistance::CommandDistance()
     useOption("sketchSize");
     useOption("concat");
     useOption("noncanonical");
+    useOption("unique");
+    useOption("genome");
+    useOption("memory");
     addOption("list", Option(Option::Boolean, "l", "Query files are lists of file names.", ""));
 }
 
@@ -31,11 +34,27 @@ int CommandDistance::run() const
     }
     
     int threads = options.at("threads").getArgumentAsNumber();
-    int kmerSize = options.at("kmer").getArgumentAsNumber();
-    int sketchSize = options.at("sketchSize").getArgumentAsNumber();
-    bool concat = options.at("concat").active;
     bool list = options.at("list").active;
-    bool noncanonical = options.at("noncanonical").active;
+    
+    Sketch::Parameters parameters;
+    
+    parameters.kmerSize = options.at("kmer").getArgumentAsNumber();
+    parameters.minHashesPerWindow = options.at("sketchSize").getArgumentAsNumber();
+    parameters.concatenated = options.at("concat").active;
+    parameters.noncanonical = options.at("noncanonical").active;
+    parameters.bloomFilter = options.at("unique").active;
+    parameters.genomeSize = options.at("genome").getArgumentAsNumber();
+    parameters.memoryMax = options.at("memory").getArgumentAsNumber();
+    
+    if ( options.at("genome").active || options.at("memory").active )
+    {
+        parameters.bloomFilter = true;
+    }
+    
+    if ( parameters.bloomFilter )
+    {
+        parameters.concatenated = true;
+    }
     
     Sketch sketch;
     
@@ -56,6 +75,9 @@ int CommandDistance::run() const
         }
         
         sketch.initFromCapnp(fileReference.c_str());
+        
+        parameters.kmerSize = sketch.getKmerSize();
+        parameters.noncanonical = sketch.getNoncanonical();
     }
     else
     {
@@ -63,7 +85,7 @@ int CommandDistance::run() const
         
         if
         (
-            (options.at("kmer").active && kmerSize != sketch.getKmerSize())
+            (options.at("kmer").active && parameters.kmerSize != sketch.getKmerSize())
         )
         {
             sketchFileExists = false;
@@ -72,7 +94,8 @@ int CommandDistance::run() const
         if ( false && sketchFileExists )
         {
             sketch.initFromBase(fileReference, false);
-            kmerSize = sketch.getKmerSize();
+            parameters.kmerSize = sketch.getKmerSize();
+            parameters.noncanonical = sketch.getNoncanonical();
         }
         else
         {
@@ -82,7 +105,7 @@ int CommandDistance::run() const
             //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
             cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...\n";
             
-            sketch.initFromSequence(refArgVector, kmerSize, sketchSize, false, 0, concat, noncanonical);
+            sketch.initFromSequence(refArgVector, parameters);
             /*
             if ( sketch.writeToFile() )
             {
@@ -143,7 +166,7 @@ int CommandDistance::run() const
             sketchQuery->initFromCapnp(queryFiles[i].c_str());
         }
         
-        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, queryFiles[i], sketch.getKmerSize(), sketchSize, concat, sketch.getNoncanonical()));
+        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, queryFiles[i], parameters));
         
         while ( threadPool.outputAvailable() )
         {
@@ -183,7 +206,7 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
         vector<string> fileVector;
         fileVector.push_back(data->file);
         
-        sketchQuery->initFromSequence(fileVector, data->kmerSize, data->sketchSize, false, 0, data->concat, data->noncanonical);
+        sketchQuery->initFromSequence(fileVector, data->parameters);
     }
     
     output->pairs.resize(sketchRef.getReferenceCount() * sketchQuery->getReferenceCount());

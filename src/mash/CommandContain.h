@@ -10,26 +10,19 @@ public:
     
     struct ContainInput
     {
-        ContainInput(const Sketch & sketchRefNew, Sketch * sketchQueryNew, const std::string fileNew, int kmerSizeNew, float sketchSizeNew, bool concatNew, bool noncanonicalNew)
+        ContainInput(const Sketch & sketchRefNew, Sketch * sketchQueryNew, const std::string fileNew, const Sketch::Parameters & parametersNew)
             :
             sketchRef(sketchRefNew),
             sketchQuery(sketchQueryNew),
             file(fileNew),
-            kmerSize(kmerSizeNew),
-            sketchSize(sketchSizeNew),
-            concat(concatNew),
-            noncanonical(noncanonicalNew)
+            parameters(parametersNew)
             {}
         
         const Sketch & sketchRef;
         Sketch * sketchQuery;
         std::string nameRef;
         const std::string file;
-        int kmerSize;
-        int sketchSize;
-        bool concat;
-        bool noncanonical;
-        float error;
+        const Sketch::Parameters & parameters;
     };
     
     struct ContainOutput
