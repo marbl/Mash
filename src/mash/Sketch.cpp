@@ -13,6 +13,8 @@
 #include <set>
 #include "Command.h" // TEMP for column printing
 #include <sys/stat.h>
+#include <capnp/message.h>
+#include <capnp/serialize-packed.h>
 
 #define SET_BINARY_MODE(file)
 #define CHUNK 16384
@@ -54,7 +56,7 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly, bool append)
     readerOptions.traversalLimitInWords = 1000000000000;
     readerOptions.nestingLimit = 1000000;
     
-    capnp::StreamFdMessageReader * message = new capnp::StreamFdMessageReader(fd, readerOptions);
+    capnp::PackedFdMessageReader * message = new capnp::PackedFdMessageReader(fd, readerOptions);
     capnp::MinHash::Reader reader = message->getRoot<capnp::MinHash>();
     
     parameters.kmerSize = reader.getKmerSize();
@@ -460,7 +462,7 @@ int Sketch::writeToCapnp(const char * file) const
     builder.setConcatenated(parameters.concatenated);
     builder.setNoncanonical(parameters.noncanonical);
     
-    writeMessageToFd(fd, message);
+    writePackedMessageToFd(fd, message);
     close(fd);
     
     return 0;

@@ -1,8 +1,6 @@
 #ifndef Sketch_h
 #define Sketch_h
 
-#include <capnp/message.h>
-#include <capnp/serialize.h>
 #include "mash/capnp/MinHash.capnp.h"
 #include <unordered_map>
 #include <vector>
