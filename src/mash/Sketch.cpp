@@ -189,7 +189,7 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
     bloom_filter * bloomFilter = 0;
     
     uint64_t kmersTotal;
-    uint64_t kmersFiltered;
+    uint64_t kmersUsed;
     
     for ( int i = 0; i < files.size(); i++ )
     {
@@ -218,16 +218,16 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
                 bloom_parameters bloomParams;
                 
                 bloomParams.projected_element_count = (uint64_t)parameters.genomeSize * 1000000l * 10l; // TODO: error rate based on platform and coverage
-                bloomParams.false_positive_probability = 0.1;
-                bloomParams.maximum_size = (uint64_t)parameters.memoryMax * 1000000000 * 8;
+                bloomParams.false_positive_probability = parameters.bloomError;
+                bloomParams.maximum_size = (uint64_t)parameters.memoryMax * 1000000000l * 8l;
                 bloomParams.compute_optimal_parameters();
                 
                 kmersTotal = 0;
-                kmersFiltered = 0;
+                kmersUsed = 0;
                 
                 if ( i == 0 )
                 {
-                    cout << "Bloom table size: " << bloomParams.optimal_parameters.table_size << " Hash functions: " << bloomParams.optimal_parameters.number_of_hashes << endl;
+                    cout << "Bloom table size (bits): " << bloomParams.optimal_parameters.table_size << " Hash functions: " << bloomParams.optimal_parameters.number_of_hashes << endl;
                 }
                 
                 bloomFilter = new bloom_filter(bloomParams);
@@ -283,7 +283,7 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
             }
             else
             {
-                addMinHashes(minHashes, minHashesQueue, bloomFilter, seq->seq.s, l, parameters, kmersTotal, kmersFiltered);
+                addMinHashes(minHashes, minHashesQueue, bloomFilter, seq->seq.s, l, parameters, kmersTotal, kmersUsed);
             }
             
             if ( ! parameters.concatenated )
@@ -312,7 +312,7 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
             
             if ( bloomFilter != 0 )
             {
-                cout << kmersFiltered << " of " << kmersTotal << " kmers filtered for " << files[i] << endl;
+                cout << kmersTotal - kmersUsed << " of " << kmersTotal << " kmers filtered for " << files[i] << endl;
                 delete bloomFilter;
             }
             
@@ -492,7 +492,7 @@ void Sketch::setMinHashesForReference(int referenceIndex, const HashSet & hashes
     hashList.sort();
 }
 
-void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, bloom_filter * bloomFilter, char * seq, uint32_t length, const Sketch::Parameters & parameters, uint64_t & kmersTotal, uint64_t & kmersFiltered)
+void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, bloom_filter * bloomFilter, char * seq, uint32_t length, const Sketch::Parameters & parameters, uint64_t & kmersTotal, uint64_t & kmersUsed)
 {
     int kmerSize = parameters.kmerSize;
     int mins = parameters.minHashesPerWindow;
@@ -604,9 +604,10 @@ void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, bloom
             
             if ( filter )
             {
-                kmersFiltered++;
                 continue;
             }
+            
+            kmersUsed++;
         }
         
         hash_u hash = getHash(useRevComp ? seqRev + length - i - kmerSize : seq + i, kmerSize);

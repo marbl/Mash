@@ -22,6 +22,7 @@ CommandDistance::CommandDistance()
     useOption("unique");
     useOption("genome");
     useOption("memory");
+    useOption("bloomError");
     addOption("list", Option(Option::Boolean, "l", "Query files are lists of file names.", ""));
 }
 
@@ -45,6 +46,7 @@ int CommandDistance::run() const
     parameters.bloomFilter = options.at("unique").active;
     parameters.genomeSize = options.at("genome").getArgumentAsNumber();
     parameters.memoryMax = options.at("memory").getArgumentAsNumber();
+    parameters.bloomError = options.at("bloomError").getArgumentAsNumber();
     
     if ( options.at("genome").active || options.at("memory").active )
     {

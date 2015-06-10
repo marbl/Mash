@@ -39,7 +39,8 @@ public:
             noncanonical(false),
             bloomFilter(false),
             genomeSize(0),
-            memoryMax(0)
+            memoryMax(0),
+            bloomError(0)
             {}
         
         Parameters(const Parameters & other)
@@ -53,7 +54,8 @@ public:
             noncanonical(other.noncanonical),
             bloomFilter(other.bloomFilter),
             genomeSize(other.genomeSize),
-            memoryMax(other.memoryMax)
+            memoryMax(other.memoryMax),
+            bloomError(other.bloomError)
             {}
         
         int kmerSize;
@@ -66,6 +68,7 @@ public:
         bool bloomFilter;
         int genomeSize;
         int memoryMax;
+        float bloomError;
     };
     
     struct PositionHash
@@ -138,7 +141,7 @@ private:
     std::string file;
 };
 
-void addMinHashes(HashSet & lociByHash, HashPriorityQueue & minHashesQueue, bloom_filter * bloomFilter, char * seq, uint32_t length, const Sketch::Parameters & parameters, uint64_t & kmersTotal, uint64_t & kmersFiltered);
+void addMinHashes(HashSet & lociByHash, HashPriorityQueue & minHashesQueue, bloom_filter * bloomFilter, char * seq, uint32_t length, const Sketch::Parameters & parameters, uint64_t & kmersTotal, uint64_t & kmersUsed);
 void getMinHashPositions(std::vector<Sketch::PositionHash> & loci, char * seq, uint32_t length, const Sketch::Parameters & parameters, int verbosity = 0);
 bool hasSuffix(std::string const & whole, std::string const & suffix);
 void reverseComplement(const char * src, char * dest, int length);

@@ -20,10 +20,11 @@ CommandContain::CommandContain()
     useOption("sketchSize");
     useOption("concat");
     useOption("noncanonical");
-    useOption("error");
     useOption("unique");
     useOption("memory");
     useOption("genome");
+    useOption("bloomError");
+    addOption("errorThreshold", Option(Option::Number, "e", "Error bound threshold for reporting scores values. Error bounds can generally be increased by increasing the sketch size of the reference.", "0.05"));
     addOption("list", Option(Option::Boolean, "l", "Query files are lists of file names.", ""));
 }
 
@@ -44,10 +45,11 @@ int CommandContain::run() const
     parameters.minHashesPerWindow = options.at("sketchSize").getArgumentAsNumber();
     parameters.concatenated = options.at("concat").active;
     parameters.noncanonical = options.at("noncanonical").active;
-    parameters.error = options.at("error").getArgumentAsNumber();
+    parameters.error = options.at("errorThreshold").getArgumentAsNumber();
     parameters.bloomFilter = options.at("unique").active;
     parameters.genomeSize = options.at("genome").getArgumentAsNumber();
     parameters.memoryMax = options.at("memory").getArgumentAsNumber();
+    parameters.bloomError = options.at("bloomError").getArgumentAsNumber();
     
     if ( options.at("genome").active || options.at("memory").active )
     {

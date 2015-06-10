@@ -22,6 +22,7 @@ CommandSketch::CommandSketch()
     useOption("unique");
     useOption("genome");
     useOption("memory");
+    useOption("bloomError");
     //useOption("illumina");
     //useOption("pacbio");
     //useOption("nanopore");
@@ -50,6 +51,7 @@ int CommandSketch::run() const
     parameters.bloomFilter = options.at("unique").active;
     parameters.genomeSize = options.at("genome").getArgumentAsNumber();
     parameters.memoryMax = options.at("memory").getArgumentAsNumber();
+    parameters.bloomError = options.at("bloomError").getArgumentAsNumber();
     parameters.windowed = false;//options.at("windowed").active;
     parameters.windowSize = 0;//options.at("window").getArgumentAsNumber();
     
