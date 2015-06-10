@@ -23,6 +23,7 @@ CommandDistance::CommandDistance()
     useOption("genome");
     useOption("memory");
     useOption("bloomError");
+    addOption("table", Option(Option::Boolean, "t", "Table output.", ""));
     addOption("list", Option(Option::Boolean, "l", "Query files are lists of file names.", ""));
 }
 
@@ -36,6 +37,7 @@ int CommandDistance::run() const
     
     int threads = options.at("threads").getArgumentAsNumber();
     bool list = options.at("list").active;
+    bool table = options.at("table").active;
     
     Sketch::Parameters parameters;
     
@@ -120,6 +122,18 @@ int CommandDistance::run() const
         }
     }
     
+    if ( table )
+    {
+        cout << "#query";
+        
+        for ( int i = 0; i < sketch.getReferenceCount(); i++ )
+        {
+            cout << '\t' << sketch.getReference(i).name;
+        }
+        
+        cout << endl;
+    }
+    
     ThreadPool<CompareInput, CompareOutput> threadPool(compare, threads);
     
     vector<string> queryFiles;
@@ -172,23 +186,53 @@ int CommandDistance::run() const
         
         while ( threadPool.outputAvailable() )
         {
-            writeOutput(threadPool.popOutputWhenAvailable());
+            writeOutput(threadPool.popOutputWhenAvailable(), table);
         }
     }
     
     while ( threadPool.running() )
     {
-        writeOutput(threadPool.popOutputWhenAvailable());
+        writeOutput(threadPool.popOutputWhenAvailable(), table);
     }
     
     return 0;
 }
 
-void CommandDistance::writeOutput(CompareOutput * output) const
+void CommandDistance::writeOutput(CompareOutput * output, bool table) const
 {
     for ( int i = 0; i < output->pairs.size(); i++ )
     {
-        cout << output->pairs.at(i).score << '\t' << output->pairs.at(i).nameRef << '\t' << output->pairs.at(i).nameQuery << endl;
+        string queryLast;
+        
+        if ( table )
+        {
+            if ( i > 0 && output->pairs.at(i).nameQuery != output->pairs.at(i - 1).nameQuery )
+            {
+                cout << endl << output->pairs.at(i).nameQuery << '\t' << output->pairs.at(i).score;
+            }
+            else
+            {
+                if ( i == 0 )
+                {
+                    cout << output->pairs.at(i).nameQuery << '\t';
+                }
+                else
+                {
+                    cout << '\t';
+                }
+                
+                cout << output->pairs.at(i).score;
+            }
+        }
+        else
+        {
+            cout << output->pairs.at(i).score << '\t' << output->pairs.at(i).nameRef << '\t' << output->pairs.at(i).nameQuery << endl;
+        }
+    }
+    
+    if ( table )
+    {
+        cout << endl;
     }
     
     delete output;

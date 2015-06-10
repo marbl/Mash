@@ -43,7 +43,7 @@ public:
     
 private:
     
-    void writeOutput(CompareOutput * output) const;
+    void writeOutput(CompareOutput * output, bool table) const;
 };
 
 CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data);
