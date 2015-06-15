@@ -227,7 +227,12 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
         if ( parameters.concatenated )
         {
             references.resize(references.size() + 1);
-            references[references.size() - 1].name = files[i];
+            
+            if ( files[i] != "-" )
+            {
+                references[references.size() - 1].name = files[i];
+            }
+            
             references[references.size() - 1].length = 0;
             references[references.size() - 1].hashesSorted.setUse64(use64);
             
@@ -293,6 +298,11 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
             else
             {
                 references[references.size() - 1].length += l;
+                
+                if ( files[i] == "-" && references[references.size() - 1].name == "" )
+                {
+                    references[references.size() - 1].name = seq->name.s;
+                }
             }
             
             if ( parameters.windowed )
