@@ -51,6 +51,12 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly, bool append)
 {
     int fd = open(file, O_RDONLY);
     
+    if ( fd < 0 )
+    {
+        cerr << "ERROR: could not open \"" << file << "\" for reading." << endl;
+        exit(1);
+    }
+    
     capnp::ReaderOptions readerOptions;
     
     readerOptions.traversalLimitInWords = 1000000000000;
@@ -198,14 +204,24 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
         HashSet minHashes(parameters.kmerSize);
         HashPriorityQueue minHashesQueue(parameters.kmerSize); // only used for non-windowed
         
-        gzFile fp = gzopen(files[i].c_str(), "r");
+        FILE * inStream = 0;
         
-        if ( fp == NULL )
+        if ( files[i] == "-" )
         {
-            cerr << "ERROR: could not open " << files[i] << " for reading." << endl;
-            exit(1);
+            inStream = stdin;
+        }
+        else
+        {
+            inStream = fopen(files[i].c_str(), "r");
+            
+            if ( inStream == NULL )
+            {
+                cerr << "ERROR: could not open " << files[i] << " for reading." << endl;
+                exit(1);
+            }
         }
         
+        gzFile fp = gzdopen(fileno(inStream), "r");
         kseq_t *seq = kseq_init(fp);
         
         if ( parameters.concatenated )
@@ -323,6 +339,7 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
         
         kseq_destroy(seq);
         gzclose(fp);
+        fclose(inStream);
     }
     /*
     printf("\nCombined hash table:\n\n");

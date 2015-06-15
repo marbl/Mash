@@ -170,6 +170,7 @@ int CommandFind::run() const
         
         kseq_destroy(seq);
         gzclose(fp);
+        fclose(inStream);
     }
     
     while ( threadPool.running() )

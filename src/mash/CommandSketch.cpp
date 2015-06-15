@@ -8,7 +8,7 @@ CommandSketch::CommandSketch()
 : Command()
 {
     name = "sketch";
-    description = "Create a sketch, which is a reduced representation of a sequence or set of sequences (based on min-hashes) that can be used for fast distance calculations. By default, the output will be the input file with a '.msh' extension (see -o).";
+    description = "Create a sketch, which is a reduced representation of a sequence or set of sequences (based on min-hashes) that can be used for fast distance calculations. Input can be a fasta or fastq files (gzipped or not), and \"-\" can be given to read from standard input. By default, the output will be the input file with a '.msh' extension, or 'stdin.msh' if standard input is used (see -o).";
     argumentString = "fast(a|q)[.gz] ...";
     
     useOption("help");
@@ -98,7 +98,23 @@ int CommandSketch::run() const
     
     sketch.initFromSequence(files, parameters, verbosity);
     
-    string prefix = options.at("prefix").argument.length() > 0 ? options.at("prefix").argument : arguments[0];
+    string prefix;
+    
+    if ( options.at("prefix").argument.length() > 0 )
+    {
+        prefix = options.at("prefix").argument;
+    }
+    else
+    {
+        if ( arguments[0] == "-" )
+        {
+            prefix = "stdin";
+        }
+        else
+        {
+            prefix = arguments[0];
+        }
+    }
     
     sketch.writeToCapnp((prefix + (parameters.windowed ? suffixSketchWindowed : suffixSketch)).c_str());
     
