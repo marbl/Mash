@@ -3,6 +3,7 @@
 #include <iostream>
 #include <zlib.h>
 #include "ThreadPool.h"
+#include "gsl/gsl_cdf.h"
 
 using namespace::std;
 
@@ -202,31 +203,32 @@ void CommandDistance::writeOutput(CompareOutput * output, bool table) const
 {
     for ( int i = 0; i < output->pairs.size(); i++ )
     {
+        const CompareOutput::PairOutput & pair = output->pairs.at(i);
         string queryLast;
         
         if ( table )
         {
-            if ( i > 0 && output->pairs.at(i).nameQuery != output->pairs.at(i - 1).nameQuery )
+            if ( i > 0 && pair.nameQuery != output->pairs.at(i - 1).nameQuery )
             {
-                cout << endl << output->pairs.at(i).nameQuery << '\t' << output->pairs.at(i).score;
+                cout << endl << pair.nameQuery << '\t' << pair.score;
             }
             else
             {
                 if ( i == 0 )
                 {
-                    cout << output->pairs.at(i).nameQuery << '\t';
+                    cout << pair.nameQuery << '\t';
                 }
                 else
                 {
                     cout << '\t';
                 }
                 
-                cout << output->pairs.at(i).score;
+                cout << pair.score;
             }
         }
         else
         {
-            cout << output->pairs.at(i).score << '\t' << output->pairs.at(i).nameRef << '\t' << output->pairs.at(i).nameQuery << endl;
+            cout << pair.score << '\t' << pair.nameRef << '\t' << pair.nameQuery << '\t' << pair.pValue << endl;
         }
     }
     
@@ -255,6 +257,10 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
         sketchQuery->initFromSequence(fileVector, data->parameters);
     }
     
+    int sketchSize = sketchQuery->getMinHashesPerWindow() < sketchRef.getMinHashesPerWindow() ?
+        sketchQuery->getMinHashesPerWindow() :
+        sketchRef.getMinHashesPerWindow();
+    
     output->pairs.resize(sketchRef.getReferenceCount() * sketchQuery->getReferenceCount());
     
     for ( int i = 0; i < sketchQuery->getReferenceCount(); i++ )
@@ -263,9 +269,7 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
         {
             int pairIndex = i * sketchRef.getReferenceCount() + j;
             
-            output->pairs[pairIndex].score = compareSketches(sketchRef.getReference(j).hashesSorted, sketchQuery->getReference(i).hashesSorted, sketchRef.getMinHashesPerWindow(), sketchQuery->getMinHashesPerWindow());
-            output->pairs[pairIndex].nameRef = sketchRef.getReference(j).name;
-            output->pairs[pairIndex].nameQuery = sketchQuery->getReference(i).name;
+            compareSketches(output->pairs[pairIndex], sketchRef.getReference(j), sketchQuery->getReference(i), sketchSize, sketchRef.getKmerSpace());
         }
     }
     
@@ -274,24 +278,23 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
     return output;
 }
 
-float compareSketches(const HashList & hashesSortedRef, const HashList & hashesSortedQuery, int targetSizeRef, int targetSizeQuery)
+void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, uint64_t kmerSpace)
 {
-    int targetSize = targetSizeQuery < targetSizeRef ?
-        targetSizeQuery :
-        targetSizeRef;
-    
     int i = 0;
     int j = 0;
     int common = 0;
     int denom = 0;
     
-    while ( denom < targetSize && i < hashesSortedRef.size() && j < hashesSortedQuery.size() )
+    const HashList & hashesSortedRef = refRef.hashesSorted;
+    const HashList & hashesSortedQry = refQry.hashesSorted;
+    
+    while ( denom < sketchSize && i < hashesSortedRef.size() && j < hashesSortedQry.size() )
     {
-        if ( hashLessThan(hashesSortedRef.at(i), hashesSortedQuery.at(j), hashesSortedRef.get64()) )
+        if ( hashLessThan(hashesSortedRef.at(i), hashesSortedQry.at(j), hashesSortedRef.get64()) )
         {
             i++;
         }
-        else if ( hashLessThan(hashesSortedQuery.at(j), hashesSortedRef.at(i), hashesSortedRef.get64()) )
+        else if ( hashLessThan(hashesSortedQry.at(j), hashesSortedRef.at(i), hashesSortedRef.get64()) )
         {
             j++;
         }
@@ -305,7 +308,7 @@ float compareSketches(const HashList & hashesSortedRef, const HashList & hashesS
         denom++;
     }
     
-    if ( denom < targetSize )
+    if ( denom < sketchSize )
     {
         // complete the union operation if possible
         
@@ -314,16 +317,32 @@ float compareSketches(const HashList & hashesSortedRef, const HashList & hashesS
             denom += hashesSortedRef.size() - i;
         }
         
-        if ( j < hashesSortedQuery.size() )
+        if ( j < hashesSortedQry.size() )
         {
-            denom += hashesSortedQuery.size() - j;
+            denom += hashesSortedQry.size() - j;
         }
         
-        if ( denom > targetSize )
+        if ( denom > sketchSize )
         {
-            denom = targetSize;
+            denom = sketchSize;
         }
     }
     
-    return 1. - float(common) / denom;
+    output.score = 1. - float(common) / denom;
+    output.pValue = pValue(common, refRef.length, refQry.length, kmerSpace, denom);
+    
+    output.nameRef = refRef.name;
+    output.nameQuery = refQry.name;
+}
+
+float pValue(int x, int lengthRef, int lengthQuery, uint64_t kmerSpace, int sketchSize)
+{
+    float pX = 1. / (1. + (float)kmerSpace / lengthRef);
+    float pY = 1. / (1. + (float)kmerSpace / lengthQuery);
+    
+    float r = pX * pY / (pX + pY - pX * pY);
+    
+    float M = kmerSpace * (pX + pY) / (1. + r);
+    
+    return gsl_cdf_hypergeometric_Q(x - 1, r * M, M - r * M, sketchSize);
 }

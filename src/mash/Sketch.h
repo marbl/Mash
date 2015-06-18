@@ -114,6 +114,7 @@ public:
     int getReferenceCount() const {return references.size();}
     int getReferenceIndex(std::string id) const;
     int getKmerSize() const {return parameters.kmerSize;}
+    uint64_t getKmerSpace() const {return kmerSpace;}
     int getWindowSize() const {return parameters.windowSize;}
     bool getNoncanonical() const {return parameters.noncanonical;}
     bool hasLociByHash(hash_t hash) const {return lociByHash.count(hash);}
@@ -135,7 +136,7 @@ private:
     std::unordered_map<hash_t, std::vector<Locus>> lociByHash;
     
     Parameters parameters;
-    
+    uint64_t kmerSpace;
     std::string file;
 };
 

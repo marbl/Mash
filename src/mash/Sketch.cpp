@@ -511,6 +511,8 @@ void Sketch::createIndex()
             lociByHash[positionHash.hash].push_back(Locus(i, positionHash.position));
         }
     }
+    
+    kmerSpace = pow(4, parameters.kmerSize); // TODO: alphabet?
 }
 
 void Sketch::setMinHashesForReference(int referenceIndex, const HashSet & hashes)

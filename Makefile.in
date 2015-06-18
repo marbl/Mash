@@ -1,4 +1,4 @@
-CXXFLAGS += -O3 -std=c++11 -Isrc -I@capnp@/include
+CXXFLAGS += -O3 -std=c++11 -Isrc -I@capnp@/include -I@gsl@/include
 
 UNAME_S=$(shell uname -s)
 
@@ -31,7 +31,7 @@ OBJECTS=$(SOURCES:.cpp=.o) src/mash/capnp/MinHash.capnp.o
 all : mash libmash.a
 
 mash : libmash.a src/mash/memcpyWrap.o
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o mash src/mash/memcpyWrap.o libmash.a @capnp@/lib/libcapnp.a @capnp@/lib/libkj.a -lstdc++ -lz -lm -lpthread
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o mash src/mash/memcpyWrap.o libmash.a @capnp@/lib/libcapnp.a @capnp@/lib/libkj.a @gsl@/lib/libgsl.a -lstdc++ -lz -lm -lpthread
 
 libmash.a : $(OBJECTS)
 	ar -cr libmash.a $(OBJECTS)

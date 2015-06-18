@@ -6,13 +6,14 @@ Dependencies:
 -------------
    - Autoconf ( http://www.gnu.org/software/autoconf/ )
    - Cap'n Proto ( https://capnproto.org/ )
-   - Zlib ( included with OS X and most Linuxes,  )
+   - GNU Scientific Library ( http://www.gnu.org/software/gsl/ )
+   - Zlib ( included with OS X and most Linuxes, http://www.zlib.net )
 
 
 Steps:
 ------
    ./bootstrap.sh
-   ./configure [--prefix=...] [--with-capnp=...]
+   ./configure [--prefix=...] [--with-capnp=...] [--with-gsl=...]
    make
    [sudo] make install
 
@@ -45,8 +46,8 @@ Notes:
   /usr/local.
 * Sudo will be necessary for 'make install' if write permission
   is not available in --prefix (e.g. by default).
-* Use --with-capnp=... if the Cap'n Proto librariy is not in the default
-  location (/usr/local). This should be an absolute path and should not include
-  "bin" or "lib".
+* Use --with-capnp=... or --with-gsl if the Cap'n Proto or GNU Scientific
+  libraries are not in the default location (/usr/local). These should absolute
+  paths and should not include "bin" or "lib".
 * If Zlib is not installed in a standard system location (it usually is),
   CXXFLAGS and LDFLAGS will have to be modified before making.
