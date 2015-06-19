@@ -616,31 +616,6 @@ void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, bloom
         const char * kmer = useRevComp ? seqRev + length - i - kmerSize : seq + i;
         bool filter = false;
         
-        if ( bloomFilter )
-        {
-            kmersTotal++;
-            std::string kmerString(kmer, kmerSize);
-            
-            //cout << kmerString;
-            
-            if ( ! bloomFilter->contains(kmerString) )
-            {
-                filter = true;
-                //cout << " (filtered)";
-            }
-            
-            //cout << endl;
-            
-            bloomFilter->insert(kmerString);
-            
-            if ( filter )
-            {
-                continue;
-            }
-            
-            kmersUsed++;
-        }
-        
         hash_u hash = getHash(useRevComp ? seqRev + length - i - kmerSize : seq + i, kmerSize);
         
         if ( debug ) cout << endl;
@@ -654,6 +629,31 @@ void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, bloom
             && ! minHashes.contains(hash)
         )
         {
+            if ( bloomFilter )
+            {
+                kmersTotal++;
+                std::string kmerString(kmer, kmerSize);
+            
+                //cout << kmerString;
+            
+                if ( ! bloomFilter->contains(kmerString) )
+                {
+                    filter = true;
+                    //cout << " (filtered)";
+                }
+            
+                //cout << endl;
+            
+                bloomFilter->insert(kmerString);
+            
+                if ( filter )
+                {
+                    continue;
+                }
+            
+                kmersUsed++;
+            }
+        
             minHashes.insert(hash);
             minHashesQueue.push(hash);
             

@@ -32,6 +32,44 @@ int CommandDistance::run() const
 {
     if ( arguments.size() < 2 || options.at("help").active )
     {
+        /*char tab = '\t';
+        
+        for ( int kmerSize = 4; kmerSize <= 32; kmerSize++ )
+        {
+            double kmerSpace = pow(4, kmerSize);
+            
+            for ( uint64_t refSize = 10000; refSize <= 1000000000000; refSize *= 10 )
+            {
+                for ( uint64_t qrySize = 10000; qrySize <= refSize; qrySize *= 10 )
+                {
+                    for ( int sketchSize = 100; sketchSize <= 1000; sketchSize += 100 )
+                    {
+                        for ( int common = 0; common <= sketchSize + 1; common += 10 )
+                        {
+                            if ( common > sketchSize )
+                            {
+                                common = sketchSize;
+                            }
+                            
+                            double pX = 1. / (1. + (double)kmerSpace / refSize);
+                            double pY = 1. / (1. + (double)kmerSpace / qrySize);
+    
+                            double r = pX * pY / (pX + pY - pX * pY);
+    
+                            uint64_t M = (double)kmerSpace * (pX + pY) / (1. + r);
+                            
+                            cout << "k: " << kmerSize << tab << "L1: " << refSize << tab << "L2: " << qrySize << tab << "s: " << sketchSize << tab << "x: " << common << tab << " | " << "Ek: " << kmerSpace << tab << "pX: " << pX << tab << "pY: " << pY << tab << "r: " << r << tab << "M: " << M << tab;
+                            //cout << (M < sketchSize ? M : sketchSize) << tab << r * M << tab << M - r * M << endl;
+                            //double p = gsl_cdf_hypergeometric_Q(common - 1, r * M, M - uint64_t(r * M), M < sketchSize ? M : sketchSize);
+                            double p = gsl_cdf_binomial_Q(common - 1, r, sketchSize);
+                            
+                            cout << "p: " << p << endl;
+                        }
+                    }
+                }
+            }
+        }*/
+        
         print();
         return 0;
     }
@@ -278,7 +316,7 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
     return output;
 }
 
-void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, uint64_t kmerSpace)
+void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, double kmerSpace)
 {
     int i = 0;
     int j = 0;
@@ -335,14 +373,20 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
     output.nameQuery = refQry.name;
 }
 
-double pValue(int x, int lengthRef, int lengthQuery, uint64_t kmerSpace, int sketchSize)
+double pValue(uint32_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint32_t sketchSize)
 {
-    double pX = 1. / (1. + (double)kmerSpace / lengthRef);
-    double pY = 1. / (1. + (double)kmerSpace / lengthQuery);
+    if ( x == 0 )
+    {
+        return 1.;
+    }
+    
+    double pX = 1. / (1. + kmerSpace / lengthRef);
+    double pY = 1. / (1. + kmerSpace / lengthQuery);
     
     double r = pX * pY / (pX + pY - pX * pY);
     
-    double M = (double)kmerSpace * (pX + pY) / (1. + r);
+    //double M = (double)kmerSpace * (pX + pY) / (1. + r);
     
-    return gsl_cdf_hypergeometric_Q(x - 1, r * M, M - r * M, sketchSize);
+    //return gsl_cdf_hypergeometric_Q(x - 1, r * M, M - r * M, sketchSize);
+    return gsl_cdf_binomial_Q(x - 1, r, sketchSize);
 }
