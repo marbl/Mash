@@ -116,7 +116,14 @@ int CommandSketch::run() const
         }
     }
     
-    sketch.writeToCapnp((prefix + (parameters.windowed ? suffixSketchWindowed : suffixSketch)).c_str());
+    string suffix = parameters.windowed ? suffixSketchWindowed : suffixSketch;
+    
+    if ( ! hasSuffix(prefix, suffix) )
+    {
+        prefix += suffix;
+    }
+    
+    sketch.writeToCapnp(prefix.c_str());
     
     return 0;
 }
