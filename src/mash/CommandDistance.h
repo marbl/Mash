@@ -29,8 +29,8 @@ public:
     {
         struct PairOutput
         {
-            float score;
-            float pValue;
+            double score;
+            double pValue;
             std::string nameRef;
             std::string nameQuery;
         };
@@ -49,6 +49,6 @@ private:
 
 CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data);
 void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, uint64_t kmerSpace);
-float pValue(int x, int lengthRef, int lengthQuery, uint64_t kmers, int sketchSize);
+double pValue(int x, int lengthRef, int lengthQuery, uint64_t kmers, int sketchSize);
 
 #endif

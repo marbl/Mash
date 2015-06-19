@@ -335,14 +335,14 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
     output.nameQuery = refQry.name;
 }
 
-float pValue(int x, int lengthRef, int lengthQuery, uint64_t kmerSpace, int sketchSize)
+double pValue(int x, int lengthRef, int lengthQuery, uint64_t kmerSpace, int sketchSize)
 {
-    float pX = 1. / (1. + (float)kmerSpace / lengthRef);
-    float pY = 1. / (1. + (float)kmerSpace / lengthQuery);
+    double pX = 1. / (1. + (double)kmerSpace / lengthRef);
+    double pY = 1. / (1. + (double)kmerSpace / lengthQuery);
     
-    float r = pX * pY / (pX + pY - pX * pY);
+    double r = pX * pY / (pX + pY - pX * pY);
     
-    float M = kmerSpace * (pX + pY) / (1. + r);
+    double M = (double)kmerSpace * (pX + pY) / (1. + r);
     
     return gsl_cdf_hypergeometric_Q(x - 1, r * M, M - r * M, sketchSize);
 }
