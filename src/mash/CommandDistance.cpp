@@ -4,6 +4,7 @@
 #include <zlib.h>
 #include "ThreadPool.h"
 #include "gsl/gsl_cdf.h"
+#include <math.h>
 
 using namespace::std;
 
@@ -26,6 +27,8 @@ CommandDistance::CommandDistance()
     useOption("bloomError");
     addOption("table", Option(Option::Boolean, "t", "Table output.", ""));
     addOption("list", Option(Option::Boolean, "l", "Query files are lists of file names.", ""));
+    addOption("log", Option(Option::Boolean, "L", "Log scale Jaccard distances.", ""));
+    addOption("pvalue", Option(Option::Number, "v", "Maximum p-value to report.", "1.0", 0., 1.));
 }
 
 int CommandDistance::run() const
@@ -77,6 +80,8 @@ int CommandDistance::run() const
     int threads = options.at("threads").getArgumentAsNumber();
     bool list = options.at("list").active;
     bool table = options.at("table").active;
+    bool log = options.at("log").active;
+    double pValueMax = options.at("pvalue").getArgumentAsNumber();
     
     Sketch::Parameters parameters;
     
@@ -225,30 +230,46 @@ int CommandDistance::run() const
         
         while ( threadPool.outputAvailable() )
         {
-            writeOutput(threadPool.popOutputWhenAvailable(), table);
+            writeOutput(threadPool.popOutputWhenAvailable(), table, log, pValueMax);
         }
     }
     
     while ( threadPool.running() )
     {
-        writeOutput(threadPool.popOutputWhenAvailable(), table);
+        writeOutput(threadPool.popOutputWhenAvailable(), table, log, pValueMax);
     }
     
     return 0;
 }
 
-void CommandDistance::writeOutput(CompareOutput * output, bool table) const
+void CommandDistance::writeOutput(CompareOutput * output, bool table, bool log, double pValueMax) const
 {
     for ( int i = 0; i < output->pairs.size(); i++ )
     {
         const CompareOutput::PairOutput & pair = output->pairs.at(i);
         string queryLast;
         
+        double score;
+        
+        if ( log )
+        {
+            score = -log10(1. - pair.score);
+        }
+        else
+        {
+            score = pair.score;
+        }
+        
         if ( table )
         {
             if ( i > 0 && pair.nameQuery != output->pairs.at(i - 1).nameQuery )
             {
-                cout << endl << pair.nameQuery << '\t' << pair.score;
+                cout << endl << pair.nameQuery << '\t';
+                
+                if ( pair.pValue <= pValueMax )
+                {
+                    cout << pair.score;
+                }
             }
             else
             {
@@ -261,12 +282,15 @@ void CommandDistance::writeOutput(CompareOutput * output, bool table) const
                     cout << '\t';
                 }
                 
-                cout << pair.score;
+                if ( pair.pValue <= pValueMax )
+                {
+                    cout << score;
+                }
             }
         }
-        else
+        else if ( pair.pValue <= pValueMax )
         {
-            cout << pair.score << '\t' << pair.nameRef << '\t' << pair.nameQuery << '\t' << pair.pValue << endl;
+            cout << score << '\t' << pair.nameRef << '\t' << pair.nameQuery << '\t' << pair.pValue << endl;
         }
     }
     

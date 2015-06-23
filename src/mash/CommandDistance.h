@@ -44,7 +44,7 @@ public:
     
 private:
     
-    void writeOutput(CompareOutput * output, bool table) const;
+    void writeOutput(CompareOutput * output, bool table, bool log, double pValueMax) const;
 };
 
 CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data);
