@@ -49,7 +49,7 @@ void CommandList::print()
     for ( map<string, Command *>::iterator i = commands.begin(); i != commands.end(); i++ )
     {
         columns[0].push_back(i->first);
-        columns[1].push_back(i->second->description);
+        columns[1].push_back(i->second->summary);
     }
     
     printColumns(columns);

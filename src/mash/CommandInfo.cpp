@@ -8,7 +8,8 @@ CommandInfo::CommandInfo()
 : Command()
 {
     name = "info";
-    description = "Display information about sketch files";
+    summary = "Display information about sketch files.";
+    description = "Display information about sketch files.";
     argumentString = "<sketch>";
     
     useOption("help");

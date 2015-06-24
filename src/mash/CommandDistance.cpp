@@ -12,7 +12,8 @@ CommandDistance::CommandDistance()
 : Command()
 {
     name = "dist";
-    description = "Compute the distance of each query sequence (or file with -f) to the reference. Both the reference and queries can be fasta or fastq, gzipped or not, or mash sketch files (.msh) with matching kmer sizes (-k). The distance is one minus the Jaccard score for the set of min-hashes whose size is that of the smaller sketch.";
+    summary = "Estimate the distance of query sequences to references.";
+    description = "Estimate the distance of each query sequence (or file with -f) to the reference. Both the reference and queries can be fasta or fastq, gzipped or not, or mash sketch files (.msh) with matching kmer sizes (-k). The distance is one minus the Jaccard score for the set of min-hashes whose size is that of the smaller sketch.";
     argumentString = "<reference> <query> [<query>] ...";
     
     useOption("help");

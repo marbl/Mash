@@ -8,6 +8,7 @@ CommandPaste::CommandPaste()
 : Command()
 {
     name = "paste";
+    summary = "Create a single sketch file from multiple sketch files.";
     description = "Create a single sketch file from multiple sketch files.";
     argumentString = "<out_prefix> <sketch> [<sketch>] ...";
     

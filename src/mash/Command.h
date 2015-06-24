@@ -60,6 +60,7 @@ public:
     void useOption(std::string name);
     
     std::string name;
+    std::string summary;
     std::string description;
     std::string argumentString;
     

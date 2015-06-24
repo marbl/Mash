@@ -15,6 +15,7 @@ CommandFind::CommandFind()
 : Command()
 {
     name = "find";
+    summary = "Find regions of references that have similarity to query sequences.";
     description = "Compare query sequences to a reference. <reference> can be a fasta file (gzipped or not) or a mash windowed sketch file (.msw). If it is fasta and a sketch file does not exist (or is out of date), one will be written with the current options and used for future runs if possible. <query> can be fasta or fastq, gzipped or not. Multiple query files can be provided, or \"-\" can be given to read from standard input.";
     argumentString = "<reference> <query> [<query>] ...";
     

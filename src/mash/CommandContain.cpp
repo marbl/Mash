@@ -11,7 +11,8 @@ CommandContain::CommandContain()
 : Command()
 {
     name = "within";
-    description = "Compute the containment of each query sequence (or file with -f) in the reference. Both the reference and queries can be fasta or fastq, gzipped or not, or mash sketch files (.msh) with matching kmer sizes (-k). The score is the number of intersecting min-hashes divided by the query set size.";
+    summary = "Estimate the containment of query sequences within references.";
+    description = "Estimate the containment of each query sequence (or file with -f) in the reference. Both the reference and queries can be fasta or fastq, gzipped or not, or mash sketch files (.msh) with matching kmer sizes (-k). The score is the number of intersecting min-hashes divided by the query set size.";
     argumentString = "<reference> <query> [<query>] ...";
     
     useOption("help");
