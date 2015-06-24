@@ -120,36 +120,44 @@ void Command::print() const
     cout << "Options:" << endl << endl;
     
     columns.clear();
-    columns.resize(4);
+    columns.resize(2);
     
     columns[0].push_back("Option");
-    columns[1].push_back("Argument");
-    columns[2].push_back("Default");
-    columns[3].push_back("Description");
+    columns[1].push_back("Description (range) [default]");
     
     for ( map<string, Option>::const_iterator i = options.begin(); i != options.end(); i++ )
     {
-        columns[0].push_back("-" + i->second.identifier);
-        
         const Option & option = i->second;
         
-        string type;
+    	string optionString = "-" + option.identifier;
+        
         string range;
         
-        switch ( option.type )
+        if ( option.type != Option::Boolean )
         {
-            case Option::Boolean:
-                break;
-            case Option::Number:
-                type = "number";
-                break;
-            case Option::Integer:
-                type = "integer";
-                break;
-            case Option::File:
-                type = "path";
-                break;
+	        string type;
+	        
+			switch ( option.type )
+			{
+				case Option::Boolean:
+					break;
+				case Option::Number:
+					type = "num";
+					break;
+				case Option::Integer:
+					type = "int";
+					break;
+				case Option::File:
+					type = "path";
+					break;
+			}
+			
+			optionString += " <" + type + ">";
         }
+        
+        columns[0].push_back(optionString);
+        
+        string descString = option.description;
         
         if ( option.argumentMin != option.argumentMax )
         {
@@ -167,12 +175,15 @@ void Command::print() const
                 stringMax << option.argumentMax;
             }
             
-            range = "(" + stringMin.str() + "-" + stringMax.str() + ")";
+            descString += " (" + stringMin.str() + "-" + stringMax.str() + ")";
         }
         
-        columns[1].push_back(type.length() ? "<" + type + range + ">" : "");
-        columns[2].push_back(i->second.argumentDefault);
-        columns[3].push_back(i->second.description);
+        if ( option.argumentDefault != "" )
+        {
+        	descString += " [" + option.argumentDefault + "]";
+        }
+        
+        columns[1].push_back(descString);
     }
     
     printColumns(columns);
@@ -239,10 +250,17 @@ void splitFile(const string & file, vector<string> & lines)
     }
 }
 
-void printColumns(vector<vector<string>> columns, int indent, int spacing, const char * missing)
+void printColumns(vector<vector<string>> columns, int indent, int spacing, const char * missing, int max)
 {
     struct winsize w;
     ioctl(0, TIOCGWINSZ, &w);
+    
+    int cols = w.ws_col;
+    
+    if ( max != 0 && max < cols )
+    {
+    	cols = max;
+    }
     
     vector<int> lengthMaxes(columns.size(), 0);
     
@@ -281,9 +299,9 @@ void printColumns(vector<vector<string>> columns, int indent, int spacing, const
             {
                 int length = text.length() - index;
                 
-                if ( length + offsetTarget > w.ws_col )
+                if ( length + offsetTarget > cols )
                 {
-                    length = w.ws_col - offsetTarget;
+                    length = cols - offsetTarget;
                 
                     while ( text[index + length] != ' ' && length > 0 )
                     {
@@ -293,7 +311,7 @@ void printColumns(vector<vector<string>> columns, int indent, int spacing, const
                 
                 if ( length == 0 )
                 {
-                    length = w.ws_col - offsetTarget;
+                    length = cols - offsetTarget;
                 }
                 
                 if ( index > 0 )
@@ -318,7 +336,7 @@ void printColumns(vector<vector<string>> columns, int indent, int spacing, const
             
             offset = offsetTarget + columns[j][i].length();
             
-            if ( offsetTarget + lengthMaxes[j] + spacing > w.ws_col - 5 )
+            if ( offsetTarget + lengthMaxes[j] + spacing > cols - 5 )
             {
                 if ( j < columns.size() - 1 )
                 {

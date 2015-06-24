@@ -77,6 +77,6 @@ private:
 };
 
 void splitFile(const std::string & file, std::vector<std::string> & lines);
-void printColumns(std::vector<std::vector<std::string>> columns, int indent = 3, int spacing = 3, const char * missing = "-");
+void printColumns(std::vector<std::vector<std::string>> columns, int indent = 2, int spacing = 2, const char * missing = "-", int max = 80);
 
 #endif
