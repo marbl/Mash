@@ -51,16 +51,16 @@ src/mash/memcpyWrap.o : src/mash/memcpyWrap.c
 src/mash/capnp/MinHash.capnp.c++ src/mash/capnp/MinHash.capnp.h : src/mash/capnp/MinHash.capnp
 	cd src/mash/capnp;@capnp@/bin/capnp compile -oc++ MinHash.capnp
 
-install : libmash.a
+install : mash
 	mkdir -p @prefix@/bin/
 	mkdir -p @prefix@/lib/
 	mkdir -p @prefix@/include/
 	mkdir -p @prefix@/include/mash
 	mkdir -p @prefix@/include/mash/capnp
-	ln -sf `pwd`/mash @prefix@/bin/
-	ln -sf `pwd`/libmash.a @prefix@/lib/
-	ln -sf `pwd`/src/mash/*.h @prefix@/include/mash/
-	ln -sf `pwd`/src/mash/capnp/MinHash.capnp.h @prefix@/include/mash/capnp/
+	cp `pwd`/mash @prefix@/bin/
+	cp `pwd`/libmash.a @prefix@/lib/
+	cp `pwd`/src/mash/*.h @prefix@/include/mash/
+	cp `pwd`/src/mash/capnp/MinHash.capnp.h @prefix@/include/mash/capnp/
 
 clean :
 	-rm mash
