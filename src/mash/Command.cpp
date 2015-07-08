@@ -244,6 +244,12 @@ void splitFile(const string & file, vector<string> & lines)
     
     ifstream in(file);
     
+    if ( in.fail() )
+    {
+    	cerr << "ERROR: Could not open " << file << ".\n";
+    	exit(1);
+    }
+    
     while ( getline(in, line) )
     {
         lines.push_back(line);
