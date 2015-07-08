@@ -7,11 +7,11 @@ then
 	with_capnp=/usr/local/
 fi
 
-AC_ARG_WITH(gsl, [  --with-gsl=<path/to/gsl>     GNU Scientific Library install dir (default: /usr/local/)])
+AC_ARG_WITH(boost, [  --with-boost=<path/to/boost>     Boost Library install dir (default: /usr/local/)])
 
-if test "$with_gsl" == ""
+if test "$with_boost" == ""
 then
-	with_gsl=/usr/local/
+	with_boost=/usr/local/
 fi
 
 AC_LANG(C++)
@@ -23,7 +23,7 @@ then
 	AC_MSG_ERROR([Cap'n Proto compiler (capnp) not found.])
 fi
 
-CPPFLAGS="-I$with_capnp/include -I$with_gsl/include -std=c++11"
+CPPFLAGS="-I$with_capnp/include -I$with_boost/include -std=c++11"
 
 AC_CHECK_HEADER(capnp/common.h, [result=1], [result=0])
 
@@ -32,11 +32,11 @@ then
 	AC_MSG_ERROR([Cap'n Proto headers not found.])
 fi
 
-AC_CHECK_HEADER(gsl/gsl_cdf.h, [result=1], [result=0])
+AC_CHECK_HEADER(boost/math/distributions/binomial.hpp, [result=1], [result=0])
 
 if test $result == 0
 then
-	AC_MSG_ERROR([GNU Scientific Library headers not found.])
+	AC_MSG_ERROR([Boost Library headers not found.])
 fi
 
 AC_CHECK_HEADER(zlib.h, [result=1], [result=0])
@@ -47,6 +47,6 @@ then
 fi
 
 AC_SUBST(capnp, $with_capnp)
-AC_SUBST(gsl, $with_gsl)
+AC_SUBST(boost, $with_boost)
 
 AC_OUTPUT(Makefile)

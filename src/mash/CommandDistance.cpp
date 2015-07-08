@@ -3,10 +3,11 @@
 #include <iostream>
 #include <zlib.h>
 #include "ThreadPool.h"
-#include "gsl/gsl_cdf.h"
 #include <math.h>
+#include <boost/math/distributions/binomial.hpp>
 
 using namespace::std;
+using namespace::boost::math;
 
 CommandDistance::CommandDistance()
 : Command()
@@ -48,11 +49,16 @@ int CommandDistance::run() const
                 {
                     for ( int sketchSize = 100; sketchSize <= 1000; sketchSize += 100 )
                     {
-                        for ( int common = 0; common <= sketchSize + 1; common += 10 )
+                        for ( int common = 1; common <= sketchSize + 1; common += 10 )
                         {
                             if ( common > sketchSize )
                             {
                                 common = sketchSize;
+                            }
+                            
+                            if ( common > kmerSpace )
+                            {
+                                continue;
                             }
                             
                             double pX = 1. / (1. + (double)kmerSpace / refSize);
@@ -64,8 +70,10 @@ int CommandDistance::run() const
                             
                             cout << "k: " << kmerSize << tab << "L1: " << refSize << tab << "L2: " << qrySize << tab << "s: " << sketchSize << tab << "x: " << common << tab << " | " << "Ek: " << kmerSpace << tab << "pX: " << pX << tab << "pY: " << pY << tab << "r: " << r << tab << "M: " << M << tab;
                             //cout << (M < sketchSize ? M : sketchSize) << tab << r * M << tab << M - r * M << endl;
+                            //double p = cdf(complement(hypergeometric_distribution(r * M, M < sketchSize ? M : sketchSize, M), common - 1 ));
+                            double p = cdf(complement(binomial(M < sketchSize ? M : sketchSize, r), common - 1 ));
                             //double p = gsl_cdf_hypergeometric_Q(common - 1, r * M, M - uint64_t(r * M), M < sketchSize ? M : sketchSize);
-                            double p = gsl_cdf_binomial_Q(common - 1, r, sketchSize);
+                            //double p = gsl_cdf_binomial_Q(common - 1, r, sketchSize);
                             
                             cout << "p: " << p << endl;
                         }
@@ -130,8 +138,8 @@ int CommandDistance::run() const
     }
     else
     {
-        bool sketchFileExists = sketch.initHeaderFromBaseIfValid(fileReference, false);
-        
+        bool sketchFileExists = false;//sketch.initHeaderFromBaseIfValid(fileReference, false);
+        /*
         if
         (
             (options.at("kmer").active && parameters.kmerSize != sketch.getKmerSize())
@@ -139,8 +147,8 @@ int CommandDistance::run() const
         {
             sketchFileExists = false;
         }
-        
-        if ( false && sketchFileExists )
+        */
+        if ( sketchFileExists )
         {
             sketch.initFromBase(fileReference, false);
             parameters.kmerSize = sketch.getKmerSize();
@@ -152,9 +160,11 @@ int CommandDistance::run() const
             refArgVector.push_back(fileReference);
             
             //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
-            cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...\n";
+            cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...";
             
             sketch.initFromSequence(refArgVector, parameters);
+            
+            cerr << "done.\n";
             /*
             if ( sketch.writeToFile() )
             {
@@ -413,5 +423,6 @@ double pValue(uint32_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerS
     //double M = (double)kmerSpace * (pX + pY) / (1. + r);
     
     //return gsl_cdf_hypergeometric_Q(x - 1, r * M, M - r * M, sketchSize);
-    return gsl_cdf_binomial_Q(x - 1, r, sketchSize);
+    //return gsl_cdf_binomial_Q(x - 1, r, sketchSize);
+    return cdf(complement(binomial(sketchSize, r), x - 1));
 }
