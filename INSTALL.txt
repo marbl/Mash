@@ -1,19 +1,23 @@
-Mash is normally distributed as a binary for OSX or Linux the source is provided
-here for non-standard systems or development.
+Mash is normally distributed as a binary for OSX or Linux. The source is
+provided here for non-standard systems or development.
 
 
 Dependencies:
 -------------
    - Autoconf ( http://www.gnu.org/software/autoconf/ )
    - Cap'n Proto ( https://capnproto.org/ )
-   - GNU Scientific Library ( http://www.gnu.org/software/gsl/ )
+   - either...
+       GNU Scientific Library ( http://www.gnu.org/software/gsl/ )
+     or..
+       Boost Library ( http://www.boost.org ) (see "-with-boost" below)
    - Zlib ( included with OS X and most Linuxes, http://www.zlib.net )
 
 
 Steps:
 ------
    ./bootstrap.sh
-   ./configure [--prefix=...] [--with-capnp=...] [--with-gsl=...]
+   ./configure [--prefix=...] [--with-capnp=...] [--with-gsl=...] \
+               [--with-boost=...]
    make
    [sudo] make install
 
@@ -28,8 +32,8 @@ Products:
 Deployment:
 -----------
 OSX
-  Mash can be built on any OSX version starting with 10.7 (using
-  XCode >= 4.6), and the binary should work across the same range of versions,
+  Mash can be built on any OSX version starting with 10.7 (XCode command line
+  tools >= 4.6), and the binary should work across the same range of versions,
   regardless of the particular version it was built with.
 Linux
   Mash must be built with at least GCC 4.8 due to its c++11 dependency. However,
@@ -49,5 +53,7 @@ Notes:
 * Use --with-capnp=... or --with-gsl if the Cap'n Proto or GNU Scientific
   libraries are not in the default location (/usr/local). These should absolute
   paths and should not include "bin" or "lib".
+* Use --with-boost=... to provide the location to Boost, which will then be use
+  instead of GSL.
 * If Zlib is not installed in a standard system location (it usually is),
   CXXFLAGS and LDFLAGS will have to be modified before making.

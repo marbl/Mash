@@ -4,10 +4,15 @@
 #include <zlib.h>
 #include "ThreadPool.h"
 #include <math.h>
-#include <boost/math/distributions/binomial.hpp>
+
+#ifdef USE_BOOST
+    #include <boost/math/distributions/binomial.hpp>
+    using namespace::boost::math;
+#else
+    #include <gsl/gsl_cdf.h>
+#endif
 
 using namespace::std;
-using namespace::boost::math;
 
 CommandDistance::CommandDistance()
 : Command()
@@ -423,6 +428,10 @@ double pValue(uint32_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerS
     //double M = (double)kmerSpace * (pX + pY) / (1. + r);
     
     //return gsl_cdf_hypergeometric_Q(x - 1, r * M, M - r * M, sketchSize);
-    //return gsl_cdf_binomial_Q(x - 1, r, sketchSize);
+    
+#ifdef USE_BOOST
     return cdf(complement(binomial(sketchSize, r), x - 1));
+#else
+    return gsl_cdf_binomial_Q(x - 1, r, sketchSize);
+#endif
 }

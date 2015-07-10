@@ -1,4 +1,5 @@
-CXXFLAGS += -O3 -std=c++11 -Isrc -I@capnp@/include -I@boost@/include
+CXXFLAGS += -O3 -std=c++11 -Isrc -I@capnp@/include -I @mathinc@
+CPPFLAGS += @amcppflags@
 
 UNAME_S=$(shell uname -s)
 
@@ -31,7 +32,7 @@ OBJECTS=$(SOURCES:.cpp=.o) src/mash/capnp/MinHash.capnp.o
 all : mash libmash.a
 
 mash : libmash.a src/mash/memcpyWrap.o
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o mash src/mash/memcpyWrap.o libmash.a @capnp@/lib/libcapnp.a @capnp@/lib/libkj.a @boost@/lib/libboost_math_c99l.a -lstdc++ -lz -lm -lpthread
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o mash src/mash/memcpyWrap.o libmash.a @capnp@/lib/libcapnp.a @capnp@/lib/libkj.a @mathlib@ -lstdc++ -lz -lm -lpthread
 
 libmash.a : $(OBJECTS)
 	ar -cr libmash.a $(OBJECTS)
