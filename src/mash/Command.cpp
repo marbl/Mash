@@ -10,15 +10,17 @@ using namespace::std;
 Command::Option::Option
 (
     Type typeNew,
-    std::string identifierNew,
-    std::string descriptionNew,
-    std::string argumentDefaultNew,
+    string identifierNew,
+    string categoryNew,
+    string descriptionNew,
+    string argumentDefaultNew,
     float argumentMinNew,
     float argumentMaxNew
 )
     :
     type(typeNew),
     identifier(identifierNew),
+    category(categoryNew),
     description(descriptionNew),
     argumentDefault(argumentDefaultNew),
     argumentMin(argumentMinNew),
@@ -71,30 +73,43 @@ void Command::Option::setArgument(string argumentNew)
 
 void Command::addOption(string name, Option option)
 {
+	// keep track of category order
+	//
+	if ( optionNamesByCategory.count(option.category) == 0 )
+	{
+		categories.push_back(option.category);
+	}
+	
     options[name] = option;
+    optionNamesByCategory[option.category].insert(name);
     optionNamesByIdentifier[option.identifier] = name;
 }
 
 Command::Command()
 {
-    addAvailableOption("help", Option(Option::Boolean, "h", "Help", ""));
-    addAvailableOption("kmer", Option(Option::Integer, "k", "Kmer size. Hashes will be based on strings of this many nucleotides.", "15", 1, 32));
-    addAvailableOption("windowed", Option(Option::Boolean, "w", "Windowed", ""));
-    addAvailableOption("window", Option(Option::Integer, "l", "Window length. Hashes that are minima in any window of this size will be stored.", "1000"));
-    addAvailableOption("error", Option(Option::Number, "e", "Error bound. The (maximum) number of min-hashes in each sketch will be one divided by this number squared.", "0.05"));
-    addAvailableOption("sketchSize", Option(Option::Integer, "s", "Sketch size. Each sketch will have at most this many unique min-hashes.", "10000"));
-    addAvailableOption("verbose", Option(Option::Boolean, "v", "Verbose", ""));
-    addAvailableOption("silent", Option(Option::Boolean, "s", "Silent", ""));
-    addAvailableOption("concat", Option(Option::Boolean, "f", "Sketch whole files, rather than individual sequences.", ""));
-    addAvailableOption("unique", Option(Option::Boolean, "u", "Remove (most) unique kmers using a Bloom Filter. This is useful for reducing noise from sequencing errors in read sets. The thoroughness of the filtering (at the expense of memory) can be controlled with -m. Implies -f.", ""));
-    addAvailableOption("genome", Option(Option::Integer, "g", "Expected genome size (Mb). Helps pick the Bloom Filter size. Should be within an order of magnitude of the true size. Implies -u.", "5"));
-    addAvailableOption("memory", Option(Option::Integer, "m", "Maximum Bloom Filter memory usage (GB). More memory will allow more thorough detection of unique kmers, so this should be as high as is practical for the computing environment (though it may not actually be used). Implies -u.", "1", 1, 1024));
-    addAvailableOption("bloomError", Option(Option::Number, "e", "Target false-negative rate for filtering unique kmers with -u.", "0.1", 0, 1));
-    addAvailableOption("noncanonical", Option(Option::Boolean, "n", "Non-canonical. By default, canonical DNA kmers (alphabetical minima of forward-reverse pairs) are used, and kmers with non-acgtACGT characters are ignored. This option uses kmers as they appear and allows all characters.", ""));
-    addAvailableOption("threads", Option(Option::Integer, "p", "Parallelism. This many threads will be spawned, each one handling on query sequence at a time.", "1"));
-    addAvailableOption("pacbio", Option(Option::Boolean, "pacbio", "Use default settings for PacBio sequences.", ""));
-    addAvailableOption("illumina", Option(Option::Boolean, "illumina", "Use default settings for Illumina sequences.", ""));
-    addAvailableOption("nanopore", Option(Option::Boolean, "nanopore", "Use default settings for Oxford Nanopore sequences.", ""));
+    addAvailableOption("help", Option(Option::Boolean, "h", "", "Help", ""));
+    addAvailableOption("kmer", Option(Option::Integer, "k", "Sketch", "Kmer size. Hashes will be based on strings of this many nucleotides.", "15", 1, 32));
+    addAvailableOption("windowed", Option(Option::Boolean, "w", "Sketch", "Windowed", ""));
+    addAvailableOption("window", Option(Option::Integer, "l", "Sketch", "Window length. Hashes that are minima in any window of this size will be stored.", "1000"));
+    addAvailableOption("error", Option(Option::Number, "e", "Sketch", "Error bound. The (maximum) number of min-hashes in each sketch will be one divided by this number squared.", "0.05"));
+    addAvailableOption("sketchSize", Option(Option::Integer, "s", "Sketch", "Sketch size. Each sketch will have at most this many non-redundant min-hashes.", "10000"));
+    addAvailableOption("verbose", Option(Option::Boolean, "v", "Output", "Verbose", ""));
+    addAvailableOption("silent", Option(Option::Boolean, "s", "Output", "Silent", ""));
+    addAvailableOption("concat", Option(Option::Boolean, "f", "Sketch", "Sketch whole files, rather than individual sequences.", ""));
+    addAvailableOption("unique", Option(Option::Boolean, "u", "Sketch", "Remove (most) unique kmers using a Bloom Filter. This is useful for reducing noise from sequencing errors in read sets. See Bloom filter options below. Implies -f.", ""));
+    addAvailableOption("genome", Option(Option::Integer, "g", "Bloom", "Expected genome size (Mb). Helps pick the Bloom Filter size. Should be within an order of magnitude of the true size. Implies -u.", "5"));
+    addAvailableOption("memory", Option(Option::Integer, "m", "Bloom", "Maximum Bloom Filter memory usage (GB). More memory will allow more thorough detection of unique kmers, so this should be as high as is practical for the computing environment (though it may not actually be used). Implies -u.", "1", 1, 1024));
+    addAvailableOption("bloomError", Option(Option::Number, "e", "Bloom", "Target false-negative rate for filtering unique kmers with -u.", "0.1", 0, 1));
+    addAvailableOption("noncanonical", Option(Option::Boolean, "n", "Sketch", "Non-canonical. By default, canonical DNA kmers (alphabetical minima of forward-reverse pairs) are used, and kmers with non-acgtACGT characters are ignored. This option uses kmers as they appear and allows all characters.", ""));
+    addAvailableOption("threads", Option(Option::Integer, "p", "", "Parallelism. This many threads will be spawned, each one handling on query sequence at a time.", "1"));
+    addAvailableOption("pacbio", Option(Option::Boolean, "pacbio", "", "Use default settings for PacBio sequences.", ""));
+    addAvailableOption("illumina", Option(Option::Boolean, "illumina", "", "Use default settings for Illumina sequences.", ""));
+    addAvailableOption("nanopore", Option(Option::Boolean, "nanopore", "", "Use default settings for Oxford Nanopore sequences.", ""));
+    
+    categoryDisplayNames["Input"] = "input";
+    categoryDisplayNames["Output"] = "output";
+    categoryDisplayNames["Sketch"] = "sketching";
+    categoryDisplayNames["Bloom"] = "sketching (Bloom filter)";
 }
 
 void Command::print() const
@@ -119,74 +134,84 @@ void Command::print() const
     
     cout << "Options:" << endl << endl;
     
-    columns.clear();
-    columns.resize(2);
+	columns.clear();
+	columns.resize(2);
+
+	columns[0].push_back("Option");
+	columns[1].push_back("Description (range) [default]");
     
-    columns[0].push_back("Option");
-    columns[1].push_back("Description (range) [default]");
+    vector<pair<int, string> > dividers;
     
-    for ( map<string, Option>::const_iterator i = options.begin(); i != options.end(); i++ )
+    for ( vector<string>::const_iterator i = categories.begin(); i != categories.end(); i++ )
     {
-        const Option & option = i->second;
-        
-    	string optionString = "-" + option.identifier;
-        
-        string range;
-        
-        if ( option.type != Option::Boolean )
-        {
-	        string type;
-	        
-			switch ( option.type )
+		if ( *i != "" )
+		{
+			dividers.push_back(pair<int, string>(columns[0].size(), "..." + categoryDisplayNames.at(*i) + "..."));
+		}
+		
+		for ( set<string>::const_iterator j = optionNamesByCategory.at(*i).begin(); j != optionNamesByCategory.at(*i).end(); j++ )
+		{
+			const Option & option = options.at(*j);
+		
+			string optionString = "-" + option.identifier;
+		
+			string range;
+		
+			if ( option.type != Option::Boolean )
 			{
-				case Option::Boolean:
-					break;
-				case Option::Number:
-					type = "num";
-					break;
-				case Option::Integer:
-					type = "int";
-					break;
-				case Option::File:
-					type = "path";
-					break;
-			}
+				string type;
 			
-			optionString += " <" + type + ">";
-        }
-        
-        columns[0].push_back(optionString);
-        
-        string descString = option.description;
-        
-        if ( option.argumentMin != option.argumentMax )
-        {
-            stringstream stringMin;
-            stringstream stringMax;
-            
-            if ( option.type == Option::Integer )
-            {
-                stringMin << int(option.argumentMin);
-                stringMax << int(option.argumentMax);
-            }
-            else
-            {
-                stringMin << option.argumentMin;
-                stringMax << option.argumentMax;
-            }
-            
-            descString += " (" + stringMin.str() + "-" + stringMax.str() + ")";
-        }
-        
-        if ( option.argumentDefault != "" )
-        {
-        	descString += " [" + option.argumentDefault + "]";
-        }
-        
-        columns[1].push_back(descString);
-    }
-    
-    printColumns(columns);
+				switch ( option.type )
+				{
+					case Option::Boolean:
+						break;
+					case Option::Number:
+						type = "num";
+						break;
+					case Option::Integer:
+						type = "int";
+						break;
+					case Option::File:
+						type = "path";
+						break;
+				}
+			
+				optionString += " <" + type + ">";
+			}
+		
+			columns[0].push_back(optionString);
+		
+			string descString = option.description;
+		
+			if ( option.argumentMin != option.argumentMax )
+			{
+				stringstream stringMin;
+				stringstream stringMax;
+			
+				if ( option.type == Option::Integer )
+				{
+					stringMin << int(option.argumentMin);
+					stringMax << int(option.argumentMax);
+				}
+				else
+				{
+					stringMin << option.argumentMin;
+					stringMax << option.argumentMax;
+				}
+			
+				descString += " (" + stringMin.str() + "-" + stringMax.str() + ")";
+			}
+		
+			if ( option.argumentDefault != "" )
+			{
+				descString += " [" + option.argumentDefault + "]";
+			}
+		
+			columns[1].push_back(descString);
+		}
+	}
+	
+	printColumns(columns, dividers);
 }
 
 int Command::run(int argc, const char ** argv)
@@ -229,8 +254,7 @@ int Command::run(int argc, const char ** argv)
 
 void Command::useOption(string name)
 {
-    options[name] = optionsAvailable.at(name);
-    optionNamesByIdentifier[options[name].identifier] = name;
+    addOption(name, optionsAvailable.at(name));
 }
 
 void Command::addAvailableOption(string name, Option option)
@@ -256,7 +280,12 @@ void splitFile(const string & file, vector<string> & lines)
     }
 }
 
-void printColumns(vector<vector<string>> columns, int indent, int spacing, const char * missing, int max)
+void printColumns(const vector<vector<string>> & columns, int indent, int spacing, const char * missing, int max)
+{
+	printColumns(columns, vector<pair<int, string>>(), indent, spacing, missing, max);
+}
+
+void printColumns(const vector<vector<string>> & columns, const vector<pair<int, string>> & dividers, int indent, int spacing, const char * missing, int max)
 {
     struct winsize w;
     ioctl(0, TIOCGWINSZ, &w);
@@ -268,20 +297,24 @@ void printColumns(vector<vector<string>> columns, int indent, int spacing, const
     	cols = max;
     }
     
+    int dividerCurrent = 0;
+    
     vector<int> lengthMaxes(columns.size(), 0);
     
     for ( int i = 0; i < columns.size(); i++ )
     {
         for ( int j = 0; j < columns[i].size(); j++ )
         {
-            if ( columns[i][j].length() == 0 )
+            int length = columns[i][j].length();
+            
+            if ( length == 0 )
             {
-                columns[i][j] = missing;
+                length = 1;
             }
             
-            if ( columns[i][j].length() > lengthMaxes[i] )
+            if ( length > lengthMaxes[i] )
             {
-                lengthMaxes[i] = columns[i][j].length();
+                lengthMaxes[i] = length;
             }
         }
     }
@@ -291,6 +324,12 @@ void printColumns(vector<vector<string>> columns, int indent, int spacing, const
         int offset = 0;
         int offsetTarget = indent;
         
+        if ( dividerCurrent < dividers.size() && i == dividers.at(dividerCurrent).first )
+        {
+        	cout << dividers.at(dividerCurrent).second << endl << endl;
+        	dividerCurrent++;
+        }
+        
         for ( int j = 0; j < columns.size(); j++ )
         {
             for ( int k = offset; k < offsetTarget; k++ )
@@ -299,7 +338,12 @@ void printColumns(vector<vector<string>> columns, int indent, int spacing, const
             }
             
             int index = 0;
-            const string & text = columns[j][i];
+            string text = columns[j][i];
+            
+            if ( text == "" )
+            {
+            	text = missing;
+            }
             
             do
             {

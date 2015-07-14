@@ -13,6 +13,8 @@ CommandSketch::CommandSketch()
     argumentString = "fast(a|q)[.gz] ...";
     
     useOption("help");
+    addOption("list", Option(Option::Boolean, "l", "Input", "Input files are lists of file names.", ""));
+    addOption("prefix", Option(Option::File, "o", "Output", "Output prefix (first input file used if unspecified). The suffix '.msh' will be appended.", ""));
     useOption("kmer");
     //useOption("windowed");
     //useOption("window");
@@ -28,8 +30,6 @@ CommandSketch::CommandSketch()
     //useOption("pacbio");
     //useOption("nanopore");
     useOption("noncanonical");
-    addOption("prefix", Option(Option::File, "o", "Output prefix (first input file used if unspecified). The suffix '.msh' will be appended.", ""));
-    addOption("list", Option(Option::Boolean, "l", "Input files are lists of file names.", ""));
 }
 
 int CommandSketch::run() const

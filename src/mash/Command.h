@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <set>
 
 class Command
 {
@@ -31,6 +32,7 @@ public:
         }
         type;
         
+        std::string category;
         std::string identifier;
         std::string description;
         std::string argument;
@@ -44,7 +46,7 @@ public:
         bool changed;
         
         Option() {}
-        Option(Type typeNew, std::string identifierNew, std::string descriptionNew, std::string argumentDefaultNew = "", float argumentMinNew = 0, float argumentMaxNew = 0);
+        Option(Type typeNew, std::string identifierNew, std::string categoryNew, std::string descriptionNew, std::string argumentDefaultNew = "", float argumentMinNew = 0, float argumentMaxNew = 0);
         
         float getArgumentAsNumber() const {return argumentAsNumber;}
         void setArgument(std::string argumentNew);
@@ -75,9 +77,13 @@ private:
     void addAvailableOption(std::string name, Option option);
     
     std::map<std::string, std::string> optionNamesByIdentifier;
+    std::map<std::string, std::set<std::string> > optionNamesByCategory;
+    std::vector<std::string> categories;
+    std::map<std::string, std::string> categoryDisplayNames;
 };
 
 void splitFile(const std::string & file, std::vector<std::string> & lines);
-void printColumns(std::vector<std::vector<std::string>> columns, int indent = 2, int spacing = 2, const char * missing = "-", int max = 80);
+void printColumns(const std::vector<std::vector<std::string>> & columns, int indent = 2, int spacing = 2, const char * missing = "-", int max = 80);
+void printColumns(const std::vector<std::vector<std::string>> & columns, const std::vector<std::pair<int, std::string>> & dividers, int indent = 2, int spacing = 2, const char * missing = "-", int max = 80);
 
 #endif

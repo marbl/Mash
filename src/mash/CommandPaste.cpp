@@ -13,7 +13,7 @@ CommandPaste::CommandPaste()
     argumentString = "<out_prefix> <sketch> [<sketch>] ...";
     
     useOption("help");
-    addOption("list", Option(Option::Boolean, "l", "Input files are lists of file names.", ""));
+    addOption("list", Option(Option::Boolean, "l", "", "Input files are lists of file names.", ""));
 }
 
 int CommandPaste::run() const

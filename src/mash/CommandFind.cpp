@@ -20,13 +20,13 @@ CommandFind::CommandFind()
     argumentString = "<reference> <query> [<query>] ...";
     
     useOption("help");
+    addOption("threshold", Option(Option::Number, "t", "Output", "Threshold. This fraction of the query sequence's min-hashes must appear in a query-sized window of a reference sequence for the match to be reported.", "0.2", 0.0, 1.0));
+    addOption("best", Option(Option::Integer, "b", "Output", "Best hit count. This many of the best hits will be reported (0 to report all hits). Score ties are broken by keeping the hit to the earlier reference or to the left-most position.", "0"));
+    addOption("self", Option(Option::Boolean, "self", "Output", "Ignore self matches if query ID appears in reference.", ""));
     useOption("kmer");
     useOption("window");
     useOption("factor");
     useOption("threads");
-    addOption("threshold", Option(Option::Number, "t", "Threshold. This fraction of the query sequence's min-hashes must appear in a query-sized window of a reference sequence for the match to be reported.", "0.2", 0.0, 1.0));
-    addOption("best", Option(Option::Integer, "b", "Best hit count. This many of the best hits will be reported (0 to report all hits). Score ties are broken by keeping the hit to the earlier reference or to the left-most position.", "0"));
-    addOption("self", Option(Option::Boolean, "self", "Ignore self matches if query ID appears in reference.", ""));
 }
 
 int CommandFind::run() const

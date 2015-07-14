@@ -13,7 +13,7 @@ CommandInfo::CommandInfo()
     argumentString = "<sketch>";
     
     useOption("help");
-    addOption("header", Option(Option::Boolean, "H", "Only show header info. Do not list each sketch.", ""));
+    addOption("header", Option(Option::Boolean, "H", "", "Only show header info. Do not list each sketch.", ""));
 }
 
 int CommandInfo::run() const

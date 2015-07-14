@@ -15,6 +15,8 @@ CommandContain::CommandContain()
     description = "Estimate the containment of each query sequence (or file with -f) in the reference. Both the reference and queries can be fasta or fastq, gzipped or not, or mash sketch files (.msh) with matching kmer sizes (-k). The score is the number of intersecting min-hashes divided by the query set size.";
     argumentString = "<reference> <query> [<query>] ...";
     
+    addOption("list", Option(Option::Boolean, "l", "Input", "Query files are lists of file names.", ""));
+    addOption("errorThreshold", Option(Option::Number, "e", "Output", "Error bound threshold for reporting scores values. Error bounds can generally be increased by increasing the sketch size of the reference.", "0.05"));
     useOption("help");
     useOption("threads");
     useOption("kmer");
@@ -25,8 +27,6 @@ CommandContain::CommandContain()
     useOption("memory");
     useOption("genome");
     useOption("bloomError");
-    addOption("errorThreshold", Option(Option::Number, "e", "Error bound threshold for reporting scores values. Error bounds can generally be increased by increasing the sketch size of the reference.", "0.05"));
-    addOption("list", Option(Option::Boolean, "l", "Query files are lists of file names.", ""));
 }
 
 int CommandContain::run() const

@@ -24,6 +24,10 @@ CommandDistance::CommandDistance()
     
     useOption("help");
     useOption("threads");
+    addOption("list", Option(Option::Boolean, "l", "Input", "Query files are lists of file names.", ""));
+    addOption("table", Option(Option::Boolean, "t", "Output", "Table output (will not report p-values, but fields will be blank if they do not meet the p-value threshold).", ""));
+    addOption("log", Option(Option::Boolean, "L", "Output", "Log scale Jaccard distances.", ""));
+    addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
     useOption("kmer");
     useOption("sketchSize");
     useOption("concat");
@@ -32,10 +36,6 @@ CommandDistance::CommandDistance()
     useOption("genome");
     useOption("memory");
     useOption("bloomError");
-    addOption("table", Option(Option::Boolean, "t", "Table output.", ""));
-    addOption("list", Option(Option::Boolean, "l", "Query files are lists of file names.", ""));
-    addOption("log", Option(Option::Boolean, "L", "Log scale Jaccard distances.", ""));
-    addOption("pvalue", Option(Option::Number, "v", "Maximum p-value to report.", "1.0", 0., 1.));
 }
 
 int CommandDistance::run() const
@@ -73,14 +73,14 @@ int CommandDistance::run() const
     
                             uint64_t M = (double)kmerSpace * (pX + pY) / (1. + r);
                             
-                            cout << "k: " << kmerSize << tab << "L1: " << refSize << tab << "L2: " << qrySize << tab << "s: " << sketchSize << tab << "x: " << common << tab << " | " << "Ek: " << kmerSpace << tab << "pX: " << pX << tab << "pY: " << pY << tab << "r: " << r << tab << "M: " << M << tab;
+                            //cout << "k: " << kmerSize << tab << "L1: " << refSize << tab << "L2: " << qrySize << tab << "s: " << sketchSize << tab << "x: " << common << tab << " | " << "Ek: " << kmerSpace << tab << "pX: " << pX << tab << "pY: " << pY << tab << "r: " << r << tab << "M: " << M << tab;
                             //cout << (M < sketchSize ? M : sketchSize) << tab << r * M << tab << M - r * M << endl;
                             //double p = cdf(complement(hypergeometric_distribution(r * M, M < sketchSize ? M : sketchSize, M), common - 1 ));
-                            double p = cdf(complement(binomial(M < sketchSize ? M : sketchSize, r), common - 1 ));
+                            //double p = cdf(complement(binomial(M < sketchSize ? M : sketchSize, r), common - 1 ));
                             //double p = gsl_cdf_hypergeometric_Q(common - 1, r * M, M - uint64_t(r * M), M < sketchSize ? M : sketchSize);
-                            //double p = gsl_cdf_binomial_Q(common - 1, r, sketchSize);
+                            double p = gsl_cdf_binomial_Q(common - 1, r, M < sketchSize ? M : sketchSize);
                             
-                            cout << "p: " << p << endl;
+                            cout << p << endl;
                         }
                     }
                 }
