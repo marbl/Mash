@@ -250,7 +250,7 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
                 
                 if ( i == 0 )
                 {
-                    cout << "Bloom table size (bits): " << bloomParams.optimal_parameters.table_size << " Hash functions: " << bloomParams.optimal_parameters.number_of_hashes << endl;
+                    cerr << "Bloom table size (bits): " << bloomParams.optimal_parameters.table_size << " Hash functions: " << bloomParams.optimal_parameters.number_of_hashes << endl;
                 }
                 
                 bloomFilter = new bloom_filter(bloomParams);
@@ -340,7 +340,7 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
             
             if ( bloomFilter != 0 )
             {
-                cout << kmersTotal - kmersUsed << " of " << kmersTotal << " kmers filtered for " << files[i] << endl;
+                cerr << kmersTotal - kmersUsed << " of " << kmersTotal << " kmers filtered for " << files[i] << endl;
                 delete bloomFilter;
             }
             
