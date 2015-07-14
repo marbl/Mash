@@ -10,12 +10,13 @@ public:
     
     struct CompareInput
     {
-        CompareInput(const Sketch & sketchRefNew, Sketch * sketchQueryNew, const std::string fileNew, const Sketch::Parameters & parametersNew)
+        CompareInput(const Sketch & sketchRefNew, Sketch * sketchQueryNew, const std::string fileNew, const Sketch::Parameters & parametersNew, bool logNew)
             :
             sketchRef(sketchRefNew),
             sketchQuery(sketchQueryNew),
             file(fileNew),
-            parameters(parametersNew)
+            parameters(parametersNew),
+            log(logNew)
             {}
         
         const Sketch & sketchRef;
@@ -23,6 +24,7 @@ public:
         std::string nameRef;
         const std::string file;
         const Sketch::Parameters & parameters;
+        bool log;
     };
     
     struct CompareOutput
@@ -44,11 +46,11 @@ public:
     
 private:
     
-    void writeOutput(CompareOutput * output, bool table, bool log, double pValueMax) const;
+    void writeOutput(CompareOutput * output, bool table, double pValueMax) const;
 };
 
 CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data);
-void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, double kmerSpace);
+void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, double kmerSpace, bool log);
 double pValue(uint32_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint32_t sketchSize);
 
 #endif

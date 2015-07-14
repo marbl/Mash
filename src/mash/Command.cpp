@@ -101,7 +101,7 @@ Command::Command()
     addAvailableOption("memory", Option(Option::Integer, "m", "Bloom", "Maximum Bloom Filter memory usage (GB). More memory will allow more thorough detection of unique kmers, so this should be as high as is practical for the computing environment (though it may not actually be used). Implies -u.", "1", 1, 1024));
     addAvailableOption("bloomError", Option(Option::Number, "e", "Bloom", "Target false-negative rate for filtering unique kmers with -u.", "0.1", 0, 1));
     addAvailableOption("noncanonical", Option(Option::Boolean, "n", "Sketch", "Non-canonical. By default, canonical DNA kmers (alphabetical minima of forward-reverse pairs) are used, and kmers with non-acgtACGT characters are ignored. This option uses kmers as they appear and allows all characters.", ""));
-    addAvailableOption("threads", Option(Option::Integer, "p", "", "Parallelism. This many threads will be spawned, each one handling on query sequence at a time.", "1"));
+    addAvailableOption("threads", Option(Option::Integer, "p", "", "Parallelism. This many threads will be spawned, each one handling one query sequence at a time.", "1"));
     addAvailableOption("pacbio", Option(Option::Boolean, "pacbio", "", "Use default settings for PacBio sequences.", ""));
     addAvailableOption("illumina", Option(Option::Boolean, "illumina", "", "Use default settings for Illumina sequences.", ""));
     addAvailableOption("nanopore", Option(Option::Boolean, "nanopore", "", "Use default settings for Oxford Nanopore sequences.", ""));

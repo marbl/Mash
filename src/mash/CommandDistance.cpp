@@ -26,7 +26,7 @@ CommandDistance::CommandDistance()
     useOption("threads");
     addOption("list", Option(Option::Boolean, "l", "Input", "Query files are lists of file names.", ""));
     addOption("table", Option(Option::Boolean, "t", "Output", "Table output (will not report p-values, but fields will be blank if they do not meet the p-value threshold).", ""));
-    addOption("log", Option(Option::Boolean, "L", "Output", "Log scale Jaccard distances.", ""));
+    addOption("log", Option(Option::Boolean, "L", "Output", "Log scale distances. To avoid taking the log of 0, 1-offset pseudocounts are used for the Jaccard index.", ""));
     addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
     useOption("kmer");
     useOption("sketchSize");
@@ -242,39 +242,30 @@ int CommandDistance::run() const
             sketchQuery->initFromCapnp(queryFiles[i].c_str());
         }
         
-        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, queryFiles[i], parameters));
+        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, queryFiles[i], parameters, log));
         
         while ( threadPool.outputAvailable() )
         {
-            writeOutput(threadPool.popOutputWhenAvailable(), table, log, pValueMax);
+            writeOutput(threadPool.popOutputWhenAvailable(), table, pValueMax);
         }
     }
     
     while ( threadPool.running() )
     {
-        writeOutput(threadPool.popOutputWhenAvailable(), table, log, pValueMax);
+        writeOutput(threadPool.popOutputWhenAvailable(), table, pValueMax);
     }
     
     return 0;
 }
 
-void CommandDistance::writeOutput(CompareOutput * output, bool table, bool log, double pValueMax) const
+void CommandDistance::writeOutput(CompareOutput * output, bool table, double pValueMax) const
 {
     for ( int i = 0; i < output->pairs.size(); i++ )
     {
         const CompareOutput::PairOutput & pair = output->pairs.at(i);
         string queryLast;
         
-        double score;
-        
-        if ( log )
-        {
-            score = -log10(1. - pair.score);
-        }
-        else
-        {
-            score = pair.score;
-        }
+        double score = pair.score;
         
         if ( table )
         {
@@ -284,7 +275,7 @@ void CommandDistance::writeOutput(CompareOutput * output, bool table, bool log, 
                 
                 if ( pair.pValue <= pValueMax )
                 {
-                    cout << pair.score;
+                    cout << score;
                 }
             }
             else
@@ -347,7 +338,7 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
         {
             int pairIndex = i * sketchRef.getReferenceCount() + j;
             
-            compareSketches(output->pairs[pairIndex], sketchRef.getReference(j), sketchQuery->getReference(i), sketchSize, sketchRef.getKmerSpace());
+            compareSketches(output->pairs[pairIndex], sketchRef.getReference(j), sketchQuery->getReference(i), sketchSize, sketchRef.getKmerSpace(), data->log);
         }
     }
     
@@ -356,7 +347,7 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
     return output;
 }
 
-void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, double kmerSpace)
+void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, double kmerSpace, bool log)
 {
     int i = 0;
     int j = 0;
@@ -406,7 +397,17 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
         }
     }
     
-    output.score = 1. - float(common) / denom;
+    int offset = log ? 1 : 0;
+    
+    if ( log )
+    {
+        output.score = -log10(double(common + 1) / (denom + 1));
+    }
+    else
+    {
+        output.score = 1. - double(common) / denom;
+    }
+    
     output.pValue = pValue(common, refRef.length, refQry.length, kmerSpace, denom);
     
     output.nameRef = refRef.name;
