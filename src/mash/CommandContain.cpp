@@ -12,7 +12,7 @@ CommandContain::CommandContain()
 {
     name = "within";
     summary = "Estimate the containment of query sequences within references.";
-    description = "Estimate the containment of each query sequence (or file with -f) in the reference. Both the reference and queries can be fasta or fastq, gzipped or not, or mash sketch files (.msh) with matching kmer sizes (-k). The score is the number of intersecting min-hashes divided by the query set size.";
+    description = "Estimate the containment of each query sequence (or file with -f) in the reference. Both the reference and queries can be fasta or fastq, gzipped or not, or mash sketch files (.msh) with matching kmer sizes (-k). The score is the number of intersecting min-hashes divided by the query set size. The output format is [score, error-bound, reference-ID, query-ID].";
     argumentString = "<reference> <query> [<query>] ...";
     
     addOption("list", Option(Option::Boolean, "l", "Input", "Query files are lists of file names.", ""));
@@ -194,7 +194,7 @@ void CommandContain::writeOutput(ContainOutput * output, float error) const
     {
         if ( output->pairs.at(i).error <= error )
         {
-            cout << output->pairs.at(i).score << '\t' << output->pairs.at(i).nameRef << '\t' << output->pairs.at(i).nameQuery << '\t' << output->pairs.at(i).error << endl;
+            cout << output->pairs.at(i).score << '\t' << output->pairs.at(i).error << '\t' << output->pairs.at(i).nameRef << '\t' << output->pairs.at(i).nameQuery << endl;
         }
     }
     
