@@ -30,7 +30,7 @@ CommandDistance::CommandDistance()
     addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
     useOption("kmer");
     useOption("sketchSize");
-    useOption("concat");
+    useOption("individual");
     useOption("noncanonical");
     useOption("unique");
     useOption("genome");
@@ -101,7 +101,7 @@ int CommandDistance::run() const
     
     parameters.kmerSize = options.at("kmer").getArgumentAsNumber();
     parameters.minHashesPerWindow = options.at("sketchSize").getArgumentAsNumber();
-    parameters.concatenated = options.at("concat").active;
+    parameters.concatenated = ! options.at("individual").active;
     parameters.noncanonical = options.at("noncanonical").active;
     parameters.bloomFilter = options.at("unique").active;
     parameters.genomeSize = options.at("genome").getArgumentAsNumber();

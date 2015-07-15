@@ -21,7 +21,7 @@ CommandContain::CommandContain()
     useOption("threads");
     useOption("kmer");
     useOption("sketchSize");
-    useOption("concat");
+    useOption("individual");
     useOption("noncanonical");
     useOption("unique");
     useOption("memory");
@@ -44,7 +44,7 @@ int CommandContain::run() const
     
     parameters.kmerSize = options.at("kmer").getArgumentAsNumber();
     parameters.minHashesPerWindow = options.at("sketchSize").getArgumentAsNumber();
-    parameters.concatenated = options.at("concat").active;
+    parameters.concatenated = ! options.at("individual").active;
     parameters.noncanonical = options.at("noncanonical").active;
     parameters.error = options.at("errorThreshold").getArgumentAsNumber();
     parameters.bloomFilter = options.at("unique").active;

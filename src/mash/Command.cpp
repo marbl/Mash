@@ -95,7 +95,7 @@ Command::Command()
     addAvailableOption("sketchSize", Option(Option::Integer, "s", "Sketch", "Sketch size. Each sketch will have at most this many non-redundant min-hashes.", "10000"));
     addAvailableOption("verbose", Option(Option::Boolean, "v", "Output", "Verbose", ""));
     addAvailableOption("silent", Option(Option::Boolean, "s", "Output", "Silent", ""));
-    addAvailableOption("concat", Option(Option::Boolean, "f", "Sketch", "Sketch whole files, rather than individual sequences.", ""));
+    addAvailableOption("individual", Option(Option::Boolean, "i", "Sketch", "Sketch individual sequences, rather than whole files.", ""));
     addAvailableOption("unique", Option(Option::Boolean, "u", "Sketch", "Remove (most) unique kmers using a Bloom Filter. This is useful for reducing noise from sequencing errors in read sets. See Bloom filter options below. Implies -f.", ""));
     addAvailableOption("genome", Option(Option::Integer, "g", "Bloom", "Expected genome size (Mb). Helps pick the Bloom Filter size. Should be within an order of magnitude of the true size. Implies -u.", "5"));
     addAvailableOption("memory", Option(Option::Integer, "m", "Bloom", "Maximum Bloom Filter memory usage (GB). More memory will allow more thorough detection of unique kmers, so this should be as high as is practical for the computing environment (though it may not actually be used). Implies -u.", "1", 1, 1024));

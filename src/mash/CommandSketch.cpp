@@ -21,7 +21,7 @@ CommandSketch::CommandSketch()
     useOption("sketchSize");
     //useOption("verbose");
     //useOption("silent");
-    useOption("concat");
+    useOption("individual");
     useOption("unique");
     useOption("genome");
     useOption("memory");
@@ -47,7 +47,7 @@ int CommandSketch::run() const
     
     parameters.kmerSize = options.at("kmer").getArgumentAsNumber();
     parameters.minHashesPerWindow = options.at("sketchSize").getArgumentAsNumber();
-    parameters.concatenated = options.at("concat").active;
+    parameters.concatenated = ! options.at("individual").active;
     parameters.noncanonical = options.at("noncanonical").active;
     parameters.bloomFilter = options.at("unique").active;
     parameters.genomeSize = options.at("genome").getArgumentAsNumber();
