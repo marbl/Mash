@@ -28,6 +28,7 @@ CommandDistance::CommandDistance()
     addOption("table", Option(Option::Boolean, "t", "Output", "Table output (will not report p-values, but fields will be blank if they do not meet the p-value threshold).", ""));
     addOption("log", Option(Option::Boolean, "L", "Output", "Log scale distances. To avoid taking the log of 0, 1-offset pseudocounts are used for the Jaccard index.", ""));
     addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
+    addOption("distance", Option(Option::Number, "d", "Output", "Maximum distance to report.", "1.0", 0., 1.));
     useOption("kmer");
     useOption("sketchSize");
     useOption("individual");
@@ -96,6 +97,7 @@ int CommandDistance::run() const
     bool table = options.at("table").active;
     bool log = options.at("log").active;
     double pValueMax = options.at("pvalue").getArgumentAsNumber();
+    double distanceMax = options.at("distance").getArgumentAsNumber();
     
     Sketch::Parameters parameters;
     
@@ -242,68 +244,56 @@ int CommandDistance::run() const
             sketchQuery->initFromCapnp(queryFiles[i].c_str());
         }
         
-        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, queryFiles[i], parameters, log));
+        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, queryFiles[i], parameters, distanceMax, pValueMax, log));
         
         while ( threadPool.outputAvailable() )
         {
-            writeOutput(threadPool.popOutputWhenAvailable(), table, pValueMax);
+            writeOutput(threadPool.popOutputWhenAvailable(), table);
         }
     }
     
     while ( threadPool.running() )
     {
-        writeOutput(threadPool.popOutputWhenAvailable(), table, pValueMax);
+        writeOutput(threadPool.popOutputWhenAvailable(), table);
     }
     
     return 0;
 }
 
-void CommandDistance::writeOutput(CompareOutput * output, bool table, double pValueMax) const
+void CommandDistance::writeOutput(CompareOutput * output, bool table) const
 {
-    for ( int i = 0; i < output->pairs.size(); i++ )
+    int refCount = output->sketchRef.getReferenceCount();
+    
+    for ( int i = 0; i < output->sketchQuery->getReferenceCount(); i++ )
     {
-        const CompareOutput::PairOutput & pair = output->pairs.at(i);
-        string queryLast;
-        
-        double score = pair.score;
-        
         if ( table )
         {
-            if ( i > 0 && pair.nameQuery != output->pairs.at(i - 1).nameQuery )
-            {
-                cout << endl << pair.nameQuery << '\t';
-                
-                if ( pair.pValue <= pValueMax )
-                {
-                    cout << score;
-                }
-            }
-            else
-            {
-                if ( i == 0 )
-                {
-                    cout << pair.nameQuery << '\t';
-                }
-                else
-                {
-                    cout << '\t';
-                }
-                
-                if ( pair.pValue <= pValueMax )
-                {
-                    cout << score;
-                }
-            }
+            cout << output->sketchQuery->getReference(i).name;
         }
-        else if ( pair.pValue <= pValueMax )
+        
+        for ( int j = 0; j < refCount; j++ )
         {
-            cout << score << '\t' << pair.pValue << '\t' << pair.nameRef << '\t' << pair.nameQuery << endl;
+            const CompareOutput::PairOutput & pair = output->pairs.at(i * refCount + j);
+        
+            if ( table )
+            {
+                cout << '\t';
+            
+                if ( pair.pass )
+                {
+                    cout << pair.distance;
+                }
+            }
+            else if ( pair.pass )
+            {
+                cout << output->sketchRef.getReference(j).name << '\t' << output->sketchQuery->getReference(i).name << '\t' << pair.distance << '\t' << pair.pValue << endl;
+            }
         }
-    }
     
-    if ( table )
-    {
-        cout << endl;
+        if ( table )
+        {
+            cout << endl;
+        }
     }
     
     delete output;
@@ -314,7 +304,7 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
     const Sketch & sketchRef = data->sketchRef;
     Sketch * sketchQuery = data->sketchQuery;
     
-    CommandDistance::CompareOutput * output = new CommandDistance::CompareOutput();
+    CommandDistance::CompareOutput * output = new CommandDistance::CompareOutput(data->sketchRef, data->sketchQuery);
     
     if ( sketchQuery->getReferenceCount() == 0 )
     {
@@ -338,16 +328,14 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
         {
             int pairIndex = i * sketchRef.getReferenceCount() + j;
             
-            compareSketches(output->pairs[pairIndex], sketchRef.getReference(j), sketchQuery->getReference(i), sketchSize, sketchRef.getKmerSpace(), data->log);
+            compareSketches(output->pairs[pairIndex], sketchRef.getReference(j), sketchQuery->getReference(i), sketchSize, sketchRef.getKmerSpace(), data->maxDistance, data->maxPValue, data->log);
         }
     }
-    
-    delete data->sketchQuery;
     
     return output;
 }
 
-void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, double kmerSpace, bool log)
+void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, double kmerSpace, double maxDistance, double maxPValue, bool log)
 {
     int i = 0;
     int j = 0;
@@ -397,21 +385,38 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
         }
     }
     
-    int offset = log ? 1 : 0;
+    double distance;
+    
+    output.pass = false;
     
     if ( log )
     {
-        output.score = -log10(double(common + 1) / (denom + 1));
+        if ( maxDistance != 1 && 1. - double(common) / denom > maxDistance )
+        {
+            return;
+        }
+        
+        distance = -log10(double(common + 1) / (denom + 1));
     }
     else
     {
-        output.score = 1. - double(common) / denom;
+        distance = 1. - double(common) / denom;
+        
+        if ( distance > maxDistance )
+        {
+            return;
+        }
     }
     
+    output.distance = distance;
     output.pValue = pValue(common, refRef.length, refQry.length, kmerSpace, denom);
     
-    output.nameRef = refRef.name;
-    output.nameQuery = refQry.name;
+    if ( output.pValue > maxPValue )
+    {
+        return;
+    }
+    
+    output.pass = true;
 }
 
 double pValue(uint32_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint32_t sketchSize)
