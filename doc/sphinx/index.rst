@@ -19,7 +19,6 @@ Documentation
    :maxdepth: 2
    
    tutorials
-   distances
    sketches
-
+   distances
 
