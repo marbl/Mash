@@ -13,18 +13,25 @@ sequences can be estimated by the Jaccard distance of the sketches:
 
 As implemented in :code:`mash`, the subsets :math:`A_s` and :math:`B_s` are used
 such that :math:`\lvert A_s \cup B_s \rvert` is equal to the sketch size,
-allowing for a known error bound based on the given sketch size. This is done by
-using a merge-sort algorithm to find common values between the two sorted
-sketches and terminating when the total number of hashes seen reaches the sketch
-size (or all hashes in both sketches have been seen), as suggested by Broder [#f1]_.
-
-For closer correlation with nucleotide identity, the distance can be log scaled
-(:code:`-L` in :code:`mash dist`), using pseudo-counts to avoid taking the log
-of 0 when no hashes are shared:
+allowing for a known error bound based on the given sketch size, as suggested by
+Broder [#f1]_:
 
 .. math::
 
-  -\log_{10} \frac {\lvert A \cap B \rvert + 1} {\lvert A \cup B \rvert + 1}
+ d_J(A_s,B_s) = 1 - \frac {\lvert A_s \cap B_s \rvert} s
+
+This is done by
+using a merge-sort algorithm to find common values between the two sorted
+sketches and terminating when the total number of hashes seen reaches the sketch
+size (or all hashes in both sketches have been seen).
+
+For closer correlation with nucleotide identity, the distance can be log scaled
+(:code:`-L` in :code:`mash dist`), using pseudo-counts to avoid taking the log
+of 0 when no hashes are shared, and normalizing by the maximum value:
+
+.. math::
+
+  \frac {\log \frac {\lvert A_s \cap B_s \rvert + 1} {s + 1}} {\log \frac 1 {s + 1}}
 
 Assessing significance with p-values
 ------------------------------------

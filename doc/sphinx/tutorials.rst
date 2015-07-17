@@ -26,8 +26,31 @@ Pairwise comparisons with compound sketch files
   mash info reference.msh
   mash dist reference.msh genome3.fna
 
-Clustering RefSeq
------------------
+Querying read sets against an existing RefSeq sketch
+----------------------------------------------------
+
+Download the pre-sketched RefSeq archive:
+
+:download:`refseq.msh`
+
+Run :code:`mash dist` with the archive as the reference and the read set as the
+query, using :code:`-u` to improve results by filtering unique k-mers:
+
+.. code::
+
+  mash dist -u refseq.msh reads.fastq > distances.tab
+
+Sort the results to see the top hits and their p-values:
+
+.. code ::
+
+  sort -nrk3 distances.tab | head
+
+Clustering RefSeq from a fresh download
+---------------------------------------
+
+The efficiency of :code:`mash` allows the *de novo* clustering of all genomes in
+RefSeq Complete to be performed on a typical workstation in less than a day.
 
 Since Refseq Complete contains assemblies and multi-chromosomal organisms that
 are not separated by genome, the sequences must first be collated using these
@@ -90,7 +113,8 @@ processing with a clustering tool (and to keep output size manageable):
   mash dist -L -d 0.9 -v 0.0000000001 -t -p 16 refseq.msh refseq.msh > distances.tab
   
 Cluster base on the log-scaled, pairwise distance estimates, in this case using
-`Spici <http://compbio.cs.princeton.edu/spici/>`_:
+`Spici <http://compbio.cs.princeton.edu/spici/>`_, with :code:`-m 2` to specify
+a large, sparse graph to keep memory manageable:
 
 .. code::
 

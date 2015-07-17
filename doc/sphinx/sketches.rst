@@ -27,9 +27,9 @@ specified with :code:`-k`, and sketch files must have the same k-mer size to be
 compared with :code:`mash dist`. A good rule for k-mer size is:
 
 .. math::
-  log_4 {G}
+  \log_4 {G}
   
-...where G is the average size of genomes that will be compared.
+...where :math:`G` is the average size of genomes that will be compared.
 
 sketch size
 '''''''''''
@@ -65,7 +65,7 @@ never overfilter (non-unique k-mers are guaranteed to be kept), and it requires
 significantly less time and memory than true k-mer counting. The filter can be
 enabled with :code:`-u` when sketching (in :code:`mash sketch` or :code:`mash
 dist`). The amount of underfiltering can be managed with the parameters of the
-Bloom filter (:code:`-g`, :code:`e`, and :code:`m`).
+Bloom filter (:code:`-g`, :code:`-e`, and :code:`-m`).
 
 Working with sketch files
 -------------------------
