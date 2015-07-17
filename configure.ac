@@ -7,7 +7,8 @@ then
 	with_capnp=/usr/local/
 fi
 
-AC_ARG_WITH(gsl, [  --with-gsl=<path/to/boost>     GNU Scientific Library install dir (default: /usr/local/)])
+AC_ARG_WITH(gsl, [  --with-gsl=<path/to/gsl>     GNU Scientific Library install dir (default: /usr/local/)])
+AC_ARG_ENABLE(static-gsl, [  --enable-static-gsl])
 
 if test "$with_gsl" == ""
 then
@@ -51,7 +52,13 @@ then
         AC_MSG_ERROR([GNU Scientific Library headers not found.])
     fi
     
-    AC_SUBST(mathlib, $with_gsl/lib/libgsl.a)
+    if test "x$enable_static_gsl" == "xyes"
+    then
+        AC_SUBST(mathlib, $with_gsl/lib/libgsl.a)
+    else
+        AC_SUBST(mathlib, "-L$with_gsl/lib -lgsl")
+    fi
+    
     AC_SUBST(mathinc, $with_gsl/include)
 else
     CPPFLAGS="-I$with_boost/include"
@@ -62,7 +69,7 @@ else
         AC_MSG_ERROR([Boost Library headers not found.])
     fi
     
-    AC_SUBST(mathlib, $with_boost/lib/libboost_math_c99l.a)
+    AC_SUBST(mathlib, $with_boost/lib/libboost_math_c99.a)
     AC_SUBST(mathinc, $with_boost/include)
     AC_SUBST(amcppflags, "-DUSE_BOOST")
 fi
