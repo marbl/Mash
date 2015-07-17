@@ -106,10 +106,10 @@ Command::Command()
     addAvailableOption("illumina", Option(Option::Boolean, "illumina", "", "Use default settings for Illumina sequences.", ""));
     addAvailableOption("nanopore", Option(Option::Boolean, "nanopore", "", "Use default settings for Oxford Nanopore sequences.", ""));
     
-    categoryDisplayNames["Input"] = "input";
-    categoryDisplayNames["Output"] = "output";
-    categoryDisplayNames["Sketch"] = "sketching";
-    categoryDisplayNames["Bloom"] = "sketching (Bloom filter)";
+    categoryDisplayNames["Input"] = "Input";
+    categoryDisplayNames["Output"] = "Output";
+    categoryDisplayNames["Sketch"] = "Sketching";
+    categoryDisplayNames["Bloom"] = "Sketching (Bloom filter)";
 }
 
 void Command::print() const

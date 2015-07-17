@@ -26,9 +26,9 @@ CommandDistance::CommandDistance()
     useOption("threads");
     addOption("list", Option(Option::Boolean, "l", "Input", "Query files are lists of file names.", ""));
     addOption("table", Option(Option::Boolean, "t", "Output", "Table output (will not report p-values, but fields will be blank if they do not meet the p-value threshold).", ""));
-    addOption("log", Option(Option::Boolean, "L", "Output", "Log scale distances. To avoid taking the log of 0, 1-offset pseudocounts are used for the Jaccard index.", ""));
+    addOption("log", Option(Option::Boolean, "L", "Output", "Log scale distances. To avoid taking the log of 0, 1-offset pseudocounts are used for the Jaccard index. The logs are then normalized to the range [0,1].", ""));
     addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
-    addOption("distance", Option(Option::Number, "d", "Output", "Maximum distance to report.", "1.0", 0., 1.));
+    addOption("distance", Option(Option::Number, "d", "Output", "Maximum distance (before log-scaling, if enabled) to report.", "1.0", 0., 1.));
     useOption("kmer");
     useOption("sketchSize");
     useOption("individual");
@@ -402,7 +402,7 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
         }
         else
         {
-            distance = -log10(double(common + 1) / (denom + 1));
+            distance = -log10(double(common + 1) / (denom + 1)) / -log10(1. / (denom + 1));
         }
     }
     else
