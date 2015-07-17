@@ -110,14 +110,15 @@ int CommandDistance::run() const
     parameters.memoryMax = options.at("memory").getArgumentAsNumber();
     parameters.bloomError = options.at("bloomError").getArgumentAsNumber();
     
-    if ( options.at("genome").active || options.at("memory").active )
+    if ( options.at("genome").active || options.at("memory").active || options.at("bloomError").active )
     {
         parameters.bloomFilter = true;
     }
     
-    if ( parameters.bloomFilter )
+    if ( parameters.bloomFilter && ! parameters.concatenated )
     {
-        parameters.concatenated = true;
+        cerr << "ERROR: The option " << options.at("individual").identifier << " cannot be used with " << options.at("unique").identifier << "." << endl;
+        return 1;
     }
     
     Sketch sketch;
@@ -128,13 +129,13 @@ int CommandDistance::run() const
     {
         if ( options.at("kmer").active )
         {
-            cerr << "ERROR: The option " << options.at("kmer").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch.\n";
+            cerr << "ERROR: The option " << options.at("kmer").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
             return 1;
         }
         
         if ( options.at("noncanonical").active )
         {
-            cerr << "ERROR: The option " << options.at("noncanonical").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch.\n";
+            cerr << "ERROR: The option " << options.at("noncanonical").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
             return 1;
         }
         
@@ -335,7 +336,7 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
     return output;
 }
 
-void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, double kmerSpace, double maxDistance, double maxPValue, bool log)
+void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, double kmerSpace, double maxDistance, double maxPValue, bool logScale)
 {
     int i = 0;
     int j = 0;
@@ -389,7 +390,7 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
     
     output.pass = false;
     
-    if ( log )
+    if ( logScale )
     {
         if ( maxDistance != 1 && 1. - double(common) / denom > maxDistance )
         {
@@ -402,7 +403,7 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
         }
         else
         {
-            distance = -log10(double(common + 1) / (denom + 1)) / -log10(1. / (denom + 1));
+            distance = log(double(common + 1) / (denom + 1)) / log(1. / (denom + 1));
         }
     }
     else

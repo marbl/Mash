@@ -208,10 +208,20 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
         
         if ( files[i] == "-" )
         {
+            if ( verbosity > 0 )
+            {
+                cerr << "Sketching from stdin..." << endl;
+            }
+            
             inStream = stdin;
         }
         else
         {
+            if ( verbosity > 0 )
+            {
+                cerr << "Sketching " << files[i] << "..." << endl;
+            }
+            
             inStream = fopen(files[i].c_str(), "r");
             
             if ( inStream == NULL )
@@ -248,9 +258,9 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
                 kmersTotal = 0;
                 kmersUsed = 0;
                 
-                if ( i == 0 )
+                if ( i == 0 && verbosity > 0 )
                 {
-                    cerr << "Bloom table size (bits): " << bloomParams.optimal_parameters.table_size << " Hash functions: " << bloomParams.optimal_parameters.number_of_hashes << endl;
+                    cerr << "   Bloom table size (bytes): " << bloomParams.optimal_parameters.table_size / 8 << endl;
                 }
                 
                 bloomFilter = new bloom_filter(bloomParams);
@@ -340,7 +350,11 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
             
             if ( bloomFilter != 0 )
             {
-                cerr << kmersTotal - kmersUsed << " of " << kmersTotal << " kmers filtered for " << files[i] << endl;
+                if ( verbosity > 0 )
+                {
+                    cerr << "   " << kmersTotal - kmersUsed << " of " << kmersTotal << " kmers filtered from " << (files[i] == "-" ? "stdin" : files[i]) << endl;
+                }
+                
                 delete bloomFilter;
             }
             

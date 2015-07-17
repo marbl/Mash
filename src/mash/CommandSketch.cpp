@@ -40,7 +40,7 @@ int CommandSketch::run() const
         return 0;
     }
     
-    int verbosity = 0;//options.at("silent").active ? 0 : options.at("verbose").active ? 2 : 1;
+    int verbosity = 1;//options.at("silent").active ? 0 : options.at("verbose").active ? 2 : 1;
     bool list = options.at("list").active;
     
     Sketch::Parameters parameters;
@@ -56,14 +56,15 @@ int CommandSketch::run() const
     parameters.windowed = false;//options.at("windowed").active;
     parameters.windowSize = 0;//options.at("window").getArgumentAsNumber();
     
-    if ( options.at("genome").active || options.at("memory").active )
+    if ( options.at("genome").active || options.at("memory").active || options.at("bloomError").active )
     {
         parameters.bloomFilter = true;
     }
     
-    if ( parameters.bloomFilter )
+    if ( parameters.bloomFilter && ! parameters.concatenated )
     {
-        parameters.concatenated = true;
+        cerr << "ERROR: The option " << options.at("individual").identifier << " cannot be used with " << options.at("unique").identifier << "." << endl;
+        return 1;
     }
     
     if ( parameters.concatenated && parameters.windowed )
@@ -123,6 +124,8 @@ int CommandSketch::run() const
     {
         prefix += suffix;
     }
+    
+    cerr << "Writing to " << prefix << "..." << endl;
     
     sketch.writeToCapnp(prefix.c_str());
     
