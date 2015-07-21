@@ -26,13 +26,16 @@ sketches and terminating when the total number of hashes seen reaches the sketch
 size (or all hashes in both sketches have been seen).
 
 For closer correlation with nucleotide identity, the distance can be log scaled
-(:code:`-L` in :code:`mash dist`), using pseudo-counts to avoid taking the log
-of 0 when no hashes are shared, and normalizing by the maximum value:
+(:code:`-L` in :code:`mash dist`) and divided by the kmer size to account for
+the increase chance of differences in larger kmers, as suggested by Fan [#f2]_:
 
 .. math::
 
-  \frac {\log \frac {\lvert A_s \cap B_s \rvert + 1} {s + 1}} {\log \frac 1 {s + 1}}
-
+  d(A_s,B_s)=\Bigg\{\begin{split}
+  &1&,\ \lvert A_s \cap B_s \rvert=0\\
+  &\frac {-1} k \log \frac {\lvert A_s \cap B_s \rvert} s&,\ 0<\lvert A_s \cap B_s \rvert<=s
+  \end{split}
+  
 Assessing significance with p-values
 ------------------------------------
 Since MinHash distances are probabilistic estimates, it is important to
@@ -79,3 +82,4 @@ estimated with the tail of a cumulative binomial distribution:
   p = 1 - \sum\limits_{i=0}^{x-1} \binom{s}{i} j^i (1-j)^{s-i}
 
 .. [#f1] Broder ...
+.. [#f2] Fan ...

@@ -342,9 +342,25 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
     int j = 0;
     int common = 0;
     int denom = 0;
-    
     const HashList & hashesSortedRef = refRef.hashesSorted;
     const HashList & hashesSortedQry = refQry.hashesSorted;
+    
+    output.pass = false;
+    
+    int maxMisses = maxDistance * denom;
+    
+    if ( hashesSortedRef.size() == sketchSize || hashesSortedQry.size() == sketchSize )
+    {
+        maxMisses = maxDistance * sketchSize;
+    }
+    else if ( hashesSortedRef.size() < hashesSortedQry.size() )
+    {
+        maxMisses = maxDistance * hashesSortedQry.size();
+    }
+    else
+    {
+        maxMisses = maxDistance * hashesSortedRef.size();
+    }
     
     while ( denom < sketchSize && i < hashesSortedRef.size() && j < hashesSortedQry.size() )
     {
@@ -364,6 +380,11 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
         }
         
         denom++;
+        
+        if ( denom - common > maxMisses )
+        {
+            return;
+        }
     }
     
     if ( denom < sketchSize )
@@ -388,8 +409,6 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
     
     double distance;
     
-    output.pass = false;
-    
     if ( logScale )
     {
         if ( maxDistance != 1 && 1. - double(common) / denom > maxDistance )
@@ -397,13 +416,18 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
             return;
         }
         
-        if ( common == denom )
+        if ( common == denom ) // avoid -0
         {
             distance = 0;
         }
+        else if ( common == 0 ) // avoid inf
+        {
+            distance = 1.;
+        }
         else
         {
-            distance = log(double(common + 1) / (denom + 1)) / log(1. / (denom + 1));
+            //distance = log(double(common + 1) / (denom + 1)) / log(1. / (denom + 1));
+            distance = -log(double(common) / denom) / kmerSize;
         }
     }
     else
