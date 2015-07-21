@@ -90,32 +90,54 @@ file) based on the table:
   ../collateRefseqComplete.pl ../refseq/complete.*.genomic.fna.gz
 
 Write a list of the collated files, since there are too many to give to
-:code:`mash sketch` as command line arguments, and create a combined sketch
-from the list using list input (:code:`-l`), a k-mer size of 16 (:code:`-k 16`),
+:code:`mash sketch` as command line arguments:
+
+.. code ::
+
+  ls refseq*.fna > ../refseq.ls
+
+From the original directory, create the combined sketch
+using list input (:code:`-l`), a k-mer size of 16 (:code:`-k 16`),
 and a sketch size of 400 (:code:`-s 400`), which corresponds to an error bound
 of 0.05 (this step can be parallelized by dividing the list and combining sketch
 files with :code:`mash paste`):
 
 .. code::
 
-  ls refseq*.fna > ../refseq.ls
-  mash sketch -l -o ../refseq -k 16 -s 400 ../refseq.ls
+  cd ../
+  mash sketch -l -o refseq -k 16 -s 400 refseq.ls
 
-From the original directory, run :code:`mash dist` with the combined sketch file
-as the reference and query to estimate pairwise distances, using log scaling
+Run :code:`mash dist` with the combined sketch file
+as both the reference and query to estimate pairwise distances, using log scaling
 (:code:`-L`), 16 threads (:code:`-p 16`), a maximum distance before log-saling
-of 0.9 (:code:`-d 0.9`) and a maximum p-value of 1e-10 (:code:`-v 0.0000000001`) for
-processing with a clustering tool (and to keep output size manageable):
+of 0.9 (:code:`-d 0.9`) and a maximum p-value of 1e-10 (:code:`-v 0.0000000001`)
+:
 
 .. code::
 
-  cd ../
   mash dist -L -d 0.9 -v 0.0000000001 -t -p 16 refseq.msh refseq.msh > distances.tab
   
-Cluster base on the log-scaled, pairwise distance estimates, in this case using
+Cluster based on the log-scaled, pairwise distance estimates, in this case using
 `Spici <http://compbio.cs.princeton.edu/spici/>`_, with :code:`-m 2` to specify
 a large, sparse graph to keep memory manageable:
 
 .. code::
 
   spici -i distances.tab -o clusters.txt -m 2
+
+The output (:code:`clusters.txt`) will have one cluster per line, with genomes
+named by :code:`collateRefseqComplete.pl` as follows:
+
+refseq-[PRX]-[TAX]-[PRJ]-[SMP]-[ASM]-[PLS]-[ORG].fna
+
+...where:
+
+- [PRX] = two-letter accession prefix
+- [TAX] = taxonomy ID
+- [PRJ] = BioProject ID, if available
+- [SMP] = BioSample ID, if available
+- [ASM] = Assembly ID, if available
+- [PLS] = Plasmid ID, if available
+- [ORG] = Organism name
+
+(missing fields will be ".")
