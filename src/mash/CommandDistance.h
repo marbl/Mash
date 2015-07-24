@@ -67,7 +67,7 @@ private:
 };
 
 CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data);
-void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, double kmerSpace, double maxDistance, double maxPValue, bool logScale);
+void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue, bool logScale);
 double pValue(uint32_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint32_t sketchSize);
 
 #endif

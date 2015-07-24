@@ -329,14 +329,14 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
         {
             int pairIndex = i * sketchRef.getReferenceCount() + j;
             
-            compareSketches(output->pairs[pairIndex], sketchRef.getReference(j), sketchQuery->getReference(i), sketchSize, sketchRef.getKmerSpace(), data->maxDistance, data->maxPValue, data->log);
+            compareSketches(output->pairs[pairIndex], sketchRef.getReference(j), sketchQuery->getReference(i), sketchSize, sketchRef.getKmerSize(), sketchRef.getKmerSpace(), data->maxDistance, data->maxPValue, data->log);
         }
     }
     
     return output;
 }
 
-void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, double kmerSpace, double maxDistance, double maxPValue, bool logScale)
+void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue, bool logScale)
 {
     int i = 0;
     int j = 0;
@@ -346,21 +346,6 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
     const HashList & hashesSortedQry = refQry.hashesSorted;
     
     output.pass = false;
-    
-    int maxMisses = maxDistance * denom;
-    
-    if ( hashesSortedRef.size() == sketchSize || hashesSortedQry.size() == sketchSize )
-    {
-        maxMisses = maxDistance * sketchSize;
-    }
-    else if ( hashesSortedRef.size() < hashesSortedQry.size() )
-    {
-        maxMisses = maxDistance * hashesSortedQry.size();
-    }
-    else
-    {
-        maxMisses = maxDistance * hashesSortedRef.size();
-    }
     
     while ( denom < sketchSize && i < hashesSortedRef.size() && j < hashesSortedQry.size() )
     {
@@ -380,11 +365,6 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
         }
         
         denom++;
-        
-        if ( denom - common > maxMisses )
-        {
-            return;
-        }
     }
     
     if ( denom < sketchSize )
