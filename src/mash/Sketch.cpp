@@ -29,6 +29,16 @@ const vector<Sketch::Locus> & Sketch::getLociByHash(Sketch::hash_t hash) const
     return lociByHash.at(hash);
 }
 
+int Sketch::getMinKmerSize(int reference) const
+{
+	return ceil(log(references[reference].length * (1 - parameters.warning) / parameters.warning) / log(parameters.protein ? 20 : 4));
+}
+
+double Sketch::getRandomKmerChance(int reference) const
+{
+	return 1. / (pow(parameters.protein ? 20 : 4, parameters.kmerSize) / references[reference].length + 1.);
+}
+
 int Sketch::getReferenceIndex(string id) const
 {
     if ( referenceIndecesById.count(id) == 1 )
@@ -198,6 +208,8 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
     
     uint64_t kmersTotal;
     uint64_t kmersUsed;
+    
+    int lengthMaxIndex = -1;
     
     for ( int i = 0; i < files.size(); i++ )
     {
@@ -408,6 +420,26 @@ bool Sketch::initHeaderFromBaseIfValid(const std::string & fileSeq, bool windowe
     
     initFromCapnp(file.c_str(), true);
     return true;
+}
+
+void Sketch::warnKmerSize(int lengthMax, const std::string & lengthMaxName, double randomChance, int kMin, int warningCount) const
+{
+	cerr << "\nWARNING: For the k-mer size used (" << parameters.kmerSize
+		<< "), the random match probability (" << randomChance
+		<< ") is above the specified warning threshold ("
+		<< parameters.warning << ") for the sequence \"" << lengthMaxName
+		<< "\" of size " << lengthMax;
+	
+	if ( warningCount > 1 )
+	{
+		cerr << " (and " << (warningCount - 1) << " others)";
+	}
+	
+	cerr << ". Distances to "
+		<< (warningCount == 1 ? "this sequence" : "these sequences")
+		<< " may be underestimated as a result. To meet the threshold of "
+		<< parameters.warning << ", a k-mer size of at least " << kMin
+		<< " is required.\n\n";
 }
 
 bool Sketch::writeToFile() const

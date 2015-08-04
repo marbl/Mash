@@ -32,6 +32,7 @@ CommandDistance::CommandDistance()
     useOption("kmer");
     useOption("sketchSize");
     useOption("individual");
+    useOption("warning");
     useOption("noncanonical");
     useOption("unique");
     useOption("genome");
@@ -109,6 +110,7 @@ int CommandDistance::run() const
     parameters.genomeSize = options.at("genome").getArgumentAsNumber();
     parameters.memoryMax = options.at("memory").getArgumentAsNumber();
     parameters.bloomError = options.at("bloomError").getArgumentAsNumber();
+    parameters.warning = options.at("warning").getArgumentAsNumber();
     
     if ( options.at("genome").active || options.at("memory").active || options.at("bloomError").active )
     {
@@ -122,6 +124,13 @@ int CommandDistance::run() const
     }
     
     Sketch sketch;
+    
+    int lengthThreshold = (parameters.warning * pow(parameters.protein ? 20 : 4, parameters.kmerSize)) / (1. - parameters.warning);
+    int lengthMax;
+    double randomChance;
+    int kMin;
+    string lengthMaxName;
+    int warningCount = 0;
     
     const string & fileReference = arguments[0];
     
@@ -172,6 +181,24 @@ int CommandDistance::run() const
             
             sketch.initFromSequence(refArgVector, parameters);
             
+            for ( int i = 0; i < sketch.getReferenceCount(); i++ )
+            {
+                int length = sketch.getReference(i).length;
+                
+                if ( length > lengthThreshold )
+                {
+                    if ( warningCount == 0 || length > lengthMax )
+                    {
+                        lengthMax = length;
+                        lengthMaxName = sketch.getReference(i).name;
+                        randomChance = sketch.getRandomKmerChance(i);
+                        kMin = sketch.getMinKmerSize(i);
+                    }
+                    
+                    warningCount++;
+                }
+            }
+            
             cerr << "done.\n";
             /*
             if ( sketch.writeToFile() )
@@ -219,8 +246,9 @@ int CommandDistance::run() const
         // leave it to the child. Either way, the child will delete.
         //
         Sketch * sketchQuery = new Sketch();
+        bool isSketch = hasSuffix(queryFiles[i], suffixSketch);
         
-        if ( hasSuffix(queryFiles[i], suffixSketch) )
+        if ( isSketch )
         {
             // init header to check params
             //
@@ -246,7 +274,28 @@ int CommandDistance::run() const
         }
         
         threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, queryFiles[i], parameters, distanceMax, pValueMax));
-        
+        /*
+        if ( ! isSketch )
+        {
+            for ( int j = 0; j < sketchQuery->getReferenceCount(); j++ )
+            {
+                int length = sketchQuery->getReference(j).length;
+                
+                if ( length > lengthThreshold )
+                {
+                    if ( warningCount == 0 || length > lengthMax )
+                    {
+                        lengthMax = length;
+                        lengthMaxName = sketchQuery->getReference(j).name;
+                        randomChance = sketchQuery->getRandomKmerChance(j);
+                        kMin = sketchQuery->getMinKmerSize(j);
+                    }
+                    
+                    warningCount++;
+                }
+            }
+        }
+        */
         while ( threadPool.outputAvailable() )
         {
             writeOutput(threadPool.popOutputWhenAvailable(), table);
@@ -256,6 +305,11 @@ int CommandDistance::run() const
     while ( threadPool.running() )
     {
         writeOutput(threadPool.popOutputWhenAvailable(), table);
+    }
+    
+    if ( warningCount > 0 )
+    {
+    	sketch.warnKmerSize(lengthMax, lengthMaxName, randomChance, kMin, warningCount);
     }
     
     return 0;

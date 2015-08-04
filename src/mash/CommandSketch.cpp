@@ -22,6 +22,7 @@ CommandSketch::CommandSketch()
     //useOption("verbose");
     //useOption("silent");
     useOption("individual");
+    useOption("warning");
     useOption("unique");
     useOption("genome");
     useOption("memory");
@@ -55,6 +56,7 @@ int CommandSketch::run() const
     parameters.bloomError = options.at("bloomError").getArgumentAsNumber();
     parameters.windowed = false;//options.at("windowed").active;
     parameters.windowSize = 0;//options.at("window").getArgumentAsNumber();
+    parameters.warning = options.at("warning").getArgumentAsNumber();
     
     if ( options.at("genome").active || options.at("memory").active || options.at("bloomError").active )
     {
@@ -84,6 +86,13 @@ int CommandSketch::run() const
     
     Sketch sketch;
     
+    int lengthThreshold = (parameters.warning * pow(parameters.protein ? 20 : 4, parameters.kmerSize)) / (1. - parameters.warning);
+    int lengthMax;
+    double randomChance;
+    int kMin;
+    string lengthMaxName;
+    int warningCount = 0;
+    
     vector<string> files;
     
     for ( int i = 0; i < arguments.size(); i++ )
@@ -100,6 +109,24 @@ int CommandSketch::run() const
     
     sketch.initFromSequence(files, parameters, verbosity);
     
+	for ( int i = 0; i < sketch.getReferenceCount(); i++ )
+	{
+		int length = sketch.getReference(i).length;
+		
+		if ( length > lengthThreshold )
+		{
+			if ( warningCount == 0 || length > lengthMax )
+			{
+				lengthMax = length;
+				lengthMaxName = sketch.getReference(i).name;
+				randomChance = sketch.getRandomKmerChance(i);
+				kMin = sketch.getMinKmerSize(i);
+			}
+			
+			warningCount++;
+		}
+	}
+	
     string prefix;
     
     if ( options.at("prefix").argument.length() > 0 )
@@ -128,6 +155,11 @@ int CommandSketch::run() const
     cerr << "Writing to " << prefix << "..." << endl;
     
     sketch.writeToCapnp(prefix.c_str());
+    
+    if ( warningCount > 0 )
+    {
+    	sketch.warnKmerSize(lengthMax, lengthMaxName, randomChance, kMin, warningCount);
+    }
     
     return 0;
 }

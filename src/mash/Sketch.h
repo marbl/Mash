@@ -30,11 +30,13 @@ public:
             :
             kmerSize(0),
             error(0),
+            warning(0),
             minHashesPerWindow(0),
             windowSize(0),
             windowed(false),
             concatenated(false),
             noncanonical(false),
+            protein(false),
             bloomFilter(false),
             genomeSize(0),
             memoryMax(0),
@@ -45,11 +47,13 @@ public:
             :
             kmerSize(other.kmerSize),
             error(other.error),
+            warning(other.warning),
             minHashesPerWindow(other.minHashesPerWindow),
             windowSize(other.windowSize),
             windowed(other.windowed),
             concatenated(other.concatenated),
             noncanonical(other.noncanonical),
+            protein(other.protein),
             bloomFilter(other.bloomFilter),
             genomeSize(other.genomeSize),
             memoryMax(other.memoryMax),
@@ -57,16 +61,18 @@ public:
             {}
         
         int kmerSize;
-        float error;
+        double error;
+        double warning;
         int minHashesPerWindow;
         int windowSize;
         bool windowed;
         bool concatenated;
         bool noncanonical;
+        bool protein;
         bool bloomFilter;
         int genomeSize;
         int memoryMax;
-        float bloomError;
+        double bloomError;
     };
     
     struct PositionHash
@@ -105,11 +111,14 @@ public:
         HashList hashesSorted;
     };
     
+    void checkKmerSize() const;
     bool getConcatenated() const {return parameters.concatenated;}
     float getError() const {return parameters.error;}
     int getHashCount() const {return lociByHash.size();}
     const std::vector<Locus> & getLociByHash(hash_t hash) const;
     float getMinHashesPerWindow() const {return parameters.minHashesPerWindow;}
+	int getMinKmerSize(int reference) const;
+	double getRandomKmerChance(int reference) const;
     const Reference & getReference(int index) const {return references.at(index);}
     int getReferenceCount() const {return references.size();}
     int getReferenceIndex(std::string id) const;
@@ -122,6 +131,7 @@ public:
     int initFromCapnp(const char * file, bool headerOnly = false, bool append = false);
     int initFromSequence(const std::vector<std::string> & files, const Parameters & parametersNew, int verbosity = 0);
     bool initHeaderFromBaseIfValid(const std::string & file, bool windowed);
+    void warnKmerSize(int lengthMax, const std::string & lengthMaxName, double randomChance, int kMin, int warningCount) const;
     bool writeToFile() const;
     int writeToCapnp(const char * file) const;
     
