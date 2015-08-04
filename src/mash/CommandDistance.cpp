@@ -19,16 +19,16 @@ CommandDistance::CommandDistance()
 {
     name = "dist";
     summary = "Estimate the distance of query sequences to references.";
-    description = "Estimate the distance of each query sequence (or file with -f) to the reference. Both the reference and queries can be fasta or fastq, gzipped or not, or mash sketch files (.msh) with matching kmer sizes (-k). The distance is one minus the Jaccard score for the set of min-hashes whose size is that of the smaller sketch. The output fields are [reference-ID, query-ID, distance, p-value].";
+    description = "Estimate the distance of each query sequence (or file with -f) to the reference. Both the reference and queries can be fasta or fastq, gzipped or not, or mash sketch files (.msh) with matching kmer sizes (-k). The distance is one minus the Jaccard score for the set of min-hashes whose size is that of the smaller sketch. The output fields are [reference-ID, query-ID, distance, p-value, shared-hashes].";
     argumentString = "<reference> <query> [<query>] ...";
     
     useOption("help");
     useOption("threads");
     addOption("list", Option(Option::Boolean, "l", "Input", "Query files are lists of file names.", ""));
     addOption("table", Option(Option::Boolean, "t", "Output", "Table output (will not report p-values, but fields will be blank if they do not meet the p-value threshold).", ""));
-    addOption("log", Option(Option::Boolean, "L", "Output", "Log scale distances and divide by k-mer size to provide a better analog to phylogenetic distance. The special case of zero shared min-hashes will result in a distance of 1.", ""));
+    //addOption("log", Option(Option::Boolean, "L", "Output", "Log scale distances and divide by k-mer size to provide a better analog to phylogenetic distance. The special case of zero shared min-hashes will result in a distance of 1.", ""));
     addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
-    addOption("distance", Option(Option::Number, "d", "Output", "Maximum distance (before log-scaling, if enabled) to report.", "1.0", 0., 1.));
+    addOption("distance", Option(Option::Number, "d", "Output", "Maximum distance to report.", "1.0", 0., 1.));
     useOption("kmer");
     useOption("sketchSize");
     useOption("individual");
@@ -95,7 +95,7 @@ int CommandDistance::run() const
     int threads = options.at("threads").getArgumentAsNumber();
     bool list = options.at("list").active;
     bool table = options.at("table").active;
-    bool log = options.at("log").active;
+    //bool log = options.at("log").active;
     double pValueMax = options.at("pvalue").getArgumentAsNumber();
     double distanceMax = options.at("distance").getArgumentAsNumber();
     
@@ -245,7 +245,7 @@ int CommandDistance::run() const
             sketchQuery->initFromCapnp(queryFiles[i].c_str());
         }
         
-        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, queryFiles[i], parameters, distanceMax, pValueMax, log));
+        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, queryFiles[i], parameters, distanceMax, pValueMax));
         
         while ( threadPool.outputAvailable() )
         {
@@ -287,7 +287,7 @@ void CommandDistance::writeOutput(CompareOutput * output, bool table) const
             }
             else if ( pair.pass )
             {
-                cout << output->sketchRef.getReference(j).name << '\t' << output->sketchQuery->getReference(i).name << '\t' << pair.distance << '\t' << pair.pValue << endl;
+                cout << output->sketchRef.getReference(j).name << '\t' << output->sketchQuery->getReference(i).name << '\t' << pair.distance << '\t' << pair.pValue << '\t' << pair.numer << '/' << pair.denom << endl;
             }
         }
     
@@ -329,14 +329,14 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
         {
             int pairIndex = i * sketchRef.getReferenceCount() + j;
             
-            compareSketches(output->pairs[pairIndex], sketchRef.getReference(j), sketchQuery->getReference(i), sketchSize, sketchRef.getKmerSize(), sketchRef.getKmerSpace(), data->maxDistance, data->maxPValue, data->log);
+            compareSketches(output->pairs[pairIndex], sketchRef.getReference(j), sketchQuery->getReference(i), sketchSize, sketchRef.getKmerSize(), sketchRef.getKmerSpace(), data->maxDistance, data->maxPValue);
         }
     }
     
     return output;
 }
 
-void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue, bool logScale)
+void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue)
 {
     int i = 0;
     int j = 0;
@@ -388,38 +388,29 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
     }
     
     double distance;
+    double jaccard = double(common) / denom;
     
-    if ( logScale )
+    if ( common == denom ) // avoid -0
     {
-        if ( maxDistance != 1 && 1. - double(common) / denom > maxDistance )
-        {
-            return;
-        }
-        
-        if ( common == denom ) // avoid -0
-        {
-            distance = 0;
-        }
-        else if ( common == 0 ) // avoid inf
-        {
-            distance = 1.;
-        }
-        else
-        {
-            //distance = log(double(common + 1) / (denom + 1)) / log(1. / (denom + 1));
-            distance = -log(double(common) / denom) / kmerSize;
-        }
+        distance = 0;
+    }
+    else if ( common == 0 ) // avoid inf
+    {
+        distance = 1.;
     }
     else
     {
-        distance = 1. - double(common) / denom;
-        
-        if ( distance > maxDistance )
-        {
-            return;
-        }
+        //distance = log(double(common + 1) / (denom + 1)) / log(1. / (denom + 1));
+        distance = -log(2 * jaccard / (1. + jaccard)) / kmerSize;
     }
     
+    if ( distance > maxDistance )
+    {
+        return;
+    }
+    
+    output.numer = common;
+    output.denom = denom;
     output.distance = distance;
     output.pValue = pValue(common, refRef.length, refQry.length, kmerSpace, denom);
     

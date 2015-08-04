@@ -10,15 +10,14 @@ public:
     
     struct CompareInput
     {
-        CompareInput(const Sketch & sketchRefNew, Sketch * sketchQueryNew, const std::string fileNew, const Sketch::Parameters & parametersNew, double maxDistanceNew, double maxPValueNew, bool logNew)
+        CompareInput(const Sketch & sketchRefNew, Sketch * sketchQueryNew, const std::string fileNew, const Sketch::Parameters & parametersNew, double maxDistanceNew, double maxPValueNew)
             :
             sketchRef(sketchRefNew),
             sketchQuery(sketchQueryNew),
             file(fileNew),
             parameters(parametersNew),
             maxDistance(maxDistanceNew),
-            maxPValue(maxPValueNew),
-            log(logNew)
+            maxPValue(maxPValueNew)
             {}
         
         const Sketch & sketchRef;
@@ -28,7 +27,6 @@ public:
         const Sketch::Parameters & parameters;
         double maxDistance;
         double maxPValue;
-        bool log;
     };
     
     struct CompareOutput
@@ -46,6 +44,8 @@ public:
         
         struct PairOutput
         {
+            int numer;
+            int denom;
             double distance;
             double pValue;
             bool pass;
@@ -67,7 +67,7 @@ private:
 };
 
 CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data);
-void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue, bool logScale);
+void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue);
 double pValue(uint32_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint32_t sketchSize);
 
 #endif
