@@ -15,7 +15,7 @@ int main(int argc, const char ** argv)
     commandList.addCommand(new CommandSketch());
     //commandList.addCommand(new CommandFind());
     commandList.addCommand(new CommandDistance());
-    commandList.addCommand(new CommandContain());
+    //commandList.addCommand(new CommandContain());
     commandList.addCommand(new CommandInfo());
     commandList.addCommand(new CommandPaste());
     
