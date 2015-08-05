@@ -422,7 +422,7 @@ bool Sketch::initHeaderFromBaseIfValid(const std::string & fileSeq, bool windowe
     return true;
 }
 
-void Sketch::warnKmerSize(int lengthMax, const std::string & lengthMaxName, double randomChance, int kMin, int warningCount) const
+void Sketch::warnKmerSize(uint64_t lengthMax, const std::string & lengthMaxName, double randomChance, int kMin, int warningCount) const
 {
 	cerr << "\nWARNING: For the k-mer size used (" << parameters.kmerSize
 		<< "), the random match probability (" << randomChance

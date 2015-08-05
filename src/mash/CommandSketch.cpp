@@ -86,8 +86,8 @@ int CommandSketch::run() const
     
     Sketch sketch;
     
-    int lengthThreshold = (parameters.warning * pow(parameters.protein ? 20 : 4, parameters.kmerSize)) / (1. - parameters.warning);
-    int lengthMax;
+    uint64_t lengthThreshold = (parameters.warning * pow(parameters.protein ? 20 : 4, parameters.kmerSize)) / (1. - parameters.warning);
+    uint64_t lengthMax;
     double randomChance;
     int kMin;
     string lengthMaxName;

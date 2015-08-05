@@ -131,7 +131,7 @@ public:
     int initFromCapnp(const char * file, bool headerOnly = false, bool append = false);
     int initFromSequence(const std::vector<std::string> & files, const Parameters & parametersNew, int verbosity = 0);
     bool initHeaderFromBaseIfValid(const std::string & file, bool windowed);
-    void warnKmerSize(int lengthMax, const std::string & lengthMaxName, double randomChance, int kMin, int warningCount) const;
+    void warnKmerSize(uint64_t lengthMax, const std::string & lengthMaxName, double randomChance, int kMin, int warningCount) const;
     bool writeToFile() const;
     int writeToCapnp(const char * file) const;
     
