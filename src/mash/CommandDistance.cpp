@@ -19,7 +19,7 @@ CommandDistance::CommandDistance()
 {
     name = "dist";
     summary = "Estimate the distance of query sequences to references.";
-    description = "Estimate the distance of each query sequence (or file with -f) to the reference. Both the reference and queries can be fasta or fastq, gzipped or not, or mash sketch files (.msh) with matching kmer sizes (-k). The distance is one minus the Jaccard score for the set of min-hashes whose size is that of the smaller sketch. The output fields are [reference-ID, query-ID, distance, p-value, shared-hashes].";
+    description = "Estimate the distance of each query sequence (or file with -f) to the reference. Both the reference and queries can be fasta or fastq, gzipped or not, or mash sketch files (.msh) with matching kmer sizes (-k). The output fields are [reference-ID, query-ID, distance, p-value, shared-hashes].";
     argumentString = "<reference> <query> [<query>] ...";
     
     useOption("help");
@@ -149,6 +149,19 @@ int CommandDistance::run() const
         }
         
         sketch.initFromCapnp(fileReference.c_str());
+        
+        if ( options.at("sketchSize").active )
+        {
+            if ( parameters.bloomFilter && parameters.minHashesPerWindow != sketch.getMinHashesPerWindow() )
+            {
+                cerr << "ERROR: The sketch size must match the reference when using a bloom filter (leave this option out to inherit from the reference sketch)." << endl;
+                return 1;
+            }
+        }
+        else
+        {
+            parameters.minHashesPerWindow = sketch.getMinHashesPerWindow();
+        }
         
         parameters.kmerSize = sketch.getKmerSize();
         parameters.noncanonical = sketch.getNoncanonical();
@@ -307,7 +320,7 @@ int CommandDistance::run() const
         writeOutput(threadPool.popOutputWhenAvailable(), table);
     }
     
-    if ( warningCount > 0 )
+    if ( warningCount > 0 && ! parameters.bloomFilter )
     {
     	sketch.warnKmerSize(lengthMax, lengthMaxName, randomChance, kMin, warningCount);
     }

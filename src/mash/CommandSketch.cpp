@@ -156,7 +156,7 @@ int CommandSketch::run() const
     
     sketch.writeToCapnp(prefix.c_str());
     
-    if ( warningCount > 0 )
+    if ( warningCount > 0 && ! parameters.bloomFilter )
     {
     	sketch.warnKmerSize(lengthMax, lengthMaxName, randomChance, kMin, warningCount);
     }
