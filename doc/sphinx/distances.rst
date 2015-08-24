@@ -27,7 +27,7 @@ size (or all hashes in both sketches have been seen).
 
 For closer correlation with nucleotide identity, the distance can be log scaled
 (:code:`-L` in :code:`mash dist`) and divided by the kmer size to account for
-the increase chance of differences in larger kmers, as suggested by Fan [#f2]_:
+the increase chance of differences in larger kmers, as suggested by Fan et al. [#f2]_:
 
 .. math::
 
