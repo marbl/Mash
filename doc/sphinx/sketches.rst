@@ -24,12 +24,30 @@ As in any k-mer based method, larger k-mers will provide more specificity, while
 smaller k-mers will provide more sensitivity. Larger genomes will also require
 larger k-mers to avoid k-mers that are shared by chance. K-mer size is
 specified with :code:`-k`, and sketch files must have the same k-mer size to be
-compared with :code:`mash dist`. A good rule for k-mer size is:
+compared with :code:`mash dist`. When :code:`mash sketch` is run, it
+automatically assesses the specified k-mer size against the sizes of input
+genomes by estimating the probability of a random match as:
 
 .. math::
-  \log_4 {G}
+  p = \frac 1 {\frac {\left(\overline\Sigma\right)^k} g + 1}
   
-...where :math:`G` is the average size of genomes that will be compared.
+...where :math:`g` is the genome size and :math:`\Sigma` is the alphabet (ACGT
+by default). If this probability exceeds a threshold (specified by
+:code:`-w`; 0.01 by default) for any input genomes, a warning will be given
+with the minimum k-mer size needed to get within the threshold.
+
+For large collections of sketches, memory and storage may also be a
+consideration when choosing a k-mer size. Mash will use 32-bit hashes, rather
+than 64-bit, if they can encompass the full k-mer space for the alphabet in use.
+This will (roughly) halve the size of the size of the sketch file on disk and
+the memory it uses when loaded for :code:`mash dist`. The criterion for using a
+32-bit hash is:
+
+.. math::
+   \left({\overline\Sigma}\right)^k \leq 2^{32}
+
+...which becomes :math:`k \leq 16` for nucleotides (the default) and
+:math:`k \leq 7` for amino acids.
 
 sketch size
 '''''''''''
@@ -39,7 +57,7 @@ larger sketch files and longer comparison times. The error bound of a distance
 estimation for a given sketch size :math:`s` is formulated as:
 
 .. math::
-  \sqrt(\frac{1}{s})
+  \sqrt{\frac{1}{s}}
 
 Sketch size is specified with :code:`-s`. Sketches of different sizes can be
 compared with :code:`mash dist`, although the comparison will be restricted to
