@@ -31,7 +31,9 @@ Querying read sets against an existing RefSeq sketch
 
 Download the pre-sketched RefSeq archive:
 
-:download:`refseq.msh`
+[ Coming soon ]
+
+.. refseq.msh
 
 Run :code:`mash dist` with the archive as the reference and the read set as the
 query, using :code:`-u` to improve results by filtering unique k-mers:
@@ -56,9 +58,11 @@ Since Refseq Complete contains assemblies and multi-chromosomal organisms that
 are not separated by genome, the sequences must first be collated using these
 scripts:
 
-:download:`createGiTable.pl <createGiTable.pl>`
+[ Coming soon ]
 
-:download:`collateRefseqComplete.pl <createGiTable.pl>`
+.. `createGiTable.pl <createGiTable.pl>`
+
+.. `collateRefseqComplete.pl <createGiTable.pl>`
 
 First, create directories for the raw and collated files (there will be tens of
 thousands of collated files):
