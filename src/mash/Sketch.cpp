@@ -262,9 +262,9 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
             {
                 bloom_parameters bloomParams;
                 
-                bloomParams.projected_element_count = (uint64_t)parameters.genomeSize * 1000000l * 10l; // TODO: error rate based on platform and coverage
+                bloomParams.projected_element_count = (uint64_t)parameters.genomeSize * 10l; // TODO: error rate based on platform and coverage
                 bloomParams.false_positive_probability = parameters.bloomError;
-                bloomParams.maximum_size = (uint64_t)parameters.memoryMax * 1000000000l * 8l;
+                bloomParams.maximum_size = (uint64_t)parameters.memoryMax * 8l;
                 bloomParams.compute_optimal_parameters();
                 
                 kmersTotal = 0;

@@ -28,6 +28,7 @@ public:
             Boolean,
             Number,
             Integer,
+            Size,
             File
         }
         type;
