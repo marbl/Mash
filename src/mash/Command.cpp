@@ -145,11 +145,11 @@ void Command::addOption(string name, Option option)
 Command::Command()
 {
     addAvailableOption("help", Option(Option::Boolean, "h", "", "Help", ""));
-    addAvailableOption("kmer", Option(Option::Integer, "k", "Sketch", "Kmer size. Hashes will be based on strings of this many nucleotides.", "15", 1, 32));
+    addAvailableOption("kmer", Option(Option::Integer, "k", "Sketch", "Kmer size. Hashes will be based on strings of this many nucleotides.", "21", 1, 32));
     addAvailableOption("windowed", Option(Option::Boolean, "w", "Sketch", "Windowed", ""));
-    addAvailableOption("window", Option(Option::Integer, "l", "Sketch", "Window length. Hashes that are minima in any window of this size will be stored.", "1000"));
+    addAvailableOption("window", Option(Option::Integer, "l", "Sketch", "Window length. Hashes that are minima in any window of this size will be stored.", "10000"));
     addAvailableOption("error", Option(Option::Number, "e", "Sketch", "Error bound. The (maximum) number of min-hashes in each sketch will be one divided by this number squared.", "0.05"));
-    addAvailableOption("sketchSize", Option(Option::Integer, "s", "Sketch", "Sketch size. Each sketch will have at most this many non-redundant min-hashes.", "10000"));
+    addAvailableOption("sketchSize", Option(Option::Integer, "s", "Sketch", "Sketch size. Each sketch will have at most this many non-redundant min-hashes.", "1000"));
     addAvailableOption("verbose", Option(Option::Boolean, "v", "Output", "Verbose", ""));
     addAvailableOption("silent", Option(Option::Boolean, "s", "Output", "Silent", ""));
     addAvailableOption("individual", Option(Option::Boolean, "i", "Sketch", "Sketch individual sequences, rather than whole files.", ""));
