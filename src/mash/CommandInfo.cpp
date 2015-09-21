@@ -39,9 +39,9 @@ int CommandInfo::run() const
     sketch.initFromCapnp(file.c_str(), header);
     
     cout << "Header:" << endl;
-    cout << "    Kmer:                          " << sketch.getKmerSize() << endl;
-    cout << "    Target min-hashes per sketch:  " << sketch.getMinHashesPerWindow() << endl;
-    cout << "    Canonical kmers:               " << (sketch.getNoncanonical() ? "no" : "yes") << endl;
+    cout << "  Kmer:                          " << sketch.getKmerSize() << endl;
+    cout << "  Target min-hashes per sketch:  " << sketch.getMinHashesPerWindow() << endl;
+    cout << "  Canonical kmers:               " << (sketch.getNoncanonical() ? "no" : "yes") << endl;
     
     if ( ! header )
     {
@@ -65,7 +65,7 @@ int CommandInfo::run() const
             columns[3].push_back(ref.comment);
         }
         
-        printColumns(columns, 4);
+        printColumns(columns, 2, 2, "-", 0);
     }
     
     return 0;
