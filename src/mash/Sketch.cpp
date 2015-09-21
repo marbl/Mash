@@ -279,10 +279,14 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
             }
         }
         
+        bool skipped = false;
+        
         while ((l = kseq_read(seq)) >= 0)
         {
+        	cout << "length  " << l << endl;
             if ( l < parameters.kmerSize )
             {
+            	skipped = true;
                 continue;
             }
             
@@ -347,10 +351,24 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
             }
         }
         
-        if ( l != -1 )
+        if (  l != -1 )
         {
-            printf("ERROR: return value: %d\n", l);
-            return 1;
+        	cerr << "\nERROR: reading " << files[i] << "." << endl;
+        	exit(1);
+        }
+        
+        if ( references[0].length == 0 )
+        {
+        	if ( skipped )
+        	{
+        		cerr << "\nWARNING: All fasta records in " << files[i] << "were shorter than the k-mer size (" << parameters.kmerSize << ")." << endl;
+        	}
+        	else
+        	{
+        		cerr << "\nERROR: Did not find fasta records in \"" << files[i] << "\"." << endl;
+        	}
+        	
+            exit(1);
         }
         
         if ( parameters.concatenated )
