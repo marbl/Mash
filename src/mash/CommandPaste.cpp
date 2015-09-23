@@ -1,6 +1,7 @@
 #include "CommandPaste.h"
 #include "Sketch.h"
 #include <iostream>
+#include "unistd.h"
 
 using namespace::std;
 
@@ -78,8 +79,19 @@ int CommandPaste::run() const
         sketch.initFromCapnp(file.c_str(), false, i > 0);
     }
     
-    string out = arguments[0] + suffixSketch;
+    string out = arguments[0];
     
+    if ( ! hasSuffix(out, suffixSketch) )
+    {
+        out += suffixSketch;
+    }
+
+	if( access(out.c_str(), F_OK) != -1 )
+	{
+		cerr << "ERROR: \"" << out << "\" exists; remove to write." << endl;
+		exit(1);
+	}
+	
     cerr << "Writing " << out << "..." << endl;
     sketch.writeToCapnp(out.c_str());
     
