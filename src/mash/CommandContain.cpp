@@ -12,10 +12,10 @@ CommandContain::CommandContain()
 {
     name = "within";
     summary = "Estimate the containment of query sequences within references.";
-    description = "Estimate the containment of each query sequence (or file with -f) in the reference. Both the reference and queries can be fasta or fastq, gzipped or not, or mash sketch files (.msh) with matching kmer sizes (-k). The score is the number of intersecting min-hashes divided by the query set size. The output format is [score, error-bound, reference-ID, query-ID].";
+    description = "Estimate the containment of each query file (or sequence with -i) in the reference. Both the reference and queries can be fasta or fastq, gzipped or not, or mash sketch files (.msh) with matching k-mer sizes. Query files can also be files of file names (see -l). The score is the number of intersecting min-hashes divided by the query set size. The output format is [score, error-bound, reference-ID, query-ID].";
     argumentString = "<reference> <query> [<query>] ...";
     
-    addOption("list", Option(Option::Boolean, "l", "Input", "Query files are lists of file names.", ""));
+    addOption("list", Option(Option::Boolean, "l", "Input", "List input. Each query file contains a list of sequence files, one per line. The reference file is not affected.", ""));
     addOption("errorThreshold", Option(Option::Number, "e", "Output", "Error bound threshold for reporting scores values. Error bounds can generally be increased by increasing the sketch size of the reference.", "0.05"));
     useOption("help");
     useOption("threads");

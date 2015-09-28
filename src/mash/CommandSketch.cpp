@@ -9,11 +9,11 @@ CommandSketch::CommandSketch()
 {
     name = "sketch";
     summary = "Create sketches (reduced representations for fast operations).";
-    description = "Create a sketch file, which is a reduced representation of a sequence or set of sequences (based on min-hashes) that can be used for fast distance estimations. Input can be fasta or fastq files (gzipped or not), and \"-\" can be given to read from standard input. One sketch file will be generated, but it can have multiple sketches within it, divided by sequences or files (see -i). By default, the output will be the first input file with a '.msh' extension, or 'stdin.msh' if standard input is used (see -o).";
+    description = "Create a sketch file, which is a reduced representation of a sequence or set of sequences (based on min-hashes) that can be used for fast distance estimations. Input can be fasta or fastq files (gzipped or not), and \"-\" can be given to read from standard input. Input files can also be files of file names (see -l). For output, one sketch file will be generated, but it can have multiple sketches within it, divided by sequences or files (see -i). By default, the output file name will be the first input file with a '.msh' extension, or 'stdin.msh' if standard input is used (see -o).";
     argumentString = "fast(a|q)[.gz] ...";
     
     useOption("help");
-    addOption("list", Option(Option::Boolean, "l", "Input", "Input files are lists of file names.", ""));
+    addOption("list", Option(Option::Boolean, "l", "Input", "List input. Each file contains a list of sequence files, one per line.", ""));
     addOption("prefix", Option(Option::File, "o", "Output", "Output prefix (first input file used if unspecified). The suffix '.msh' will be appended.", ""));
     useOption("kmer");
     //useOption("windowed");
