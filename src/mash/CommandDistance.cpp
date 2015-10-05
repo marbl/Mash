@@ -432,29 +432,9 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
         }
     }
 
-    if ( denom < sketchSize )
-    {
-        // complete the union operation if possible
-        
-        if ( i < hashesSortedRef.size() )
-        {
-            denom += hashesSortedRef.size() - i;
-        }
-        
-        if ( j < hashesSortedQry.size() )
-        {
-            denom += hashesSortedQry.size() - j;
-        }
-        
-        if ( denom > sketchSize )
-        {
-            denom = sketchSize;
-        }
-    }
-    
     double distance;
     double jaccard = double(common) / denom;
-    
+
     if ( common == denom ) // avoid -0
     {
         distance = 0;
