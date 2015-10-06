@@ -283,7 +283,6 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
         
         while ((l = kseq_read(seq)) >= 0)
         {
-        	cout << "length  " << l << endl;
             if ( l < parameters.kmerSize )
             {
             	skipped = true;
