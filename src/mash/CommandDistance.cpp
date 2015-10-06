@@ -405,16 +405,16 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
 
 void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue)
 {
+    const HashList & hashesSortedRef = refRef.hashesSorted;
+    const HashList & hashesSortedQry = refQry.hashesSorted;
     int i = 0;
     int j = 0;
     int common = 0;
-    int denom = 0;
-    const HashList & hashesSortedRef = refRef.hashesSorted;
-    const HashList & hashesSortedQry = refQry.hashesSorted;
-    
+    int denom = hashesSortedRef.size();
+
     output.pass = false;
-    
-    while ( denom < sketchSize && i < hashesSortedRef.size() && j < hashesSortedQry.size() )
+
+    while ( i < hashesSortedRef.size() && j < hashesSortedQry.size() )
     {
         if ( hashLessThan(hashesSortedRef.at(i), hashesSortedQry.at(j), hashesSortedRef.get64()) )
         {
@@ -430,33 +430,11 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
             j++;
             common++;
         }
-        
-        denom++;
     }
-    
-    if ( denom < sketchSize )
-    {
-        // complete the union operation if possible
-        
-        if ( i < hashesSortedRef.size() )
-        {
-            denom += hashesSortedRef.size() - i;
-        }
-        
-        if ( j < hashesSortedQry.size() )
-        {
-            denom += hashesSortedQry.size() - j;
-        }
-        
-        if ( denom > sketchSize )
-        {
-            denom = sketchSize;
-        }
-    }
-    
+
     double distance;
     double jaccard = double(common) / denom;
-    
+
     if ( common == denom ) // avoid -0
     {
         distance = 0;
