@@ -2,6 +2,7 @@
 
 #include "CommandList.h"
 #include "version.h"
+#include <string.h>
 
 using namespace::std;
 
