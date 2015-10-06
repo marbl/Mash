@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "CommandList.h"
+#include "version.h"
 
 using namespace::std;
 
@@ -26,6 +27,7 @@ void CommandList::print()
 {
     vector<vector<string>> columns(1);
     
+    cout << endl << "Version: " << version << endl;
     cout << endl << "Usage:" << endl << endl;
     
     columns[0].push_back(name + " <command> [options] [arguments ...]");
@@ -57,6 +59,12 @@ void CommandList::print()
 
 int CommandList::run(int argc, const char ** argv)
 {
+	if ( argc > 1 && strcmp(argv[1], "--version") == 0 )
+	{
+		cout << version << endl;
+		return 0;
+	}
+	
     if ( argc < 2 || commands.count(argv[1]) == 0 )
     {
         print();

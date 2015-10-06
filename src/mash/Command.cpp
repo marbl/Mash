@@ -4,6 +4,7 @@
 #include <fstream>
 
 #include "Command.h"
+#include "version.h"
 
 using namespace::std;
 
@@ -174,6 +175,7 @@ void Command::print() const
 {
     vector<vector<string>> columns(1);
     
+    cout << endl << "Version: " << version << endl;
     cout << endl << "Usage:" << endl << endl;
     
     columns[0].push_back("mash " + name + " [options] " + argumentString);
