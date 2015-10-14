@@ -1,3 +1,9 @@
+// Copyright © 2015, Battelle National Biodefense Institute (BNBI);
+// all rights reserved. Authored by: Brian Ondov, Todd Treangen, and
+// Adam Phillippy
+//
+// See the LICENSE.txt file included with this software for license information.
+
 #ifndef INCLUDED_CommandContain
 #define INCLUDED_CommandContain
 
