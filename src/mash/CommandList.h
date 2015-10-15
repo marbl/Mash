@@ -26,6 +26,8 @@ public:
     
 private:
     
+    void showLicense();
+    
     std::string name;
 };
 
