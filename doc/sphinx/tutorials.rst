@@ -4,14 +4,24 @@ Tutorials
 Simple distance estimation
 --------------------------
 
+Download example *E. coli* genomes:
+
 .. download::
 | `genome1.fna <https://github.com/marbl/Mash/raw/master/data/genome1.fna>`_ 
 | `genome2.fna <https://github.com/marbl/Mash/raw/master/data/genome2.fna>`_
-| `genome3.fna <https://github.com/marbl/Mash/raw/master/data/genome3.fna>`_
+
+Run:
 
 .. code::
 
   mash dist genome1.fna genome2.fna
+
+The results are tab delimited lists of Reference-ID, Query-ID, Mash-distance,
+P-value, and Matching-hashes:
+
+.. code::
+
+  genome1.fna	genome2.fna	0.0222766	0	456/1000
 
 Saving time by sketching first
 ------------------------------
@@ -25,11 +35,23 @@ Saving time by sketching first
 Pairwise comparisons with compound sketch files
 -----------------------------------------------
 
+Download addition example *E. coli* genome:
+
+| `genome3.fna <https://github.com/marbl/Mash/raw/master/data/genome3.fna>`_
+
 .. code::
 
   mash sketch -o reference genome1.fna genome2.fna
   mash info reference.msh
   mash dist reference.msh genome3.fna
+
+This will estimate the distance from each query (which there is one of) to each
+reference (which there are two of in the sketch file):
+
+.. code::
+
+  genome1.fasta	genome3.fna	0	0	1000/1000
+  genome2.fasta	genome3.fna	0.0222766	0	456/1000
 
 Querying read sets against an existing RefSeq sketch
 ----------------------------------------------------
@@ -40,12 +62,20 @@ Download the pre-sketched RefSeq archive:
 
 `refseq.msh <https://github.com/marbl/Mash/raw/master/data/refseq.msh>`_
 
-Run :code:`mash dist` with the archive as the reference and the read set as the
-query, using :code:`-u` to improve results by filtering unique k-mers:
+Sketch the reads (not provided here; >10x coverage of a single bacterial genome
+with any sequencing technology should work), using :code:`-u` to improve results
+by filtering unique k-mers:
 
 .. code::
 
-  mash dist -u refseq.msh reads.fastq > distances.tab
+  mash sketch -u reads.fastq
+
+Run :code:`mash dist` with the RefSeq archive as the reference and the read
+sketch as the query:
+
+.. code::
+
+  mash dist -u refseq.msh reads.fastq.msh > distances.tab
 
 Sort the results to see the top hits and their p-values:
 
