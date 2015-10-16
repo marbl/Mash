@@ -5,9 +5,9 @@ Simple distance estimation
 --------------------------
 
 .. download::
-`genome1.fna <https://github.com/marbl/Mash/raw/master/data/genome1.fna>`_
-`genome2.fna <https://github.com/marbl/Mash/raw/master/data/genome2.fna>`_
-`genome3.fna <https://github.com/marbl/Mash/raw/master/data/genome3.fna>`_
+| `genome1.fna <https://github.com/marbl/Mash/raw/master/data/genome1.fna>`_ 
+| `genome2.fna <https://github.com/marbl/Mash/raw/master/data/genome2.fna>`_
+| `genome3.fna <https://github.com/marbl/Mash/raw/master/data/genome3.fna>`_
 
 .. code::
 
@@ -51,5 +51,5 @@ Sort the results to see the top hits and their p-values:
 
 .. code ::
 
-  sort -nrk3 distances.tab | head
+  sort -nk3 distances.tab | head
 
