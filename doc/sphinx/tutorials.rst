@@ -35,9 +35,12 @@ Saving time by sketching first
 Pairwise comparisons with compound sketch files
 -----------------------------------------------
 
-Download addition example *E. coli* genome:
+Download additional example *E. coli* genome:
 
 | `genome3.fna <https://github.com/marbl/Mash/raw/master/data/genome3.fna>`_
+
+Sketch the first two genomes to create a combined archive, use :code:`mash info`
+to verify its contents, and estimate pairwise distances:
 
 .. code::
 
