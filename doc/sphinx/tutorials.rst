@@ -4,6 +4,11 @@ Tutorials
 Simple distance estimation
 --------------------------
 
+.. download::
+`genome1.fna <https://github.com/marbl/Mash/raw/master/data/genome1.fna>`_
+`genome2.fna <https://github.com/marbl/Mash/raw/master/data/genome2.fna>`_
+`genome3.fna <https://github.com/marbl/Mash/raw/master/data/genome3.fna>`_
+
 .. code::
 
   mash dist genome1.fna genome2.fna
@@ -31,9 +36,9 @@ Querying read sets against an existing RefSeq sketch
 
 Download the pre-sketched RefSeq archive:
 
-[ Coming soon ]
+.. download::
 
-.. refseq.msh
+`refseq.msh <https://github.com/marbl/Mash/raw/master/data/refseq.msh>`_
 
 Run :code:`mash dist` with the archive as the reference and the read set as the
 query, using :code:`-u` to improve results by filtering unique k-mers:
@@ -111,15 +116,15 @@ files with :code:`mash paste`):
   cd ../
   mash sketch -l -o refseq -k 16 -s 400 refseq.ls
 
-Run :code:`mash dist` with the combined sketch file
-as both the reference and query to estimate pairwise distances, using log scaling
-(:code:`-L`), 16 threads (:code:`-p 16`), a maximum distance before log-saling
-of 0.9 (:code:`-d 0.9`) and a maximum p-value of 1e-10 (:code:`-v 0.0000000001`)
+Run :code:`mash dist` with the combined sketch file as both the reference and
+query to estimate pairwise distances, using 16 threads (:code:`-p 16`), a
+maximum distance of 0.05 (:code:`-d 0.05`) and a maximum p-value of 1e-10
+(:code:`-v 0.0000000001`).
 :
 
 .. code::
 
-  mash dist -L -d 0.9 -v 0.0000000001 -t -p 16 refseq.msh refseq.msh > distances.tab
+  mash dist -d 0.05 -v 0.0000000001 -p 16 refseq.msh refseq.msh > distances.tab
   
 Cluster based on the log-scaled, pairwise distance estimates, in this case using
 `Spici <http://compbio.cs.princeton.edu/spici/>`_, with :code:`-m 2` to specify
