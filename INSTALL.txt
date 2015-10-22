@@ -1,6 +1,5 @@
-Mash is normally distributed as a binary for OSX or Linux. The source is
-provided here for non-standard systems or development.
-
+Mash requires c++11 to build, which is available in OS X >= 10.7 and GCC >= 4.8.
+See http://mash.readthedocs.org for more information.
 
 Dependencies:
 -------------
