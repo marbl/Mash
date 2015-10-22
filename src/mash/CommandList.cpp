@@ -1,6 +1,6 @@
 // Copyright © 2015, Battelle National Biodefense Institute (BNBI);
-// all rights reserved. Authored by: Brian Ondov, Todd Treangen, and
-// Adam Phillippy
+// all rights reserved. Authored by: Brian Ondov, Todd Treangen,
+// Sergey Koren, and Adam Phillippy
 //
 // See the LICENSE.txt file included with this software for license information.
 
@@ -36,12 +36,7 @@ void CommandList::print()
     
     cout << endl << "Mash version " << version << endl << endl;
     
-    cout << "Copyright © 2015, Battelle National Biodefense Institute (BNBI); all rights" << endl;
-	cout << "reserved. Authored by: Brian Ondov, Todd Treangen, and Adam Phillippy." << endl;
-	
-    cout << "This program is free software and comes with ABSOLUTELY NO WARRANTY, though you" << endl;
-    cout << "are welcome to redistribute it under certain conditions. Source code is" << endl;
-    cout << "available at github.com/marbl/mash. For more details, type 'mash --license'." << endl;
+    cout << "Type 'mash --license' for license and copyright information." << endl;
     
     cout << endl << "Usage:" << endl << endl;
     
@@ -103,8 +98,19 @@ PURPOSE\n\
 Mash is a fast sequence distance estimator that uses the MinHash\n\
 algorithm and is designed to work with genomes and metagenomes in the\n\
 form of assemblies or reads. It is implemented in C++ and is\n\
-distributed with KSeq (lh3lh3.users.sourceforge.net/kseq.shtml) and\n\
-MurmurHash3 (code.google.com/p/smhasher/wiki/MurmurHash3).\n\
+distributed with:\n\
+\n\
+KSeq\n\
+  lh3lh3.users.sourceforge.net/kseq.shtml\n\
+  MIT License\n\
+\n\
+MurmurHash3\n\
+  code.google.com/p/smhasher/wiki/MurmurHash3\n\
+  Public domain\n\
+\n\
+Open Bloom Filter\n\
+  https://code.google.com/p/bloom/source/browse/trunk/bloom_filter.hpp\n\
+  Common Public License\n\
 \n";
 #ifdef DIST_LICENSE
 	cout << "\n\
@@ -118,8 +124,8 @@ cout << "\n\
 COPYRIGHT LICENSE\n\
 \n\
 Copyright © 2015, Battelle National Biodefense Institute (BNBI);\n\
-all rights reserved. Authored by: Brian Ondov, Todd Treangen, and\n\
-Adam Phillippy\n\
+all rights reserved. Authored by: Brian Ondov, Todd Treangen,\n\
+Sergey Koren, and Adam Phillippy\n\
 \n\
 This Software was prepared for the Department of Homeland Security\n\
 (DHS) by the Battelle National Biodefense Institute, LLC (BNBI) as\n\

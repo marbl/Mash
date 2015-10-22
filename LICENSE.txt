@@ -3,15 +3,25 @@ PURPOSE
 Mash is a fast sequence distance estimator that uses the MinHash
 algorithm and is designed to work with genomes and metagenomes in the
 form of assemblies or reads. It is implemented in C++ and is
-distributed with KSeq (lh3lh3.users.sourceforge.net/kseq.shtml) and
-MurmurHash3 (code.google.com/p/smhasher/wiki/MurmurHash3).
+distributed with:
 
+KSeq
+  lh3lh3.users.sourceforge.net/kseq.shtml
+  MIT License
+
+MurmurHash3
+  code.google.com/p/smhasher/wiki/MurmurHash3
+  Public domain
+
+Open Bloom Filter
+  https://code.google.com/p/bloom/source/browse/trunk/bloom_filter.hpp
+  Common Public License
 
 COPYRIGHT LICENSE
 
 Copyright © 2015, Battelle National Biodefense Institute (BNBI);
-all rights reserved. Authored by: Brian Ondov, Todd Treangen, and
-Adam Phillippy
+all rights reserved. Authored by: Brian Ondov, Todd Treangen,
+Sergey Koren, and Adam Phillippy
 
 This Software was prepared for the Department of Homeland Security
 (DHS) by the Battelle National Biodefense Institute, LLC (BNBI) as

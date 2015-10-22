@@ -1,6 +1,6 @@
 // Copyright © 2015, Battelle National Biodefense Institute (BNBI);
-// all rights reserved. Authored by: Brian Ondov, Todd Treangen, and
-// Adam Phillippy
+// all rights reserved. Authored by: Brian Ondov, Todd Treangen,
+// Sergey Koren, and Adam Phillippy
 //
 // See the LICENSE.txt file included with this software for license information.
 
@@ -162,7 +162,7 @@ Command::Command()
     addAvailableOption("individual", Option(Option::Boolean, "i", "Sketch", "Sketch individual sequences, rather than whole files.", ""));
     addAvailableOption("warning", Option(Option::Number, "w", "Sketch", "Probability threshold for warning about low k-mer size.", "0.01", 0, 1));
     addAvailableOption("unique", Option(Option::Boolean, "u", "Sketch", "Remove (most) unique kmers using a Bloom Filter. This is useful for reducing noise from sequencing errors in read sets. See Bloom filter options below. Incompatible with -i.", ""));
-    addAvailableOption("genome", Option(Option::Size, "g", "Bloom", "Expected genome size (raw bases, or with K/M/G/T). Helps pick the Bloom Filter size. Should be within an order of magnitude of the true size. Implies -u.", "5M"));
+    addAvailableOption("genome", Option(Option::Size, "g", "Bloom", "Expected genome size (raw bases or with K/M/G/T). Helps pick the Bloom Filter size. Should be within an order of magnitude of the true size. Implies -u.", "5M"));
     addAvailableOption("memory", Option(Option::Size, "m", "Bloom", "Maximum Bloom Filter memory usage (raw bytes or with K/M/G/T). More memory will allow more thorough detection of unique kmers, so this should be as high as is practical for the computing environment (though it may not actually be used). Implies -u.", "1G"));
     addAvailableOption("bloomError", Option(Option::Number, "e", "Bloom", "Target false-negative rate for Bloom filtering unique kmers with. Implies -u.", "0.1", 0, 1));
     addAvailableOption("noncanonical", Option(Option::Boolean, "n", "Sketch", "Non-canonical. By default, canonical DNA kmers (alphabetical minima of forward-reverse pairs) are used, and kmers with non-acgtACGT characters are ignored. This option uses kmers as they appear and allows all characters.", ""));

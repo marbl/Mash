@@ -1,6 +1,6 @@
 // Copyright © 2015, Battelle National Biodefense Institute (BNBI);
-// all rights reserved. Authored by: Brian Ondov, Todd Treangen, and
-// Adam Phillippy
+// all rights reserved. Authored by: Brian Ondov, Todd Treangen,
+// Sergey Koren, and Adam Phillippy
 //
 // See the LICENSE.txt file included with this software for license information.
 
@@ -25,7 +25,7 @@ CommandDistance::CommandDistance()
 {
     name = "dist";
     summary = "Estimate the distance of query sequences to references.";
-    description = "Estimate the distance of each query sequence to the reference. Both the reference and queries can be fasta or fastq, gzipped or not, or mash sketch files (.msh) with matching k-mer sizes. Query files can also be files of file names (see -l). Whole files are compared by default (see -i). The output fields are [reference-ID, query-ID, distance, p-value, shared-hashes].";
+    description = "Estimate the distance of each query sequence to the reference. Both the reference and queries can be fasta or fastq, gzipped or not, or Mash sketch files (.msh) with matching k-mer sizes. Query files can also be files of file names (see -l). Whole files are compared by default (see -i). The output fields are [reference-ID, query-ID, distance, p-value, shared-hashes].";
     argumentString = "<reference> <query> [<query>] ...";
     
     useOption("help");
