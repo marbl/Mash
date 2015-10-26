@@ -13,8 +13,9 @@ Fast genome distance estimation with the MinHash algorithm
 
 |
 
-Publication
+Preprint
 ===========
+Coming soon...
 
 .. toctree::
 
