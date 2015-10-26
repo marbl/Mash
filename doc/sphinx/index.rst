@@ -9,7 +9,7 @@
 
 |
 
-Fast genome and metagenome distance estimation with MinHash
+Fast genome and metagenome distance estimation using MinHash
 
 |
 
