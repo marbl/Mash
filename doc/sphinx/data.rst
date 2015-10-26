@@ -1,8 +1,15 @@
 Supporting Data
 ===============
 
-Pre-sketched RefSeq database (107MB, k=16, s=400):
+Supplementary Files from the Paper
+----------------------------------
 
-.. download::
+`SupplementaryData1.msh.gz <http://gembox.cbcb.umd.edu/mash/SupplementaryData1.msh.gz>`_: Mash sketch database (k=16, s=400) for RefSeq release 70 (48MB)
 
-`refseq.msh <https://github.com/marbl/Mash/raw/master/data/refseq.msh>`_
+`SupplementaryData2.tar.gz <http://gembox.cbcb.umd.edu/mash/SupplementaryData2.tar.gz>`_: Mash version 1.0 codebase (93KB)
+
+`SupplementaryTable1.xlsx <http://gembox.cbcb.umd.edu/mash/SupplementaryTable1.xlsx>`_: Names and accessions for 500 selected Escherichia genomes, pairwise ANI, and pairwise Jaccard indexes for various k-mer and sketch sizes (93MB)
+
+`SupplementaryTable2.xlsx <http://gembox.cbcb.umd.edu/mash/SupplementaryTable2.xlsx>`_: Names and accessions for the 17 primate genomes (41KB)
+
+
