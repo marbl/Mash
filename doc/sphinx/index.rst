@@ -23,6 +23,8 @@ Publication
 Downloads
 =========
 
+* `Version 1.0 (Linux/OSX binaries and source) <https://github.com/marbl/Mash/releases/tag/v1.0>`_
+
 Documentation
 =============
 
