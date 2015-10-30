@@ -53,8 +53,8 @@ reference (which there are two of in the sketch file):
 
 .. code::
 
-  genome1.fna genome3.fna	0	0	1000/1000
-  genome2.fna genome3.fna	0.0222766	0	456/1000
+  genome1.fna	genome3.fna	0	0	1000/1000
+  genome2.fna	genome3.fna	0.0222766	0	456/1000
 
 Querying read sets against an existing RefSeq sketch
 ----------------------------------------------------
@@ -85,4 +85,3 @@ Sort the results to see the top hits and their p-values:
 .. code ::
 
   sort -gk3 distances.tab | head
-
