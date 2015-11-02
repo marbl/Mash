@@ -12,15 +12,16 @@ hash_u getHash(const char * seq, int length)
     //for ( int i = 0; i < length; i++ ) { cout << *(seq + i); } cout << endl;
     
     bool use64 = length > 16;
-    char data[use64 ? 8 : 4];
     
 #ifdef ARCH_32
+    char data[use64 ? 8 : 4];
     MurmurHash3_x86_32(seq, length > 16 ? 16 : length, seed, data);
     if ( use64 )
     {
         MurmurHash3_x86_32(seq + 16, length - 16, seed, data + 4);
     }
 #else
+    char data[8];
     MurmurHash3_x64_128(seq, length, seed, data);
 #endif    
     
