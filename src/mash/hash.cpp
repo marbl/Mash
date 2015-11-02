@@ -21,7 +21,7 @@ hash_u getHash(const char * seq, int length)
         MurmurHash3_x86_32(seq + 16, length - 16, seed, data + 4);
     }
 #else
-    char data[8];
+    char data[16];
     MurmurHash3_x64_128(seq, length, seed, data);
 #endif    
     
