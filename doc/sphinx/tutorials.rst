@@ -53,8 +53,8 @@ reference (which there are two of in the sketch file):
 
 .. code::
 
-  genome1.fasta	genome3.fna	0	0	1000/1000
-  genome2.fasta	genome3.fna	0.0222766	0	456/1000
+  genome1.fna	genome3.fna	0	0	1000/1000
+  genome2.fna	genome3.fna	0.0222766	0	456/1000
 
 Querying read sets against an existing RefSeq sketch
 ----------------------------------------------------
@@ -78,11 +78,10 @@ sketch as the query:
 
 .. code::
 
-  mash dist -u refseq.msh reads.fastq.msh > distances.tab
+  mash dist refseq.msh reads.fastq.msh > distances.tab
 
 Sort the results to see the top hits and their p-values:
 
 .. code ::
 
-  sort -nk3 distances.tab | head
-
+  sort -gk3 distances.tab | head
