@@ -274,6 +274,7 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
             
             if ( parameters.bloomFilter )
             {
+            	references[references.size() - 1].length = parameters.genomeSize;
                 bloom_parameters bloomParams;
                 
                 bloomParams.projected_element_count = (uint64_t)parameters.genomeSize * 10l; // TODO: error rate based on platform and coverage
@@ -334,7 +335,7 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
                 
                 reference.length = l;
             }
-            else
+            else if ( ! parameters.bloomFilter )
             {
                 references[references.size() - 1].length += l;
                 
