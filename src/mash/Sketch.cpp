@@ -117,7 +117,15 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly, bool append)
         
         reference.name = referenceReader.getName();
         reference.comment = referenceReader.getComment();
-        reference.length = referenceReader.getLength();
+        
+        if ( referenceReader.getLength64() )
+        {
+        	reference.length = referenceReader.getLength64();
+        }
+        else
+        {
+	        reference.length = referenceReader.getLength();
+	    }
         
         reference.hashesSorted.setUse64(parameters.kmerSize > 16);
         
@@ -493,7 +501,7 @@ int Sketch::writeToCapnp(const char * file) const
         
         referenceBuilder.setName(references[i].name);
         referenceBuilder.setComment(references[i].comment);
-        referenceBuilder.setLength(references[i].length);
+        referenceBuilder.setLength64(references[i].length);
         
         if ( references[i].hashesSorted.size() != 0 )
         {

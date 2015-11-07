@@ -17,7 +17,8 @@ struct MinHash
 		{
 			sequence @0 : Text;
 			quality @1 : Text;
-			length @ 2 : UInt32;
+			length @2 : UInt32;
+			length64 @ 7 : UInt64;
 			name @3 : Text;
 			comment @4 : Text;
 			hashes32 @5 : List(UInt32);

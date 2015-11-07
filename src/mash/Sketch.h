@@ -113,7 +113,7 @@ public:
         
         std::string name;
         std::string comment;
-        uint32_t length;
+        uint64_t length;
         HashList hashesSorted;
     };
     

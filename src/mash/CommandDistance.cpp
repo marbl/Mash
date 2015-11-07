@@ -202,7 +202,7 @@ int CommandDistance::run() const
             
             for ( int i = 0; i < sketch.getReferenceCount(); i++ )
             {
-                int length = sketch.getReference(i).length;
+                uint64_t length = sketch.getReference(i).length;
                 
                 if ( length > lengthThreshold )
                 {
