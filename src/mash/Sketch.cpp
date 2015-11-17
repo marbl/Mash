@@ -105,11 +105,11 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly, bool append)
     
     capnp::List<capnp::MinHash::ReferenceList::Reference>::Reader referencesReader = referenceListReader.getReferences();
     
-    int referencesOffset = append ? references.size() : 0;
+    uint64_t referencesOffset = append ? references.size() : 0;
     
     references.resize(referencesOffset + referencesReader.size());
     
-    for ( int i = 0; i < referencesReader.size(); i++ )
+    for ( uint64_t i = 0; i < referencesReader.size(); i++ )
     {
         capnp::MinHash::ReferenceList::Reference::Reader referenceReader = referencesReader[i];
         
@@ -135,7 +135,7 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly, bool append)
         
             reference.hashesSorted.resize(hashesReader.size());
         
-            for ( int j = 0; j < hashesReader.size(); j++ )
+            for ( uint64_t j = 0; j < hashesReader.size(); j++ )
             {
                 reference.hashesSorted.set64(j, hashesReader[j]);
             }
@@ -146,7 +146,7 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly, bool append)
         
             reference.hashesSorted.resize(hashesReader.size());
         
-            for ( int j = 0; j < hashesReader.size(); j++ )
+            for ( uint64_t j = 0; j < hashesReader.size(); j++ )
             {
                 reference.hashesSorted.set32(j, hashesReader[j]);
             }
@@ -158,14 +158,15 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly, bool append)
     
     positionHashesByReference.resize(references.size());
     
-    for ( int i = 0; i < lociReader.size(); i++ )
+    for ( uint64_t i = 0; i < lociReader.size(); i++ )
     {
         capnp::MinHash::LocusList::Locus::Reader locusReader = lociReader[i];
         //cout << locusReader.getHash() << '\t' << locusReader.getSequence() << '\t' << locusReader.getPosition() << endl;
         positionHashesByReference[locusReader.getSequence() + referencesOffset].push_back(PositionHash(locusReader.getPosition(), locusReader.getHash64()));
     }
     
-    //cout << endl << "References:" << endl << endl;
+    /*
+    cout << endl << "References:" << endl << endl;
     
     vector< vector<string> > columns(3);
     
@@ -173,15 +174,16 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly, bool append)
     columns[1].push_back("Length");
     columns[2].push_back("Name/Comment");
     
-    for ( int i = 0; i < references.size(); i++ )
+    for ( uint64_t i = 0; i < references.size(); i++ )
     {
         columns[0].push_back(to_string(i));
         columns[1].push_back(to_string(references[i].length));
         columns[2].push_back(references[i].name + " " + references[i].comment);
     }
     
-    //printColumns(columns);
-    //cout << endl;
+    printColumns(columns);
+    cout << endl;
+    */
     
     /*
     printf("\nCombined hash table:\n");

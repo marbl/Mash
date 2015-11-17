@@ -50,8 +50,8 @@ public:
         
         struct PairOutput
         {
-            int numer;
-            int denom;
+            uint64_t numer;
+            uint64_t denom;
             double distance;
             double pValue;
             bool pass;
@@ -73,7 +73,7 @@ private:
 };
 
 CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data);
-void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue);
-double pValue(uint32_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint32_t sketchSize);
+void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue);
+double pValue(uint64_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint64_t sketchSize);
 
 #endif

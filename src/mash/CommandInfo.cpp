@@ -61,7 +61,7 @@ int CommandInfo::run() const
         columns[2].push_back("ID");
         columns[3].push_back("Comment");
         
-        for ( int i = 0; i < sketch.getReferenceCount(); i++ )
+        for ( uint64_t i = 0; i < sketch.getReferenceCount(); i++ )
         {
             const Sketch::Reference & ref = sketch.getReference(i);
             

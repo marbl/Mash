@@ -200,7 +200,7 @@ int CommandDistance::run() const
             
             sketch.initFromSequence(refArgVector, parameters);
             
-            for ( int i = 0; i < sketch.getReferenceCount(); i++ )
+            for ( uint64_t i = 0; i < sketch.getReferenceCount(); i++ )
             {
                 uint64_t length = sketch.getReference(i).length;
                 
@@ -336,16 +336,16 @@ int CommandDistance::run() const
 
 void CommandDistance::writeOutput(CompareOutput * output, bool table) const
 {
-    int refCount = output->sketchRef.getReferenceCount();
+    uint64_t refCount = output->sketchRef.getReferenceCount();
     
-    for ( int i = 0; i < output->sketchQuery->getReferenceCount(); i++ )
+    for ( uint64_t i = 0; i < output->sketchQuery->getReferenceCount(); i++ )
     {
         if ( table )
         {
             cout << output->sketchQuery->getReference(i).name;
         }
         
-        for ( int j = 0; j < refCount; j++ )
+        for ( uint64_t j = 0; j < refCount; j++ )
         {
             const CompareOutput::PairOutput & pair = output->pairs.at(i * refCount + j);
         
@@ -390,17 +390,17 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
         sketchQuery->initFromSequence(fileVector, data->parameters);
     }
     
-    int sketchSize = sketchQuery->getMinHashesPerWindow() < sketchRef.getMinHashesPerWindow() ?
+    uint64_t sketchSize = sketchQuery->getMinHashesPerWindow() < sketchRef.getMinHashesPerWindow() ?
         sketchQuery->getMinHashesPerWindow() :
         sketchRef.getMinHashesPerWindow();
     
     output->pairs.resize(sketchRef.getReferenceCount() * sketchQuery->getReferenceCount());
     
-    for ( int i = 0; i < sketchQuery->getReferenceCount(); i++ )
+    for ( uint64_t i = 0; i < sketchQuery->getReferenceCount(); i++ )
     {
-        for ( int j = 0; j < sketchRef.getReferenceCount(); j++ )
+        for ( uint64_t j = 0; j < sketchRef.getReferenceCount(); j++ )
         {
-            int pairIndex = i * sketchRef.getReferenceCount() + j;
+            uint64_t pairIndex = i * sketchRef.getReferenceCount() + j;
             
             compareSketches(output->pairs[pairIndex], sketchRef.getReference(j), sketchQuery->getReference(i), sketchSize, sketchRef.getKmerSize(), sketchRef.getKmerSpace(), data->maxDistance, data->maxPValue);
         }
@@ -409,12 +409,12 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
     return output;
 }
 
-void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, int sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue)
+void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue)
 {
-    int i = 0;
-    int j = 0;
-    int common = 0;
-    int denom = 0;
+    uint64_t i = 0;
+    uint64_t j = 0;
+    uint64_t common = 0;
+    uint64_t denom = 0;
     const HashList & hashesSortedRef = refRef.hashesSorted;
     const HashList & hashesSortedQry = refQry.hashesSorted;
     
@@ -495,7 +495,7 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
     output.pass = true;
 }
 
-double pValue(uint32_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint32_t sketchSize)
+double pValue(uint64_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint64_t sketchSize)
 {
     if ( x == 0 )
     {

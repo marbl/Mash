@@ -125,8 +125,8 @@ public:
     float getMinHashesPerWindow() const {return parameters.minHashesPerWindow;}
 	int getMinKmerSize(int reference) const;
 	double getRandomKmerChance(int reference) const;
-    const Reference & getReference(int index) const {return references.at(index);}
-    int getReferenceCount() const {return references.size();}
+    const Reference & getReference(uint64_t index) const {return references.at(index);}
+    uint64_t getReferenceCount() const {return references.size();}
     int getReferenceIndex(std::string id) const;
     int getKmerSize() const {return parameters.kmerSize;}
     double getKmerSpace() const {return kmerSpace;}
