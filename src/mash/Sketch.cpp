@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <capnp/message.h>
 #include <capnp/serialize.h>
+#include <sys/mman.h>
 
 #define SET_BINARY_MODE(file)
 #define CHUNK 16384
@@ -73,12 +74,21 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly, bool append)
         exit(1);
     }
     
+    struct stat fileInfo;
+    
+    if ( stat(file, &fileInfo) == -1 )
+    {
+        return false;
+    }
+    
+    void * data = mmap(NULL, fileInfo.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    
     capnp::ReaderOptions readerOptions;
     
     readerOptions.traversalLimitInWords = 1000000000000;
     readerOptions.nestingLimit = 1000000;
     
-    capnp::StreamFdMessageReader * message = new capnp::StreamFdMessageReader(fd, readerOptions);
+    capnp::FlatArrayMessageReader * message = new capnp::FlatArrayMessageReader(kj::ArrayPtr<const capnp::word>(reinterpret_cast<const capnp::word *>(data), fileInfo.st_size / sizeof(capnp::word)), readerOptions);
     capnp::MinHash::Reader reader = message->getRoot<capnp::MinHash>();
     
     parameters.kmerSize = reader.getKmerSize();
@@ -203,6 +213,8 @@ int Sketch::initFromCapnp(const char * file, bool headerOnly, bool append)
     
     cout << endl;
     */
+    
+    munmap(data, fileInfo.st_size);
     close(fd);
     delete message;
     
