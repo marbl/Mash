@@ -35,17 +35,17 @@ const vector<Sketch::Locus> & Sketch::getLociByHash(Sketch::hash_t hash) const
     return lociByHash.at(hash);
 }
 
-int Sketch::getMinKmerSize(int reference) const
+int Sketch::getMinKmerSize(uint64_t reference) const
 {
 	return ceil(log(references[reference].length * (1 - parameters.warning) / parameters.warning) / log(parameters.protein ? 20 : 4));
 }
 
-double Sketch::getRandomKmerChance(int reference) const
+double Sketch::getRandomKmerChance(uint64_t reference) const
 {
 	return 1. / (pow(parameters.protein ? 20 : 4, parameters.kmerSize) / references[reference].length + 1.);
 }
 
-int Sketch::getReferenceIndex(string id) const
+uint64_t Sketch::getReferenceIndex(string id) const
 {
     if ( referenceIndecesById.count(id) == 1 )
     {
@@ -224,8 +224,6 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
     
     uint64_t kmersTotal;
     uint64_t kmersUsed;
-    
-    int lengthMaxIndex = -1;
     
     for ( int i = 0; i < files.size(); i++ )
     {
@@ -498,7 +496,7 @@ int Sketch::writeToCapnp(const char * file) const
     
     capnp::List<capnp::MinHash::ReferenceList::Reference>::Builder referencesBuilder = referenceListBuilder.initReferences(references.size());
     
-    for ( int i = 0; i < references.size(); i++ )
+    for ( uint64_t i = 0; i < references.size(); i++ )
     {
         capnp::MinHash::ReferenceList::Reference::Builder referenceBuilder = referencesBuilder[i];
         
@@ -514,9 +512,9 @@ int Sketch::writeToCapnp(const char * file) const
             {
                 capnp::List<uint64_t>::Builder hashes64Builder = referenceBuilder.initHashes64(hashes.size());
             
-                int index = 0;
+                uint64_t index = 0;
             
-                for ( int j = 0; j != hashes.size(); j++ )
+                for ( uint64_t j = 0; j != hashes.size(); j++ )
                 {
                     hashes64Builder.set(index, hashes.at(j).hash64);
                     index++;
@@ -526,9 +524,9 @@ int Sketch::writeToCapnp(const char * file) const
             {
                 capnp::List<uint32_t>::Builder hashes32Builder = referenceBuilder.initHashes32(hashes.size());
             
-                int index = 0;
+                uint64_t index = 0;
             
-                for ( int j = 0; j != hashes.size(); j++ )
+                for ( uint64_t j = 0; j != hashes.size(); j++ )
                 {
                     hashes32Builder.set(index, hashes.at(j).hash32);
                     index++;
@@ -595,7 +593,7 @@ void Sketch::createIndex()
     kmerSpace = pow(4, parameters.kmerSize); // TODO: alphabet?
 }
 
-void Sketch::setMinHashesForReference(int referenceIndex, const HashSet & hashes)
+void Sketch::setMinHashesForReference(uint64_t referenceIndex, const HashSet & hashes)
 {
     HashList & hashList = references[referenceIndex].hashesSorted;
     hashList.clear();
@@ -603,19 +601,19 @@ void Sketch::setMinHashesForReference(int referenceIndex, const HashSet & hashes
     hashList.sort();
 }
 
-void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, bloom_filter * bloomFilter, char * seq, uint32_t length, const Sketch::Parameters & parameters, uint64_t & kmersTotal, uint64_t & kmersUsed)
+void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, bloom_filter * bloomFilter, char * seq, uint64_t length, const Sketch::Parameters & parameters, uint64_t & kmersTotal, uint64_t & kmersUsed)
 {
     int kmerSize = parameters.kmerSize;
-    int mins = parameters.minHashesPerWindow;
+    uint64_t mins = parameters.minHashesPerWindow;
     bool noncanonical = parameters.noncanonical;
     
     // Determine the 'mins' smallest hashes, including those already provided
     // (potentially replacing them). This allows min-hash sets across multiple
     // sequences to be determined.
     
-    // uppercase
+    // uppercase TODO: alphabets?
     //
-    for ( int i = 0; i < length; i++ )
+    for ( uint64_t i = 0; i < length; i++ )
     {
         if ( seq[i] > 90 )
         {
@@ -632,7 +630,7 @@ void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, bloom
         reverseComplement(seq, seqRev, length);
     }
     
-    for ( int i = 0; i < length - kmerSize + 1; i++ )
+    for ( uint64_t i = 0; i < length - kmerSize + 1; i++ )
     {
         bool useRevComp = false;
         bool debug = false;
@@ -643,7 +641,7 @@ void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, bloom
             
             bool bad = false;
             
-            for ( int j = i; j < i + kmerSize && i + kmerSize <= length; j++ )
+            for ( uint64_t j = i; j < i + kmerSize && i + kmerSize <= length; j++ )
             {
                 char c = seq[j];
             
@@ -669,9 +667,9 @@ void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, bloom
             useRevComp = true;
             bool prefixEqual = true;
         
-            if ( debug ) {for ( int j = i; j < i + kmerSize; j++ ) { cout << *(seq + j); } cout << endl;}
+            if ( debug ) {for ( uint64_t j = i; j < i + kmerSize; j++ ) { cout << *(seq + j); } cout << endl;}
         
-            for ( int j = 0; j < kmerSize; j++ )
+            for ( uint64_t j = 0; j < kmerSize; j++ )
             {
                 char base = seq[i + j];
                 char baseMinus = seqRev[length - i - kmerSize + j];

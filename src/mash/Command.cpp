@@ -53,7 +53,7 @@ void Command::Option::setArgument(string argumentNew)
             {
                 failed = true;
             }
-            else if ( type == Integer && int(argumentAsNumber) != argumentAsNumber )
+            else if ( type == Integer && uint64_t(argumentAsNumber) != argumentAsNumber )
             {
                 failed = true;
             }

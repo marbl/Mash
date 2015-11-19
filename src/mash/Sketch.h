@@ -69,15 +69,15 @@ public:
         int kmerSize;
         double error;
         double warning;
-        int minHashesPerWindow;
-        int windowSize;
+        uint64_t minHashesPerWindow;
+        uint64_t windowSize;
         bool windowed;
         bool concatenated;
         bool noncanonical;
         bool protein;
         bool bloomFilter;
-        int genomeSize;
-        int memoryMax;
+        uint64_t genomeSize;
+        uint64_t memoryMax;
         double bloomError;
     };
     
@@ -123,14 +123,14 @@ public:
     int getHashCount() const {return lociByHash.size();}
     const std::vector<Locus> & getLociByHash(hash_t hash) const;
     float getMinHashesPerWindow() const {return parameters.minHashesPerWindow;}
-	int getMinKmerSize(int reference) const;
-	double getRandomKmerChance(int reference) const;
+	int getMinKmerSize(uint64_t reference) const;
+	double getRandomKmerChance(uint64_t reference) const;
     const Reference & getReference(uint64_t index) const {return references.at(index);}
     uint64_t getReferenceCount() const {return references.size();}
-    int getReferenceIndex(std::string id) const;
+    uint64_t getReferenceIndex(std::string id) const;
     int getKmerSize() const {return parameters.kmerSize;}
     double getKmerSpace() const {return kmerSpace;}
-    int getWindowSize() const {return parameters.windowSize;}
+    uint64_t getWindowSize() const {return parameters.windowSize;}
     bool getNoncanonical() const {return parameters.noncanonical;}
     bool hasLociByHash(hash_t hash) const {return lociByHash.count(hash);}
     void initFromBase(const std::string & file, bool windowed);
@@ -144,7 +144,7 @@ public:
 private:
     
     void createIndex();
-    void setMinHashesForReference(int referenceIndex, const HashSet & hashes);
+    void setMinHashesForReference(uint64_t referenceIndex, const HashSet & hashes);
     
     std::vector<Reference> references;
     std::unordered_map<std::string, int> referenceIndecesById;
@@ -156,7 +156,7 @@ private:
     std::string file;
 };
 
-void addMinHashes(HashSet & lociByHash, HashPriorityQueue & minHashesQueue, bloom_filter * bloomFilter, char * seq, uint32_t length, const Sketch::Parameters & parameters, uint64_t & kmersTotal, uint64_t & kmersUsed);
+void addMinHashes(HashSet & lociByHash, HashPriorityQueue & minHashesQueue, bloom_filter * bloomFilter, char * seq, uint64_t length, const Sketch::Parameters & parameters, uint64_t & kmersTotal, uint64_t & kmersUsed);
 void getMinHashPositions(std::vector<Sketch::PositionHash> & loci, char * seq, uint32_t length, const Sketch::Parameters & parameters, int verbosity = 0);
 bool hasSuffix(std::string const & whole, std::string const & suffix);
 void reverseComplement(const char * src, char * dest, int length);
