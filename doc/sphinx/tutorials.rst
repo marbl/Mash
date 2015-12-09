@@ -65,7 +65,7 @@ Download the pre-sketched RefSeq archive:
 
 `refseq.msh <https://github.com/marbl/Mash/raw/master/data/refseq.msh>`_
 
-Sketch the reads (not provided here; >10x coverage of a single bacterial genome
+Sketch the reads (not provided here; 10x-100x coverage of a single bacterial genome
 with any sequencing technology should work), using :code:`-u` to improve results
 by filtering unique k-mers:
 
