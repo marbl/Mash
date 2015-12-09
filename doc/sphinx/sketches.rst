@@ -83,7 +83,9 @@ never overfilter (non-unique k-mers are guaranteed to be kept), and it requires
 significantly less time and memory than true k-mer counting. The filter can be
 enabled with :code:`-u` when sketching (in :code:`mash sketch` or :code:`mash
 dist`). The amount of underfiltering can be managed with the parameters of the
-Bloom filter (:code:`-g`, :code:`-e`, and :code:`-m`).
+Bloom filter (:code:`-g`, :code:`-e`, and :code:`-m`). Note that high coverage
+can cause duplicated errors, which will pass the filter and skew results. It is
+thus recommended to downsample read sets that have more than ~100x coverage.
 
 Working with sketch files
 -------------------------
