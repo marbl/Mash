@@ -29,10 +29,8 @@ CommandContain::CommandContain()
     useOption("sketchSize");
     useOption("individual");
     useOption("noncanonical");
-    useOption("unique");
-    useOption("memory");
-    useOption("genome");
-    useOption("bloomError");
+    useOption("reads");
+    useOption("minCov");
 }
 
 int CommandContain::run() const
@@ -53,17 +51,15 @@ int CommandContain::run() const
     parameters.concatenated = ! options.at("individual").active;
     parameters.noncanonical = options.at("noncanonical").active;
     parameters.error = options.at("errorThreshold").getArgumentAsNumber();
-    parameters.bloomFilter = options.at("unique").active;
-    parameters.genomeSize = options.at("genome").getArgumentAsNumber();
-    parameters.memoryMax = options.at("memory").getArgumentAsNumber();
-    parameters.bloomError = options.at("bloomError").getArgumentAsNumber();
+    parameters.reads = options.at("reads").active;
+    parameters.minCov = options.at("minCov").getArgumentAsNumber();
     
     if ( options.at("genome").active || options.at("memory").active )
     {
-        parameters.bloomFilter = true;
+        parameters.reads = true;
     }
     
-    if ( parameters.bloomFilter )
+    if ( parameters.reads )
     {
         parameters.concatenated = true;
     }

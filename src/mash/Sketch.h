@@ -9,14 +9,10 @@
 
 #include "mash/capnp/MinHash.capnp.h"
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <string>
-
-#include "HashList.h"
-#include "HashPriorityQueue.h"
-#include "HashSet.h"
-#include <stdlib.h> // needed (but not included) by bloom_filter.hpp
-#include "bloom_filter.hpp"
+#include "MinHashHeap.h"
 
 static const char * capnpHeader = "Cap'n Proto";
 static const int capnpHeaderLength = strlen(capnpHeader);
@@ -43,10 +39,8 @@ public:
             concatenated(false),
             noncanonical(false),
             protein(false),
-            bloomFilter(false),
-            genomeSize(0),
-            memoryMax(0),
-            bloomError(0)
+            reads(false),
+            minCov(0)
             {}
         
         Parameters(const Parameters & other)
@@ -60,10 +54,8 @@ public:
             concatenated(other.concatenated),
             noncanonical(other.noncanonical),
             protein(other.protein),
-            bloomFilter(other.bloomFilter),
-            genomeSize(other.genomeSize),
-            memoryMax(other.memoryMax),
-            bloomError(other.bloomError)
+            reads(other.reads),
+            minCov(other.minCov)
             {}
         
         int kmerSize;
@@ -75,10 +67,8 @@ public:
         bool concatenated;
         bool noncanonical;
         bool protein;
-        bool bloomFilter;
-        uint64_t genomeSize;
-        uint64_t memoryMax;
-        double bloomError;
+        bool reads;
+        uint32_t minCov;
     };
     
     struct PositionHash
@@ -144,7 +134,7 @@ public:
 private:
     
     void createIndex();
-    void setMinHashesForReference(uint64_t referenceIndex, const HashSet & hashes);
+    void setMinHashesForReference(uint64_t referenceIndex, const MinHashHeap & minHashHeap);
     
     std::vector<Reference> references;
     std::unordered_map<std::string, int> referenceIndecesById;
@@ -156,7 +146,7 @@ private:
     std::string file;
 };
 
-void addMinHashes(HashSet & lociByHash, HashPriorityQueue & minHashesQueue, bloom_filter * bloomFilter, char * seq, uint64_t length, const Sketch::Parameters & parameters, uint64_t & kmersTotal, uint64_t & kmersUsed);
+void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const Sketch::Parameters & parameters);
 void getMinHashPositions(std::vector<Sketch::PositionHash> & loci, char * seq, uint32_t length, const Sketch::Parameters & parameters, int verbosity = 0);
 bool hasSuffix(std::string const & whole, std::string const & suffix);
 void reverseComplement(const char * src, char * dest, int length);

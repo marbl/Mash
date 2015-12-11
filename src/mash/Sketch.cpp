@@ -232,15 +232,12 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
     
     bool use64 = parameters.kmerSize > 16;
     
-    bloom_filter * bloomFilter = 0;
-    
     uint64_t kmersTotal;
     uint64_t kmersUsed;
     
     for ( int i = 0; i < files.size(); i++ )
     {
-        HashSet minHashes(parameters.kmerSize);
-        HashPriorityQueue minHashesQueue(parameters.kmerSize); // only used for non-windowed
+        MinHashHeap minHashHeap(parameters.kmerSize > 16, parameters.minHashesPerWindow, parameters.reads ? parameters.minCov : 1);
         
         FILE * inStream = 0;
         
@@ -283,27 +280,6 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
             
             references[references.size() - 1].length = 0;
             references[references.size() - 1].hashesSorted.setUse64(use64);
-            
-            if ( parameters.bloomFilter )
-            {
-            	references[references.size() - 1].length = parameters.genomeSize;
-                bloom_parameters bloomParams;
-                
-                bloomParams.projected_element_count = (uint64_t)parameters.genomeSize * 10l; // TODO: error rate based on platform and coverage
-                bloomParams.false_positive_probability = parameters.bloomError;
-                bloomParams.maximum_size = (uint64_t)parameters.memoryMax * 8l;
-                bloomParams.compute_optimal_parameters();
-                
-                kmersTotal = 0;
-                kmersUsed = 0;
-                
-                if ( i == 0 && verbosity > 0 )
-                {
-                    //cerr << "   Bloom table size (bytes): " << bloomParams.optimal_parameters.table_size / 8 << endl;
-                }
-                
-                bloomFilter = new bloom_filter(bloomParams);
-            }
         }
         
         bool skipped = false;
@@ -325,8 +301,7 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
             {
                 references.resize(references.size() + 1);
                 references[references.size() - 1].hashesSorted.setUse64(use64);
-                minHashes.clear();
-                minHashesQueue.clear();
+                minHashHeap.clear();
             }
             
             if ( verbosity > 0 && parameters.windowed ) cout << '>' << seq->name.s << " (" << l << "nt)" << endl << endl;
@@ -347,7 +322,7 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
                 
                 reference.length = l;
             }
-            else if ( ! parameters.bloomFilter )
+            else if ( ! parameters.reads )
             {
                 references[references.size() - 1].length += l;
                 
@@ -363,19 +338,24 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
             }
             else
             {
-                addMinHashes(minHashes, minHashesQueue, bloomFilter, seq->seq.s, l, parameters, kmersTotal, kmersUsed);
+                addMinHashes(minHashHeap, seq->seq.s, l, parameters);
             }
             
             if ( ! parameters.concatenated )
             {
                 if ( ! parameters.windowed )
                 {
-                    setMinHashesForReference(references.size() - 1, minHashes);
+                    setMinHashesForReference(references.size() - 1, minHashHeap);
                 }
-                
+			
                 count++;
             }
         }
+		
+		if ( parameters.reads )
+		{
+			references[references.size() - 1].length = minHashHeap.estimateSetSize();
+		}
         
         if (  l != -1 )
         {
@@ -397,21 +377,18 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
             exit(1);
         }
         
+        if ( parameters.reads )
+        {
+        	cerr << "Estimated genome size: " << minHashHeap.estimateSetSize() << endl;
+        	cerr << "Estimated coverage:    " << minHashHeap.estimateMultiplicity() << endl;
+        }
+        
         if ( parameters.concatenated )
         {
             if ( ! parameters.windowed )
             {
-                setMinHashesForReference(references.size() - 1, minHashes);
-            }
-            
-            if ( bloomFilter != 0 )
-            {
-                if ( verbosity > 0 )
-                {
-                    //cerr << "   " << kmersTotal - kmersUsed << " of " << kmersTotal << " kmers filtered from " << (files[i] == "-" ? "stdin" : files[i]) << endl;
-                }
-                
-                delete bloomFilter;
+                setMinHashesForReference(references.size() - 1, minHashHeap);
+                //minHashHeap.computeStats();
             }
             
             count++;
@@ -605,15 +582,15 @@ void Sketch::createIndex()
     kmerSpace = pow(4, parameters.kmerSize); // TODO: alphabet?
 }
 
-void Sketch::setMinHashesForReference(uint64_t referenceIndex, const HashSet & hashes)
+void Sketch::setMinHashesForReference(uint64_t referenceIndex, const MinHashHeap & minHashHeap)
 {
     HashList & hashList = references[referenceIndex].hashesSorted;
     hashList.clear();
-    hashes.toHashList(hashList);
+    minHashHeap.toHashList(hashList);
     hashList.sort();
 }
 
-void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, bloom_filter * bloomFilter, char * seq, uint64_t length, const Sketch::Parameters & parameters, uint64_t & kmersTotal, uint64_t & kmersUsed)
+void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const Sketch::Parameters & parameters)
 {
     int kmerSize = parameters.kmerSize;
     uint64_t mins = parameters.minHashesPerWindow;
@@ -710,49 +687,7 @@ void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, bloom
         
         if ( debug ) cout << endl;
         
-        if
-        (
-            (
-                minHashesQueue.size() < mins ||
-                hashLessThan(hash, minHashesQueue.top(), use64)
-            )
-            && ! minHashes.contains(hash)
-        )
-        {
-            if ( bloomFilter )
-            {
-                kmersTotal++;
-                std::string kmerString(kmer, kmerSize);
-            
-                //cout << kmerString;
-            
-                if ( ! bloomFilter->contains(kmerString) )
-                {
-                    filter = true;
-                    //cout << " (filtered)";
-                }
-            
-                //cout << endl;
-            
-                bloomFilter->insert(kmerString);
-            
-                if ( filter )
-                {
-                    continue;
-                }
-            
-                kmersUsed++;
-            }
-        
-            minHashes.insert(hash);
-            minHashesQueue.push(hash);
-            
-            if ( minHashesQueue.size() > mins )
-            {
-                minHashes.erase(minHashesQueue.top());
-                minHashesQueue.pop();
-            }
-        }
+		minHashHeap.tryInsert(hash);
     }
     
     if ( ! noncanonical )

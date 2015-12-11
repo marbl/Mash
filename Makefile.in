@@ -24,6 +24,7 @@ SOURCES=\
 	src/mash/HashPriorityQueue.cpp \
 	src/mash/HashSet.cpp \
 	src/mash/Sketch.cpp \
+	src/mash/MinHashHeap.cpp \
 	src/mash/MurmurHash3.cpp \
 	src/mash/mash.cpp \
 

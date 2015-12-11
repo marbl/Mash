@@ -29,10 +29,8 @@ CommandSketch::CommandSketch()
     //useOption("silent");
     useOption("individual");
     useOption("warning");
-    useOption("unique");
-    useOption("genome");
-    useOption("memory");
-    useOption("bloomError");
+    useOption("reads");
+    useOption("minCov");
     //useOption("illumina");
     //useOption("pacbio");
     //useOption("nanopore");
@@ -56,20 +54,18 @@ int CommandSketch::run() const
     parameters.minHashesPerWindow = options.at("sketchSize").getArgumentAsNumber();
     parameters.concatenated = ! options.at("individual").active;
     parameters.noncanonical = options.at("noncanonical").active;
-    parameters.bloomFilter = options.at("unique").active;
-    parameters.genomeSize = options.at("genome").getArgumentAsNumber();
-    parameters.memoryMax = options.at("memory").getArgumentAsNumber();
-    parameters.bloomError = options.at("bloomError").getArgumentAsNumber();
+    parameters.reads = options.at("reads").active;
+    parameters.minCov = options.at("minCov").getArgumentAsNumber();
     parameters.windowed = false;//options.at("windowed").active;
     parameters.windowSize = 0;//options.at("window").getArgumentAsNumber();
     parameters.warning = options.at("warning").getArgumentAsNumber();
     
-    if ( options.at("genome").active || options.at("memory").active || options.at("bloomError").active )
+    if ( options.at("minCov").active )
     {
-        parameters.bloomFilter = true;
+        parameters.reads = true;
     }
     
-    if ( parameters.bloomFilter && ! parameters.concatenated )
+    if ( parameters.reads && ! parameters.concatenated )
     {
         cerr << "ERROR: The option " << options.at("individual").identifier << " cannot be used with " << options.at("unique").identifier << "." << endl;
         return 1;
@@ -162,7 +158,7 @@ int CommandSketch::run() const
     
     sketch.writeToCapnp(prefix.c_str());
     
-    if ( warningCount > 0 && ! parameters.bloomFilter )
+    if ( warningCount > 0 && ! parameters.reads )
     {
     	sketch.warnKmerSize(lengthMax, lengthMaxName, randomChance, kMin, warningCount);
     }

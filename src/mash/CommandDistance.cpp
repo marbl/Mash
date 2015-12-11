@@ -40,10 +40,8 @@ CommandDistance::CommandDistance()
     useOption("individual");
     useOption("warning");
     useOption("noncanonical");
-    useOption("unique");
-    useOption("genome");
-    useOption("memory");
-    useOption("bloomError");
+    useOption("reads");
+    useOption("minCov");
 }
 
 int CommandDistance::run() const
@@ -112,18 +110,16 @@ int CommandDistance::run() const
     parameters.minHashesPerWindow = options.at("sketchSize").getArgumentAsNumber();
     parameters.concatenated = ! options.at("individual").active;
     parameters.noncanonical = options.at("noncanonical").active;
-    parameters.bloomFilter = options.at("unique").active;
-    parameters.genomeSize = options.at("genome").getArgumentAsNumber();
-    parameters.memoryMax = options.at("memory").getArgumentAsNumber();
-    parameters.bloomError = options.at("bloomError").getArgumentAsNumber();
+    parameters.reads = options.at("reads").active;
+    parameters.minCov = options.at("minCov").getArgumentAsNumber();
     parameters.warning = options.at("warning").getArgumentAsNumber();
     
-    if ( options.at("genome").active || options.at("memory").active || options.at("bloomError").active )
+    if ( options.at("minCov").active )
     {
-        parameters.bloomFilter = true;
+        parameters.reads = true;
     }
     
-    if ( parameters.bloomFilter && ! parameters.concatenated )
+    if ( parameters.reads && ! parameters.concatenated )
     {
         cerr << "ERROR: The option " << options.at("individual").identifier << " cannot be used with " << options.at("unique").identifier << "." << endl;
         return 1;
@@ -158,7 +154,7 @@ int CommandDistance::run() const
         
         if ( options.at("sketchSize").active )
         {
-            if ( parameters.bloomFilter && parameters.minHashesPerWindow != sketch.getMinHashesPerWindow() )
+            if ( parameters.reads && parameters.minHashesPerWindow != sketch.getMinHashesPerWindow() )
             {
                 cerr << "ERROR: The sketch size must match the reference when using a bloom filter (leave this option out to inherit from the reference sketch)." << endl;
                 return 1;
@@ -326,7 +322,7 @@ int CommandDistance::run() const
         writeOutput(threadPool.popOutputWhenAvailable(), table);
     }
     
-    if ( warningCount > 0 && ! parameters.bloomFilter )
+    if ( warningCount > 0 && ! parameters.reads )
     {
     	sketch.warnKmerSize(lengthMax, lengthMaxName, randomChance, kMin, warningCount);
     }
