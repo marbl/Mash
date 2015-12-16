@@ -63,8 +63,15 @@ void MinHashHeap::tryInsert(hash_u hash)
 					hashesPending.erase(hash);
 				}
 			}
+			else
+			{
+				if ( hashesPending.count(hash) == 0 )
+				{
+					hashesQueuePending.push(hash);
+				}
 			
-			hashesPending.insert(hash, 1);
+				hashesPending.insert(hash, 1);
+			}
 		}
 		else
 		{
@@ -75,14 +82,20 @@ void MinHashHeap::tryInsert(hash_u hash)
 		if ( hashes.size() > cardinalityMaximum )
 		{
 			hashes.erase(hashesQueue.top());
-			hashesQueue.pop();
 			
 			// loop since there could be zombie hashes (gone from hashesPending)
 			//
 			while ( hashesQueuePending.size() > 0 && hashLessThan(hashesQueue.top(), hashesQueuePending.top(), use64) )
 			{
+				if ( hashesPending.count(hashesQueuePending.top()) )
+				{
+					hashesPending.erase(hashesQueuePending.top());
+				}
+				
 				hashesQueuePending.pop();
 			}
+			
+			hashesQueue.pop();
 		}
 	}
 }
