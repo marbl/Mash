@@ -50,51 +50,6 @@ int CommandDistance::run() const
 {
     if ( arguments.size() < 2 || options.at("help").active )
     {
-        /*char tab = '\t';
-        
-        for ( int kmerSize = 4; kmerSize <= 32; kmerSize++ )
-        {
-            double kmerSpace = pow(4, kmerSize);
-            
-            for ( uint64_t refSize = 10000; refSize <= 1000000000000; refSize *= 10 )
-            {
-                for ( uint64_t qrySize = 10000; qrySize <= refSize; qrySize *= 10 )
-                {
-                    for ( int sketchSize = 100; sketchSize <= 1000; sketchSize += 100 )
-                    {
-                        for ( int common = 1; common <= sketchSize + 1; common += 10 )
-                        {
-                            if ( common > sketchSize )
-                            {
-                                common = sketchSize;
-                            }
-                            
-                            if ( common > kmerSpace )
-                            {
-                                continue;
-                            }
-                            
-                            double pX = 1. / (1. + (double)kmerSpace / refSize);
-                            double pY = 1. / (1. + (double)kmerSpace / qrySize);
-    
-                            double r = pX * pY / (pX + pY - pX * pY);
-    
-                            uint64_t M = (double)kmerSpace * (pX + pY) / (1. + r);
-                            
-                            //cout << "k: " << kmerSize << tab << "L1: " << refSize << tab << "L2: " << qrySize << tab << "s: " << sketchSize << tab << "x: " << common << tab << " | " << "Ek: " << kmerSpace << tab << "pX: " << pX << tab << "pY: " << pY << tab << "r: " << r << tab << "M: " << M << tab;
-                            //cout << (M < sketchSize ? M : sketchSize) << tab << r * M << tab << M - r * M << endl;
-                            //double p = cdf(complement(hypergeometric_distribution(r * M, M < sketchSize ? M : sketchSize, M), common - 1 ));
-                            //double p = cdf(complement(binomial(M < sketchSize ? M : sketchSize, r), common - 1 ));
-                            //double p = gsl_cdf_hypergeometric_Q(common - 1, r * M, M - uint64_t(r * M), M < sketchSize ? M : sketchSize);
-                            double p = gsl_cdf_binomial_Q(common - 1, r, M < sketchSize ? M : sketchSize);
-                            
-                            cout << p << endl;
-                        }
-                    }
-                }
-            }
-        }*/
-        
         print();
         return 0;
     }
