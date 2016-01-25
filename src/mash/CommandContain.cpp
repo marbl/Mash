@@ -68,66 +68,59 @@ int CommandContain::run() const
         parameters.concatenated = true;
     }
     
-    Sketch sketch;
+    Sketch sketchRef;
     
     const string & fileReference = arguments[0];
     
-    if ( hasSuffix(fileReference, suffixSketch) )
+    bool isSketch = hasSuffix(fileReference, suffixSketch);
+    
+    if ( isSketch )
     {
         if ( options.at("kmer").active )
         {
-            cerr << "ERROR: The option " << options.at("kmer").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch.\n";
+            cerr << "ERROR: The option " << options.at("kmer").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
             return 1;
         }
         
         if ( options.at("noncanonical").active )
         {
-            cerr << "ERROR: The option " << options.at("noncanonical").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch.\n";
+            cerr << "ERROR: The option " << options.at("noncanonical").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
             return 1;
         }
-        
-        sketch.initFromCapnp(fileReference.c_str());
-        
-        parameters.kmerSize = sketch.getKmerSize();
-        parameters.noncanonical = sketch.getNoncanonical();
     }
     else
     {
-        bool sketchFileExists = sketch.initHeaderFromBaseIfValid(fileReference, false);
-        
-        if
-        (
-            (options.at("kmer").active && parameters.kmerSize != sketch.getKmerSize())
-        )
+        cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...";
+    }
+    
+    vector<string> refArgVector;
+    refArgVector.push_back(fileReference);
+    
+    //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
+    
+    sketchRef.initFromFiles(refArgVector, parameters);
+    
+    if ( isSketch )
+    {
+        if ( options.at("sketchSize").active )
         {
-            sketchFileExists = false;
-        }
-        
-        if ( false && sketchFileExists )
-        {
-            sketch.initFromBase(fileReference, false);
-            parameters.kmerSize = sketch.getKmerSize();
-            parameters.noncanonical = sketch.getNoncanonical();
+            if ( parameters.bloomFilter && parameters.minHashesPerWindow != sketchRef.getMinHashesPerWindow() )
+            {
+                cerr << "ERROR: The sketch size must match the reference when using a bloom filter (leave this option out to inherit from the reference sketch)." << endl;
+                return 1;
+            }
         }
         else
         {
-            vector<string> refArgVector;
-            refArgVector.push_back(fileReference);
-            
-            //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
-            cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...\n";
-            
-            sketch.initFromSequence(refArgVector, parameters);
-            /*
-            if ( sketch.writeToFile() )
-            {
-                cerr << "Sketch saved for subsequent runs." << endl;
-            }
-            else
-            {
-                cerr << "The sketch for " << fileReference << " could not be saved; it will be sketched again next time." << endl;
-            }*/
+            parameters.minHashesPerWindow = sketchRef.getMinHashesPerWindow();
         }
+        
+        parameters.kmerSize = sketchRef.getKmerSize();
+        parameters.noncanonical = sketchRef.getNoncanonical();
+    }
+    else
+    {
+	    cerr << "done.\n";
     }
     
     ThreadPool<ContainInput, ContainOutput> threadPool(contain, threads);
@@ -146,44 +139,21 @@ int CommandContain::run() const
         }
     }
     
-    for ( int i = 0; i < queryFiles.size(); i++ )
+    Sketch sketchQuery;
+    
+    sketchQuery.initFromFiles(queryFiles, parameters, 0, true);
+    
+    for ( uint64_t i = 0; i < sketchQuery.getReferenceCount(); i++ )
     {
-        // If the input is a sketch file, load in the main thread; otherwise,
-        // leave it to the child. Either way, the child will delete.
-        //
-        Sketch * sketchQuery = new Sketch();
-        
-        if ( hasSuffix(queryFiles[i], suffixSketch) )
+        for ( uint64_t j = 0; j < sketchRef.getReferenceCount(); j++ )
         {
-            // init header to check params
-            //
-            sketchQuery->initFromCapnp(queryFiles[i].c_str(), true);
-            
-            if ( sketchQuery->getKmerSize() != sketch.getKmerSize() )
-            {
-                cerr << "\nWARNING: The query sketch " << queryFiles[i] << " has a kmer size (" << sketchQuery->getKmerSize() << ") that does not match the reference sketch (" << sketch.getKmerSize() << "). This query will be skipped.\n\n";
-                delete sketchQuery;
-                continue;
-            }
-            
-            if ( sketchQuery->getNoncanonical() != sketch.getNoncanonical() )
-            {
-                cerr << "\nWARNING: The query sketch " << queryFiles[i] << " is " << (sketchQuery->getNoncanonical() ? "noncanonical" : "canonical") << " but the reference sketch is not. This query will be skipped.\n\n";
-                delete sketchQuery;
-                continue;
-            }
-            
-            // init fully
-            //
-            sketchQuery->initFromCapnp(queryFiles[i].c_str());
-        }
+	        threadPool.runWhenThreadAvailable(new ContainInput(sketchRef, sketchQuery, j, i, parameters));
         
-        threadPool.runWhenThreadAvailable(new ContainInput(sketch, sketchQuery, queryFiles[i], parameters));
-        
-        while ( threadPool.outputAvailable() )
-        {
-            writeOutput(threadPool.popOutputWhenAvailable(), parameters.error);
-        }
+			while ( threadPool.outputAvailable() )
+			{
+				writeOutput(threadPool.popOutputWhenAvailable(), parameters.error);
+			}
+		}
     }
     
     while ( threadPool.running() )
@@ -196,49 +166,22 @@ int CommandContain::run() const
 
 void CommandContain::writeOutput(ContainOutput * output, float error) const
 {
-    for ( int i = 0; i < output->pairs.size(); i++ )
-    {
-        if ( output->pairs.at(i).error <= error )
-        {
-            cout << output->pairs.at(i).score << '\t' << output->pairs.at(i).error << '\t' << output->pairs.at(i).nameRef << '\t' << output->pairs.at(i).nameQuery << endl;
-        }
-    }
+	if ( output->error <= error )
+	{
+		cout << output->score << '\t' << output->error << '\t' << output->sketchRef.getReference(output->indexRef).name << '\t' << output->sketchQuery.getReference(output->indexQuery).name << endl;
+	}
     
     delete output;
 }
 
-CommandContain::ContainOutput * contain(CommandContain::ContainInput * data)
+CommandContain::ContainOutput * contain(CommandContain::ContainInput * input)
 {
-    const Sketch & sketchRef = data->sketchRef;
-    Sketch * sketchQuery = data->sketchQuery;
+    const Sketch & sketchRef = input->sketchRef;
+    const Sketch & sketchQuery = input->sketchQuery;
     
-    CommandContain::ContainOutput * output = new CommandContain::ContainOutput();
+    CommandContain::ContainOutput * output = new CommandContain::ContainOutput(input->sketchRef, input->sketchQuery, input->indexRef, input->indexQuery);
     
-    if ( sketchQuery->getReferenceCount() == 0 )
-    {
-        // input was sequence file; sketch now
-        
-        vector<string> fileVector;
-        fileVector.push_back(data->file);
-        
-        sketchQuery->initFromSequence(fileVector, data->parameters);
-    }
-    
-    output->pairs.resize(sketchRef.getReferenceCount() * sketchQuery->getReferenceCount());
-    
-    for ( int i = 0; i < sketchQuery->getReferenceCount(); i++ )
-    {
-        for ( int j = 0; j < sketchRef.getReferenceCount(); j++ )
-        {
-            int pairIndex = i * sketchRef.getReferenceCount() + j;
-            
-            output->pairs[pairIndex].score = containSketches(sketchRef.getReference(j).hashesSorted, sketchQuery->getReference(i).hashesSorted, output->pairs[pairIndex].error);
-            output->pairs[pairIndex].nameRef = sketchRef.getReference(j).name;
-            output->pairs[pairIndex].nameQuery = sketchQuery->getReference(i).name;
-        }
-    }
-    
-    delete data->sketchQuery;
+	output->score = containSketches(sketchRef.getReference(input->indexRef).hashesSorted, sketchQuery.getReference(input->indexQuery).hashesSorted, output->error);
     
     return output;
 }

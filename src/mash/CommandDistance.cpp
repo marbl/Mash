@@ -44,6 +44,7 @@ CommandDistance::CommandDistance()
     useOption("genome");
     useOption("memory");
     useOption("bloomError");
+    useOption("threads");
 }
 
 int CommandDistance::run() const
@@ -72,6 +73,7 @@ int CommandDistance::run() const
     parameters.memoryMax = options.at("memory").getArgumentAsNumber();
     parameters.bloomError = options.at("bloomError").getArgumentAsNumber();
     parameters.warning = options.at("warning").getArgumentAsNumber();
+    parameters.parallelism = threads;
     
     if ( options.at("genome").active || options.at("memory").active || options.at("bloomError").active )
     {
@@ -84,7 +86,7 @@ int CommandDistance::run() const
         return 1;
     }
     
-    Sketch sketch;
+    Sketch sketchRef;
     
     uint64_t lengthThreshold = (parameters.warning * pow(parameters.protein ? 20 : 4, parameters.kmerSize)) / (1. - parameters.warning);
     uint64_t lengthMax;
@@ -95,7 +97,9 @@ int CommandDistance::run() const
     
     const string & fileReference = arguments[0];
     
-    if ( hasSuffix(fileReference, suffixSketch) )
+    bool isSketch = hasSuffix(fileReference, suffixSketch);
+    
+    if ( isSketch )
     {
         if ( options.at("kmer").active )
         {
@@ -108,12 +112,24 @@ int CommandDistance::run() const
             cerr << "ERROR: The option " << options.at("noncanonical").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
             return 1;
         }
-        
-        sketch.initFromCapnp(fileReference.c_str());
-        
+    }
+    else
+    {
+        cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...";
+    }
+    
+    vector<string> refArgVector;
+    refArgVector.push_back(fileReference);
+    
+    //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
+    
+    sketchRef.initFromFiles(refArgVector, parameters);
+    
+    if ( isSketch )
+    {
         if ( options.at("sketchSize").active )
         {
-            if ( parameters.bloomFilter && parameters.minHashesPerWindow != sketch.getMinHashesPerWindow() )
+            if ( parameters.bloomFilter && parameters.minHashesPerWindow != sketchRef.getMinHashesPerWindow() )
             {
                 cerr << "ERROR: The sketch size must match the reference when using a bloom filter (leave this option out to inherit from the reference sketch)." << endl;
                 return 1;
@@ -121,78 +137,42 @@ int CommandDistance::run() const
         }
         else
         {
-            parameters.minHashesPerWindow = sketch.getMinHashesPerWindow();
+            parameters.minHashesPerWindow = sketchRef.getMinHashesPerWindow();
         }
         
-        parameters.kmerSize = sketch.getKmerSize();
-        parameters.noncanonical = sketch.getNoncanonical();
+        parameters.kmerSize = sketchRef.getKmerSize();
+        parameters.noncanonical = sketchRef.getNoncanonical();
     }
     else
     {
-        bool sketchFileExists = false;//sketch.initHeaderFromBaseIfValid(fileReference, false);
-        /*
-        if
-        (
-            (options.at("kmer").active && parameters.kmerSize != sketch.getKmerSize())
-        )
+        for ( uint64_t i = 0; i < sketchRef.getReferenceCount(); i++ )
         {
-            sketchFileExists = false;
-        }
-        */
-        if ( sketchFileExists )
-        {
-            sketch.initFromBase(fileReference, false);
-            parameters.kmerSize = sketch.getKmerSize();
-            parameters.noncanonical = sketch.getNoncanonical();
-        }
-        else
-        {
-            vector<string> refArgVector;
-            refArgVector.push_back(fileReference);
-            
-            //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
-            cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...";
-            
-            sketch.initFromSequence(refArgVector, parameters);
-            
-            for ( uint64_t i = 0; i < sketch.getReferenceCount(); i++ )
+            uint64_t length = sketchRef.getReference(i).length;
+        
+            if ( length > lengthThreshold )
             {
-                uint64_t length = sketch.getReference(i).length;
-                
-                if ( length > lengthThreshold )
+                if ( warningCount == 0 || length > lengthMax )
                 {
-                    if ( warningCount == 0 || length > lengthMax )
-                    {
-                        lengthMax = length;
-                        lengthMaxName = sketch.getReference(i).name;
-                        randomChance = sketch.getRandomKmerChance(i);
-                        kMin = sketch.getMinKmerSize(i);
-                    }
-                    
-                    warningCount++;
+                    lengthMax = length;
+                    lengthMaxName = sketchRef.getReference(i).name;
+                    randomChance = sketchRef.getRandomKmerChance(i);
+                    kMin = sketchRef.getMinKmerSize(i);
                 }
-            }
             
-            cerr << "done.\n";
-            /*
-            if ( sketch.writeToFile() )
-            {
-                cerr << "Sketch saved for subsequent runs." << endl;
+                warningCount++;
             }
-            else
-            {
-                cerr << "The sketch for " << fileReference << " could not be saved; it will be sketched again next time." << endl;
-            }*/
         }
+    
+        cerr << "done.\n";
     }
     
     if ( table )
     {
         cout << "#query";
         
-        for ( int i = 0; i < sketch.getReferenceCount(); i++ )
+        for ( int i = 0; i < sketchRef.getReferenceCount(); i++ )
         {
-            cout << '\t' << sketch.getReference(i).name;
+            cout << '\t' << sketchRef.getReference(i).name;
         }
         
         cout << endl;
@@ -214,40 +194,15 @@ int CommandDistance::run() const
         }
     }
     
-    for ( int i = 0; i < queryFiles.size(); i++ )
+    Sketch sketchQuery;
+    
+    sketchQuery.initFromFiles(queryFiles, parameters, 0, true);
+    
+    for ( uint64_t i = 0; i < sketchQuery.getReferenceCount(); i++ )
     {
-        // If the input is a sketch file, load in the main thread; otherwise,
-        // leave it to the child. Either way, the child will delete.
-        //
-        Sketch * sketchQuery = new Sketch();
-        bool isSketch = hasSuffix(queryFiles[i], suffixSketch);
-        
-        if ( isSketch )
+        for ( uint64_t j = 0; j < sketchRef.getReferenceCount(); j++ )
         {
-            // init header to check params
-            //
-            sketchQuery->initFromCapnp(queryFiles[i].c_str(), true);
-            
-            if ( sketchQuery->getKmerSize() != sketch.getKmerSize() )
-            {
-                cerr << "\nWARNING: The query sketch " << queryFiles[i] << " has a kmer size (" << sketchQuery->getKmerSize() << ") that does not match the reference sketch (" << sketch.getKmerSize() << "). This query will be skipped.\n\n";
-                delete sketchQuery;
-                continue;
-            }
-            
-            if ( sketchQuery->getNoncanonical() != sketch.getNoncanonical() )
-            {
-                cerr << "\nWARNING: The query sketch " << queryFiles[i] << " is " << (sketchQuery->getNoncanonical() ? "noncanonical" : "canonical") << " but the reference sketch is not. This query will be skipped.\n\n";
-                delete sketchQuery;
-                continue;
-            }
-            
-            // init fully
-            //
-            sketchQuery->initFromCapnp(queryFiles[i].c_str());
-        }
-        
-        threadPool.runWhenThreadAvailable(new CompareInput(sketch, sketchQuery, queryFiles[i], parameters, distanceMax, pValueMax));
+            threadPool.runWhenThreadAvailable(new CompareInput(sketchRef, sketchQuery, j, i, parameters, distanceMax, pValueMax));
         /*
         if ( ! isSketch )
         {
@@ -270,9 +225,10 @@ int CommandDistance::run() const
             }
         }
         */
-        while ( threadPool.outputAvailable() )
-        {
-            writeOutput(threadPool.popOutputWhenAvailable(), table);
+            while ( threadPool.outputAvailable() )
+            {
+                writeOutput(threadPool.popOutputWhenAvailable(), table);
+            }
         }
     }
     
@@ -283,7 +239,7 @@ int CommandDistance::run() const
     
     if ( warningCount > 0 && ! parameters.bloomFilter )
     {
-    	sketch.warnKmerSize(lengthMax, lengthMaxName, randomChance, kMin, warningCount);
+    	sketchRef.warnKmerSize(lengthMax, lengthMaxName, randomChance, kMin, warningCount);
     }
     
     return 0;
@@ -293,78 +249,50 @@ void CommandDistance::writeOutput(CompareOutput * output, bool table) const
 {
     uint64_t refCount = output->sketchRef.getReferenceCount();
     
-    for ( uint64_t i = 0; i < output->sketchQuery->getReferenceCount(); i++ )
+    if ( table && output->indexRef == 0 )
     {
-        if ( table )
-        {
-            cout << output->sketchQuery->getReference(i).name;
-        }
-        
-        for ( uint64_t j = 0; j < refCount; j++ )
-        {
-            const CompareOutput::PairOutput & pair = output->pairs.at(i * refCount + j);
-        
-            if ( table )
-            {
-                cout << '\t';
-            
-                if ( pair.pass )
-                {
-                    cout << pair.distance;
-                }
-            }
-            else if ( pair.pass )
-            {
-                cout << output->sketchRef.getReference(j).name << '\t' << output->sketchQuery->getReference(i).name << '\t' << pair.distance << '\t' << pair.pValue << '\t' << pair.numer << '/' << pair.denom << endl;
-            }
-        }
+        cout << output->sketchQuery.getReference(output->indexQuery).name;
+    }
     
-        if ( table )
+    if ( table )
+    {
+        cout << '\t';
+    
+        if ( output->pass )
         {
-            cout << endl;
+            cout << output->distance;
         }
+    }
+    else if ( output->pass )
+    {
+        cout << output->sketchRef.getReference(output->indexRef).name << '\t' << output->sketchQuery.getReference(output->indexQuery).name << '\t' << output->distance << '\t' << output->pValue << '\t' << output->numer << '/' << output->denom << endl;
+    }
+    
+    if ( table && output->indexQuery == output->sketchQuery.getReferenceCount() - 1 )
+    {
+        cout << endl;
     }
     
     delete output;
 }
 
-CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data)
+CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * input)
 {
-    const Sketch & sketchRef = data->sketchRef;
-    Sketch * sketchQuery = data->sketchQuery;
+    const Sketch & sketchRef = input->sketchRef;
+    const Sketch & sketchQuery = input->sketchQuery;
     
-    CommandDistance::CompareOutput * output = new CommandDistance::CompareOutput(data->sketchRef, data->sketchQuery);
+    CommandDistance::CompareOutput * output = new CommandDistance::CompareOutput(input->sketchRef, input->sketchQuery, input->indexRef, input->indexQuery);
     
-    if ( sketchQuery->getReferenceCount() == 0 )
-    {
-        // input was sequence file; sketch now
-        
-        vector<string> fileVector;
-        fileVector.push_back(data->file);
-        
-        sketchQuery->initFromSequence(fileVector, data->parameters);
-    }
-    
-    uint64_t sketchSize = sketchQuery->getMinHashesPerWindow() < sketchRef.getMinHashesPerWindow() ?
-        sketchQuery->getMinHashesPerWindow() :
+    uint64_t sketchSize = sketchQuery.getMinHashesPerWindow() < sketchRef.getMinHashesPerWindow() ?
+        sketchQuery.getMinHashesPerWindow() :
         sketchRef.getMinHashesPerWindow();
     
-    output->pairs.resize(sketchRef.getReferenceCount() * sketchQuery->getReferenceCount());
-    
-    for ( uint64_t i = 0; i < sketchQuery->getReferenceCount(); i++ )
-    {
-        for ( uint64_t j = 0; j < sketchRef.getReferenceCount(); j++ )
-        {
-            uint64_t pairIndex = i * sketchRef.getReferenceCount() + j;
-            
-            compareSketches(output->pairs[pairIndex], sketchRef.getReference(j), sketchQuery->getReference(i), sketchSize, sketchRef.getKmerSize(), sketchRef.getKmerSpace(), data->maxDistance, data->maxPValue);
-        }
-    }
+    compareSketches(output, sketchRef.getReference(input->indexRef), sketchQuery.getReference(input->indexQuery), sketchSize, sketchRef.getKmerSize(), sketchRef.getKmerSpace(), input->maxDistance, input->maxPValue);
     
     return output;
 }
 
-void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue)
+void compareSketches(CommandDistance::CompareOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue)
 {
     uint64_t i = 0;
     uint64_t j = 0;
@@ -373,7 +301,7 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
     const HashList & hashesSortedRef = refRef.hashesSorted;
     const HashList & hashesSortedQry = refQry.hashesSorted;
     
-    output.pass = false;
+    output->pass = false;
     
     while ( denom < sketchSize && i < hashesSortedRef.size() && j < hashesSortedQry.size() )
     {
@@ -437,17 +365,17 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const 
         return;
     }
     
-    output.numer = common;
-    output.denom = denom;
-    output.distance = distance;
-    output.pValue = pValue(common, refRef.length, refQry.length, kmerSpace, denom);
+    output->numer = common;
+    output->denom = denom;
+    output->distance = distance;
+    output->pValue = pValue(common, refRef.length, refQry.length, kmerSpace, denom);
     
-    if ( output.pValue > maxPValue )
+    if ( output->pValue > maxPValue )
     {
         return;
     }
     
-    output.pass = true;
+    output->pass = true;
 }
 
 double pValue(uint64_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint64_t sketchSize)

@@ -47,6 +47,9 @@ int CommandPaste::run() const
     }
     
     Sketch sketch;
+    vector<string> filesGood;
+    Sketch::Parameters parameters;
+    parameters.parallelism = 1;
     
     for ( int i = 0; i < files.size(); i++ )
     {
@@ -58,33 +61,10 @@ int CommandPaste::run() const
             return 1;
         }
         
-        if ( i > 0 )
-        {
-            Sketch sketchTest;
-            sketchTest.initFromCapnp(file.c_str(), true);
-            
-            if ( sketchTest.getKmerSize() != sketch.getKmerSize() )
-            {
-                cerr << "\nWARNING: The sketch " << file << " has a kmer size (" << sketchTest.getKmerSize() << ") that does not match the first sketch (" << sketch.getKmerSize() << "). This sketch will be skipped.\n\n";
-                continue;
-            }
-            
-            if ( sketchTest.getNoncanonical() != sketch.getNoncanonical() )
-            {
-                cerr << "\nWARNING: The sketch " << file << " is " << (sketchTest.getNoncanonical() ? "noncanonical" : "canonical") << " but the first sketch is not. This sketch will be skipped.\n\n";
-                continue;
-            }
-            
-            if ( sketchTest.getMinHashesPerWindow() != sketch.getMinHashesPerWindow() )
-            {
-                cerr << "\nWARNING: The sketch " << file << " has a target sketch size (" << sketchTest.getMinHashesPerWindow() << ") that does not match the first sketch (" << sketch.getMinHashesPerWindow() << "). This sketch will be skipped.\n\n";
-                continue;
-            }
-        }
-        
-        sketch.initFromCapnp(file.c_str(), false, i > 0);
+        filesGood.push_back(file);
     }
     
+	sketch.initFromFiles(filesGood, parameters);
     string out = arguments[0];
     
     if ( ! hasSuffix(out, suffixSketch) )

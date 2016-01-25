@@ -7,6 +7,7 @@
 #include "ThreadPool.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <iostream>
 
 template <class TypeInput, class TypeOutput>
 ThreadPool<TypeInput, TypeOutput>::ThreadPool(TypeOutput * (* functionNew)(TypeInput *), unsigned int threadCountNew)
@@ -90,7 +91,7 @@ TypeOutput * ThreadPool<TypeInput, TypeOutput>::popOutputWhenAvailable()
     if ( outputQueueHead == 0 )
     {
         // TODO: error?
-        std::cout << "ERROR: waiting for output when no output queued\n";
+        std::cerr << "ERROR: waiting for output when no output queued\n";
         pthread_mutex_unlock(mutexOutput);
         return 0;
     }
@@ -119,6 +120,12 @@ TypeOutput * ThreadPool<TypeInput, TypeOutput>::popOutputWhenAvailable()
 template <class TypeInput, class TypeOutput>
 void ThreadPool<TypeInput, TypeOutput>::runWhenThreadAvailable(TypeInput * input)
 {
+	runWhenThreadAvailable(input, function);
+}
+
+template <class TypeInput, class TypeOutput>
+void ThreadPool<TypeInput, TypeOutput>::runWhenThreadAvailable(TypeInput * input, TypeOutput * (* functionNew)(TypeInput *))
+{
     pthread_mutex_lock(mutexInput);
     
     while ( inputCurrent != 0 )
@@ -127,6 +134,7 @@ void ThreadPool<TypeInput, TypeOutput>::runWhenThreadAvailable(TypeInput * input
     }
     
     inputCurrent = input;
+    function = functionNew;
     
     // enqueue output while input locked (to preserve order)
     //
@@ -197,6 +205,7 @@ void * ThreadPool<TypeInput, TypeOutput>::thread(void * arg)
         input = threadPool->inputCurrent;
         outputQueueNode = threadPool->outputQueueNodeCurrent;
         threadPool->inputCurrent = 0;
+        TypeOutput * (* function)(TypeInput *) = threadPool->function;
         
         pthread_mutex_unlock(threadPool->mutexInput);
         
@@ -204,7 +213,7 @@ void * ThreadPool<TypeInput, TypeOutput>::thread(void * arg)
         
         // run function
         //
-        outputQueueNode->output = threadPool->function(input);
+        outputQueueNode->output = function(input);
         
         delete input;
         

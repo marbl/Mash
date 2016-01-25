@@ -22,6 +22,7 @@ public:
     TypeOutput * popOutputWhenAvailable(); // output must be deleted by calling function
     bool running() const;
     void runWhenThreadAvailable(TypeInput * input); // thread deletes input when finished
+    void runWhenThreadAvailable(TypeInput * input, TypeOutput * (* functionNew)(TypeInput *)); // thread deletes input when finished
     
 private:
     

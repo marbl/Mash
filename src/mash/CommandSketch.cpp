@@ -37,6 +37,7 @@ CommandSketch::CommandSketch()
     //useOption("pacbio");
     //useOption("nanopore");
     useOption("noncanonical");
+    useOption("threads");
 }
 
 int CommandSketch::run() const
@@ -63,6 +64,7 @@ int CommandSketch::run() const
     parameters.windowed = false;//options.at("windowed").active;
     parameters.windowSize = 0;//options.at("window").getArgumentAsNumber();
     parameters.warning = options.at("warning").getArgumentAsNumber();
+    parameters.parallelism = options.at("threads").getArgumentAsNumber();
     
     if ( options.at("genome").active || options.at("memory").active || options.at("bloomError").active )
     {
@@ -83,7 +85,7 @@ int CommandSketch::run() const
     
     for ( int i = 0; i < arguments.size(); i++ )
     {
-        if ( hasSuffix(arguments[i], suffixSketch) )
+        if ( false && hasSuffix(arguments[i], suffixSketch) )
         {
             cerr << "ERROR: " << arguments[i] << " looks like it is already sketched.\n";
             exit(1);
@@ -113,7 +115,7 @@ int CommandSketch::run() const
         }
     }
     
-    sketch.initFromSequence(files, parameters, verbosity);
+    sketch.initFromFiles(files, parameters, verbosity);
     
 	for ( int i = 0; i < sketch.getReferenceCount(); i++ )
 	{

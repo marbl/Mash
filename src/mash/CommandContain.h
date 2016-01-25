@@ -16,32 +16,43 @@ public:
     
     struct ContainInput
     {
-        ContainInput(const Sketch & sketchRefNew, Sketch * sketchQueryNew, const std::string fileNew, const Sketch::Parameters & parametersNew)
+        ContainInput(const Sketch & sketchRefNew, const Sketch & sketchQueryNew, uint64_t indexRefNew, uint64_t indexQueryNew, const Sketch::Parameters & parametersNew)
             :
             sketchRef(sketchRefNew),
             sketchQuery(sketchQueryNew),
-            file(fileNew),
+            indexRef(indexRefNew),
+            indexQuery(indexQueryNew),
             parameters(parametersNew)
             {}
         
         const Sketch & sketchRef;
-        Sketch * sketchQuery;
+        const Sketch & sketchQuery;
+		
+        uint64_t indexRef;
+        uint64_t indexQuery;
+        
         std::string nameRef;
-        const std::string file;
         const Sketch::Parameters & parameters;
     };
     
     struct ContainOutput
     {
-        struct PairOutput
-        {
-            float score;
-            float error;
-            std::string nameRef;
-            std::string nameQuery;
-        };
+        ContainOutput(const Sketch & sketchRefNew, const Sketch & sketchQueryNew, uint64_t indexRefNew, uint64_t indexQueryNew)
+            :
+            sketchRef(sketchRefNew),
+            sketchQuery(sketchQueryNew),
+            indexRef(indexRefNew),
+            indexQuery(indexQueryNew)
+        {}
         
-        std::vector<PairOutput> pairs;
+		float score;
+		float error;
+    
+        const Sketch & sketchRef;
+        const Sketch & sketchQuery;
+		
+        uint64_t indexRef;
+        uint64_t indexQuery;
     };
     
     CommandContain();

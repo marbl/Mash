@@ -15,6 +15,7 @@
 #include "HashList.h"
 #include "HashPriorityQueue.h"
 #include "HashSet.h"
+#include "ThreadPool.h"
 #include <stdlib.h> // needed (but not included) by bloom_filter.hpp
 #include "bloom_filter.hpp"
 
@@ -34,6 +35,7 @@ public:
     {
         Parameters()
             :
+            parallelism(0),
             kmerSize(0),
             error(0),
             warning(0),
@@ -51,6 +53,7 @@ public:
         
         Parameters(const Parameters & other)
             :
+            parallelism(other.parallelism),
             kmerSize(other.kmerSize),
             error(other.error),
             warning(other.warning),
@@ -66,6 +69,7 @@ public:
             bloomError(other.bloomError)
             {}
         
+        int parallelism;
         int kmerSize;
         double error;
         double warning;
@@ -117,6 +121,44 @@ public:
         HashList hashesSorted;
     };
     
+    struct SketchInput
+    {
+    	SketchInput(std::string fileNameNew, char * seqNew, uint64_t lengthNew, const std::string & nameNew, const std::string & commentNew, const Sketch::Parameters & parametersNew)
+    	:
+    	fileName(fileNameNew),
+    	seq(seqNew),
+    	length(lengthNew),
+    	name(nameNew),
+    	comment(commentNew),
+    	parameters(parametersNew)
+    	{}
+    	
+    	~SketchInput()
+    	{
+    		if ( seq != 0 )
+    		{
+	    		delete [] seq;
+	    	}
+    	}
+    	
+    	std::string fileName;
+    	
+    	char * seq;
+    	
+    	uint64_t length;
+    	
+    	std::string name;
+    	std::string comment;
+    	
+    	Sketch::Parameters parameters;
+    };
+    
+    struct SketchOutput
+    {
+    	std::vector<Reference> references;
+	    std::vector<std::vector<PositionHash>> positionHashesByReference;
+    };
+    
     void checkKmerSize() const;
     bool getConcatenated() const {return parameters.concatenated;}
     float getError() const {return parameters.error;}
@@ -133,10 +175,10 @@ public:
     uint64_t getWindowSize() const {return parameters.windowSize;}
     bool getNoncanonical() const {return parameters.noncanonical;}
     bool hasLociByHash(hash_t hash) const {return lociByHash.count(hash);}
-    void initFromBase(const std::string & file, bool windowed);
-    int initFromCapnp(const char * file, bool headerOnly = false, bool append = false);
-    int initFromSequence(const std::vector<std::string> & files, const Parameters & parametersNew, int verbosity = 0);
-    bool initHeaderFromBaseIfValid(const std::string & file, bool windowed);
+    int initFromFiles(const std::vector<std::string> & files, const Parameters & parametersNew, int verbosity = 0, bool enforceParameters = false);
+    void initParametersFromCapnp(const char * file);
+	bool sketchFileBySequence(FILE * file, ThreadPool<Sketch::SketchInput, Sketch::SketchOutput> * threadPool);
+	void useThreadOutput(SketchOutput * output);
     void warnKmerSize(uint64_t lengthMax, const std::string & lengthMaxName, double randomChance, int kMin, int warningCount) const;
     bool writeToFile() const;
     int writeToCapnp(const char * file) const;
@@ -144,7 +186,6 @@ public:
 private:
     
     void createIndex();
-    void setMinHashesForReference(uint64_t referenceIndex, const HashSet & hashes);
     
     std::vector<Reference> references;
     std::unordered_map<std::string, int> referenceIndecesById;
@@ -159,7 +200,11 @@ private:
 void addMinHashes(HashSet & lociByHash, HashPriorityQueue & minHashesQueue, bloom_filter * bloomFilter, char * seq, uint64_t length, const Sketch::Parameters & parameters, uint64_t & kmersTotal, uint64_t & kmersUsed);
 void getMinHashPositions(std::vector<Sketch::PositionHash> & loci, char * seq, uint32_t length, const Sketch::Parameters & parameters, int verbosity = 0);
 bool hasSuffix(std::string const & whole, std::string const & suffix);
+Sketch::SketchOutput * loadCapnp(Sketch::SketchInput * input);
 void reverseComplement(const char * src, char * dest, int length);
+void setMinHashesForReference(Sketch::Reference & reference, const HashSet & hashes);
+Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input);
+Sketch::SketchOutput * sketchSequence(Sketch::SketchInput * input);
 
 int def(int fdSource, int fdDest, int level);
 int inf(int fdSource, int fdDest);

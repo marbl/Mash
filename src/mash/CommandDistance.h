@@ -16,20 +16,23 @@ public:
     
     struct CompareInput
     {
-        CompareInput(const Sketch & sketchRefNew, Sketch * sketchQueryNew, const std::string fileNew, const Sketch::Parameters & parametersNew, double maxDistanceNew, double maxPValueNew)
+        CompareInput(const Sketch & sketchRefNew, const Sketch & sketchQueryNew, uint64_t indexRefNew, uint64_t indexQueryNew, const Sketch::Parameters & parametersNew, double maxDistanceNew, double maxPValueNew)
             :
             sketchRef(sketchRefNew),
             sketchQuery(sketchQueryNew),
-            file(fileNew),
+            indexRef(indexRefNew),
+            indexQuery(indexQueryNew),
             parameters(parametersNew),
             maxDistance(maxDistanceNew),
             maxPValue(maxPValueNew)
             {}
         
         const Sketch & sketchRef;
-        Sketch * sketchQuery;
-        std::string nameRef;
-        const std::string file;
+        const Sketch & sketchQuery;
+        
+        uint64_t indexRef;
+        uint64_t indexQuery;
+        
         const Sketch::Parameters & parameters;
         double maxDistance;
         double maxPValue;
@@ -37,30 +40,25 @@ public:
     
     struct CompareOutput
     {
-        CompareOutput(const Sketch & sketchRefNew, Sketch * sketchQueryNew)
+        CompareOutput(const Sketch & sketchRefNew, const Sketch & sketchQueryNew, uint64_t indexRefNew, uint64_t indexQueryNew)
             :
             sketchRef(sketchRefNew),
-            sketchQuery(sketchQueryNew)
+            sketchQuery(sketchQueryNew),
+            indexRef(indexRefNew),
+            indexQuery(indexQueryNew)
         {}
         
-        ~CompareOutput()
-        {
-            delete sketchQuery;
-        }
-        
-        struct PairOutput
-        {
-            uint64_t numer;
-            uint64_t denom;
-            double distance;
-            double pValue;
-            bool pass;
-        };
-        
+        uint64_t numer;
+        uint64_t denom;
+        double distance;
+        double pValue;
+        bool pass;
+
+        uint64_t indexRef;
+        uint64_t indexQuery;
+    
         const Sketch & sketchRef;
-        Sketch * sketchQuery;
-        
-        std::vector<PairOutput> pairs;
+        const Sketch & sketchQuery;
     };
     
     CommandDistance();
@@ -72,8 +70,8 @@ private:
     void writeOutput(CompareOutput * output, bool table) const;
 };
 
-CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * data);
-void compareSketches(CommandDistance::CompareOutput::PairOutput & output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue);
+CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * input);
+void compareSketches(CommandDistance::CompareOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue);
 double pValue(uint64_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint64_t sketchSize);
 
 #endif

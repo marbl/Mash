@@ -41,8 +41,10 @@ int CommandInfo::run() const
     }
     
     Sketch sketch;
+    Sketch::Parameters params;
+    params.parallelism = 1;
     
-    sketch.initFromCapnp(file.c_str(), header);
+    sketch.initFromFiles(arguments, params);
     
     cout << "Header:" << endl;
     cout << "  Kmer:                          " << sketch.getKmerSize() << endl;

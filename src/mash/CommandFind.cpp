@@ -48,6 +48,8 @@ int CommandFind::run() const
     int best = options.at("best").getArgumentAsNumber();
     bool selfMatches = ! options.at("self").active;
     
+	Sketch::Parameters params;
+	
     Sketch sketch;
     const string & fileReference = arguments[0];
     
@@ -64,8 +66,6 @@ int CommandFind::run() const
             cerr << "ERROR: The options " << options.at("kmer").identifier << ", " << options.at("minsWindowed").identifier << " and " << options.at("window").identifier << " cannot be used when a sketch is provided; these are inherited from the sketch.\n";
             return 1;
         }
-        
-        sketch.initFromCapnp(fileReference.c_str());
     }
     else
     {
@@ -74,53 +74,31 @@ int CommandFind::run() const
         int windowSize = options.at("window").getArgumentAsNumber();
         int mins = windowSize / factor;
         
-        bool sketchFileExists = sketch.initHeaderFromBaseIfValid(fileReference, true);
-        
-        if
-        (
-            (options.at("kmer").active && kmerSize != sketch.getKmerSize()) ||
-            (options.at("factor").active && mins != sketch.getMinHashesPerWindow()) ||
-            (options.at("window").active && windowSize != sketch.getWindowSize())
-        )
-        {
-            sketchFileExists = false;
-        }
-        
-        if ( false && sketchFileExists )
-        {
-            sketch.initFromBase(arguments[0], true);
-            kmerSize = sketch.getKmerSize();
-            mins = sketch.getMinHashesPerWindow();
-            windowSize = sketch.getWindowSize();
-        }
-        else
-        {
-            vector<string> refArgVector;
-            refArgVector.push_back(fileReference);
-            
-            //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
-            cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...\n";
-            
-            Sketch::Parameters params;
-            
-            params.kmerSize = kmerSize;
-            params.minHashesPerWindow = mins;
-            params.windowed = true;
-            params.windowSize = windowSize;
-            
-            sketch.initFromSequence(refArgVector, params);
-            /*
-            if ( sketch.writeToFile() )
-            {
-                cerr << "Sketch saved for subsequent runs." << endl;
-            }
-            else
-            {
-                cerr << "The sketch for " << fileReference << " could not be saved; it will be sketched again next time." << endl;
-            }*/
-        }
+		//cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
+		cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...\n";
+		
+		params.kmerSize = kmerSize;
+		params.minHashesPerWindow = mins;
+		params.windowed = true;
+		params.windowSize = windowSize;
+		params.parallelism = threads;
+		
+		/*
+		if ( sketch.writeToFile() )
+		{
+			cerr << "Sketch saved for subsequent runs." << endl;
+		}
+		else
+		{
+			cerr << "The sketch for " << fileReference << " could not be saved; it will be sketched again next time." << endl;
+		}*/
     }
     
+	vector<string> refArgVector;
+	refArgVector.push_back(fileReference);
+	
+	sketch.initFromFiles(refArgVector, params);
+	
     int l;
     int count = 0;
     

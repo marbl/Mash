@@ -58,369 +58,115 @@ uint64_t Sketch::getReferenceIndex(string id) const
     }
 }
 
-void Sketch::initFromBase(const std::string & fileSeq, bool windowed)
+int Sketch::initFromFiles(const vector<string> & files, const Parameters & parametersNew, int verbosity, bool enforceParameters)
 {
-    file = fileSeq + (windowed ? suffixSketchWindowed : suffixSketch);
-    initFromCapnp(file.c_str());
-}
-
-int Sketch::initFromCapnp(const char * file, bool headerOnly, bool append)
-{
-    int fd = open(file, O_RDONLY);
-    
-    if ( fd < 0 )
-    {
-        cerr << "ERROR: could not open \"" << file << "\" for reading." << endl;
-        exit(1);
-    }
-    
-    struct stat fileInfo;
-    
-    if ( stat(file, &fileInfo) == -1 )
-    {
-        return false;
-    }
-    
-    void * data = mmap(NULL, fileInfo.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    
-    capnp::ReaderOptions readerOptions;
-    
-    readerOptions.traversalLimitInWords = 1000000000000;
-    readerOptions.nestingLimit = 1000000;
-    
-    capnp::FlatArrayMessageReader * message = new capnp::FlatArrayMessageReader(kj::ArrayPtr<const capnp::word>(reinterpret_cast<const capnp::word *>(data), fileInfo.st_size / sizeof(capnp::word)), readerOptions);
-    capnp::MinHash::Reader reader = message->getRoot<capnp::MinHash>();
-    
-    parameters.kmerSize = reader.getKmerSize();
-    parameters.error = reader.getError();
-    parameters.minHashesPerWindow = reader.getMinHashesPerWindow();
-    parameters.windowSize = reader.getWindowSize();
-    parameters.concatenated = reader.getConcatenated();
-    parameters.noncanonical = reader.getNoncanonical();
-    
-    if ( headerOnly )
-    {
-        close(fd);
-        
-        try
-        {
-            delete message;
-        }
-        catch (exception e) {}
-        
-        return 0;
-    }
-    
-    capnp::MinHash::ReferenceList::Reader referenceListReader = reader.getReferenceList();
-    
-    capnp::List<capnp::MinHash::ReferenceList::Reference>::Reader referencesReader = referenceListReader.getReferences();
-    
-    uint64_t referencesOffset = append ? references.size() : 0;
-    
-    references.resize(referencesOffset + referencesReader.size());
-    
-    for ( uint64_t i = 0; i < referencesReader.size(); i++ )
-    {
-        capnp::MinHash::ReferenceList::Reference::Reader referenceReader = referencesReader[i];
-        
-        Sketch::Reference & reference = references[referencesOffset + i];
-        
-        reference.name = referenceReader.getName();
-        reference.comment = referenceReader.getComment();
-        
-        if ( referenceReader.getLength64() )
-        {
-        	reference.length = referenceReader.getLength64();
-        }
-        else
-        {
-	        reference.length = referenceReader.getLength();
-	    }
-        
-        reference.hashesSorted.setUse64(parameters.kmerSize > 16);
-        
-        if ( parameters.kmerSize > 16 )
-        {
-            capnp::List<uint64_t>::Reader hashesReader = referenceReader.getHashes64();
-        
-            reference.hashesSorted.resize(hashesReader.size());
-        
-            for ( uint64_t j = 0; j < hashesReader.size(); j++ )
-            {
-                reference.hashesSorted.set64(j, hashesReader[j]);
-            }
-        }
-        else
-        {
-            capnp::List<uint32_t>::Reader hashesReader = referenceReader.getHashes32();
-        
-            reference.hashesSorted.resize(hashesReader.size());
-        
-            for ( uint64_t j = 0; j < hashesReader.size(); j++ )
-            {
-                reference.hashesSorted.set32(j, hashesReader[j]);
-            }
-        }
-    }
-    
-    capnp::MinHash::LocusList::Reader locusListReader = reader.getLocusList();
-    capnp::List<capnp::MinHash::LocusList::Locus>::Reader lociReader = locusListReader.getLoci();
-    
-    positionHashesByReference.resize(references.size());
-    
-    for ( uint64_t i = 0; i < lociReader.size(); i++ )
-    {
-        capnp::MinHash::LocusList::Locus::Reader locusReader = lociReader[i];
-        //cout << locusReader.getHash() << '\t' << locusReader.getSequence() << '\t' << locusReader.getPosition() << endl;
-        positionHashesByReference[locusReader.getSequence() + referencesOffset].push_back(PositionHash(locusReader.getPosition(), locusReader.getHash64()));
-    }
-    
-    /*
-    cout << endl << "References:" << endl << endl;
-    
-    vector< vector<string> > columns(3);
-    
-    columns[0].push_back("ID");
-    columns[1].push_back("Length");
-    columns[2].push_back("Name/Comment");
-    
-    for ( uint64_t i = 0; i < references.size(); i++ )
-    {
-        columns[0].push_back(to_string(i));
-        columns[1].push_back(to_string(references[i].length));
-        columns[2].push_back(references[i].name + " " + references[i].comment);
-    }
-    
-    printColumns(columns);
-    cout << endl;
-    */
-    
-    /*
-    printf("\nCombined hash table:\n");
-    
-    cout << "   kmer:  " << kmerSize << endl;
-    cout << "   comp:  " << compressionFactor << endl << endl;
-    
-    for ( LociByHash_umap::iterator i = lociByHash.begin(); i != lociByHash.end(); i++ )
-    {
-        printf("Hash %u:\n", i->first);
-        
-        for ( int j = 0; j < i->second.size(); j++ )
-        {
-            printf("   Seq: %d\tPos: %d\n", i->second.at(j).sequence, i->second.at(j).position);
-        }
-    }
-    
-    cout << endl;
-    */
-    
-    munmap(data, fileInfo.st_size);
-    close(fd);
-    delete message;
-    
-    createIndex();
-    
-    return 0;
-}
-
-int Sketch::initFromSequence(const vector<string> & files, const Parameters & parametersNew, int verbosity)
-{
+	// TODO: handle capnp
+	
     parameters = parametersNew;
     
-    int l;
-    int count = 0;
-    
-    bool use64 = parameters.kmerSize > 16;
-    
-    bloom_filter * bloomFilter = 0;
-    
-    uint64_t kmersTotal;
-    uint64_t kmersUsed;
-    
+	ThreadPool<Sketch::SketchInput, Sketch::SketchOutput> threadPool(0, parameters.parallelism);
+	
     for ( int i = 0; i < files.size(); i++ )
     {
-        HashSet minHashes(parameters.kmerSize);
-        HashPriorityQueue minHashesQueue(parameters.kmerSize); // only used for non-windowed
+        bool isSketch = hasSuffix(files[i], suffixSketch);
         
-        FILE * inStream = 0;
-        
-        if ( files[i] == "-" )
+        if ( isSketch )
         {
-            if ( verbosity > 0 )
+			// init header to check params
+			//
+			Sketch sketchTest;
+			sketchTest.initParametersFromCapnp(files[i].c_str());
+			
+        	if ( i == 0 && ! enforceParameters )
+        	{
+        		initParametersFromCapnp(files[i].c_str());
+        	}
+        	
+			if ( sketchTest.getKmerSize() != parameters.kmerSize )
+			{
+				cerr << "\nWARNING: The sketch " << files[i] << " has a kmer size (" << sketchTest.getKmerSize() << ") that does not match the current kmer size (" << parameters.kmerSize << "). This file will be skipped.\n\n";
+				continue;
+			}
+		
+			if ( sketchTest.getNoncanonical() != parameters.noncanonical )
+			{
+				cerr << "\nWARNING: The sketch " << files[i] << " is " << (sketchTest.getNoncanonical() ? "noncanonical" : "canonical") << ", which is incompatible with the current setting. This file will be skipped." << endl << endl;
+				continue;
+			}
+			
+            if ( sketchTest.getMinHashesPerWindow() < parameters.minHashesPerWindow )
             {
-                cerr << "Sketching from stdin..." << endl;
-            }
-            
-            inStream = stdin;
-        }
-        else
-        {
-            if ( verbosity > 0 )
-            {
-                cerr << "Sketching " << files[i] << "..." << endl;
-            }
-            
-            inStream = fopen(files[i].c_str(), "r");
-            
-            if ( inStream == NULL )
-            {
-                cerr << "ERROR: could not open " << files[i] << " for reading." << endl;
-                exit(1);
-            }
-        }
-        
-        gzFile fp = gzdopen(fileno(inStream), "r");
-        kseq_t *seq = kseq_init(fp);
-        
-        if ( parameters.concatenated )
-        {
-            references.resize(references.size() + 1);
-            
-            if ( files[i] != "-" )
-            {
-                references[references.size() - 1].name = files[i];
-            }
-            
-            references[references.size() - 1].length = 0;
-            references[references.size() - 1].hashesSorted.setUse64(use64);
-            
-            if ( parameters.bloomFilter )
-            {
-            	references[references.size() - 1].length = parameters.genomeSize;
-                bloom_parameters bloomParams;
-                
-                bloomParams.projected_element_count = (uint64_t)parameters.genomeSize * 10l; // TODO: error rate based on platform and coverage
-                bloomParams.false_positive_probability = parameters.bloomError;
-                bloomParams.maximum_size = (uint64_t)parameters.memoryMax * 8l;
-                bloomParams.compute_optimal_parameters();
-                
-                kmersTotal = 0;
-                kmersUsed = 0;
-                
-                if ( i == 0 && verbosity > 0 )
-                {
-                    //cerr << "   Bloom table size (bytes): " << bloomParams.optimal_parameters.table_size / 8 << endl;
-                }
-                
-                bloomFilter = new bloom_filter(bloomParams);
-            }
-        }
-        
-        bool skipped = false;
-        
-        while ((l = kseq_read(seq)) >= 0)
-        {
-            if ( l < parameters.kmerSize )
-            {
-            	skipped = true;
+                cerr << "\nWARNING: The sketch file " << files[i] << " has a target sketch size (" << sketchTest.getMinHashesPerWindow() << ") that is smaller than the current sketch size (" << parameters.minHashesPerWindow << "). This sketch will be skipped." << endl << endl;
                 continue;
             }
             
-            if ( parameters.windowed )
+            if ( sketchTest.getMinHashesPerWindow() > parameters.minHashesPerWindow )
             {
-                positionHashesByReference.resize(count + 1);
+                cerr << "\nWARNING: The sketch file " << files[i] << " has a target sketch size (" << sketchTest.getMinHashesPerWindow() << ") that is larger than the current sketch size (" << parameters.minHashesPerWindow << "). Its sketches will be reduced." << endl << endl;
             }
             
-            if ( ! parameters.concatenated )
-            {
-                references.resize(references.size() + 1);
-                references[references.size() - 1].hashesSorted.setUse64(use64);
-                minHashes.clear();
-                minHashesQueue.clear();
-            }
-            
-            if ( verbosity > 0 && parameters.windowed ) cout << '>' << seq->name.s << " (" << l << "nt)" << endl << endl;
-            //if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
-            //printf("seq: %s\n", seq->seq.s);
-            //if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
-            
-            Reference & reference = references[references.size() - 1];
-            
-            if ( ! parameters.concatenated )
-            {
-                reference.name = seq->name.s;
-                
-                if ( seq->comment.l > 0 )
-                {
-                    reference.comment = seq->comment.s;
-                }
-                
-                reference.length = l;
-            }
-            else if ( ! parameters.bloomFilter )
-            {
-                references[references.size() - 1].length += l;
-                
-                if ( files[i] == "-" && references[references.size() - 1].name == "" )
-                {
-                    references[references.size() - 1].name = seq->name.s;
-                }
-            }
-            
-            if ( parameters.windowed )
-            {
-                getMinHashPositions(positionHashesByReference[count], seq->seq.s, l, parameters, verbosity);
-            }
-            else
-            {
-                addMinHashes(minHashes, minHashesQueue, bloomFilter, seq->seq.s, l, parameters, kmersTotal, kmersUsed);
-            }
-            
-            if ( ! parameters.concatenated )
-            {
-                if ( ! parameters.windowed )
-                {
-                    setMinHashesForReference(references.size() - 1, minHashes);
-                }
-                
-                count++;
-            }
+            // init fully
+            //
+			threadPool.runWhenThreadAvailable(new SketchInput(files[i], 0, 0, "", "", parameters), loadCapnp);
         }
-        
-        if (  l != -1 )
-        {
-        	cerr << "\nERROR: reading " << files[i] << "." << endl;
-        	exit(1);
-        }
-        
-        if ( references[0].length == 0 )
-        {
-        	if ( skipped )
-        	{
-        		cerr << "\nWARNING: All fasta records in " << files[i] << "were shorter than the k-mer size (" << parameters.kmerSize << ")." << endl;
-        	}
-        	else
-        	{
-        		cerr << "\nERROR: Did not find fasta records in \"" << files[i] << "\"." << endl;
-        	}
-        	
-            exit(1);
-        }
-        
-        if ( parameters.concatenated )
-        {
-            if ( ! parameters.windowed )
-            {
-                setMinHashesForReference(references.size() - 1, minHashes);
-            }
-            
-            if ( bloomFilter != 0 )
-            {
-                if ( verbosity > 0 )
-                {
-                    //cerr << "   " << kmersTotal - kmersUsed << " of " << kmersTotal << " kmers filtered from " << (files[i] == "-" ? "stdin" : files[i]) << endl;
-                }
-                
-                delete bloomFilter;
-            }
-            
-            count++;
-        }
-        
-        kseq_destroy(seq);
-        gzclose(fp);
-        fclose(inStream);
+        else      
+		{
+			FILE * inStream;
+		
+			if ( files[i] == "-" )
+			{
+				if ( verbosity > 0 )
+				{
+					cerr << "Sketching from stdin..." << endl;
+				}
+			
+				inStream = stdin;
+			}
+			else
+			{
+				if ( verbosity > 0 )
+				{
+					cerr << "Sketching " << files[i] << "..." << endl;
+				}
+			
+				inStream = fopen(files[i].c_str(), "r");
+			
+				if ( inStream == NULL )
+				{
+					cerr << "ERROR: could not open " << files[i] << " for reading." << endl;
+					exit(1);
+				}
+			}
+		
+			if ( parameters.concatenated )
+			{
+				fclose(inStream);
+			
+				threadPool.runWhenThreadAvailable(new SketchInput(files[i], 0, 0, "", "", parameters), sketchFile);
+			}
+			else
+			{
+				if ( ! sketchFileBySequence(inStream, &threadPool) )
+				{
+					cerr << "\nERROR: reading " << files[i] << "." << endl;
+					exit(1);
+				}
+			
+				fclose(inStream);
+			}
+		}
+			
+		while ( threadPool.outputAvailable() )
+		{
+			useThreadOutput(threadPool.popOutputWhenAvailable());
+		}
     }
+    
+	while ( threadPool.running() )
+	{
+		useThreadOutput(threadPool.popOutputWhenAvailable());
+	}
+	
     /*
     printf("\nCombined hash table:\n\n");
     
@@ -440,30 +186,97 @@ int Sketch::initFromSequence(const vector<string> & files, const Parameters & pa
     return 0;
 }
 
-bool Sketch::initHeaderFromBaseIfValid(const std::string & fileSeq, bool windowed)
+void Sketch::initParametersFromCapnp(const char * file)
 {
-    file = fileSeq + (windowed ? suffixSketchWindowed : suffixSketch);
+    int fd = open(file, O_RDONLY);
     
-    struct stat fileInfoSeq;
-    struct stat fileInfoSketch;
-    
-    if ( stat(fileSeq.c_str(), &fileInfoSeq) == -1 )
+    if ( fd < 0 )
     {
-        return false;
+        cerr << "ERROR: could not open \"" << file << "\" for reading." << endl;
+        exit(1);
     }
     
-    if ( stat(file.c_str(), &fileInfoSketch) == -1 )
-    {
-        return false;
-    }
+    capnp::ReaderOptions readerOptions;
     
-    if ( fileInfoSeq.st_mtime > fileInfoSketch.st_mtime )
-    {
-        return false;
-    }
+    readerOptions.traversalLimitInWords = 1000000000000;
+    readerOptions.nestingLimit = 1000000;
     
-    initFromCapnp(file.c_str(), true);
-    return true;
+    capnp::StreamFdMessageReader * message = new capnp::StreamFdMessageReader(fd, readerOptions);
+    //capnp::FlatArrayMessageReader * message = new capnp::FlatArrayMessageReader(kj::ArrayPtr<const capnp::word>(reinterpret_cast<const capnp::word *>(data), fileInfo.st_size / sizeof(capnp::word)), readerOptions);
+    capnp::MinHash::Reader reader = message->getRoot<capnp::MinHash>();
+    
+    parameters.kmerSize = reader.getKmerSize();
+    parameters.error = reader.getError();
+    parameters.minHashesPerWindow = reader.getMinHashesPerWindow();
+    parameters.windowSize = reader.getWindowSize();
+    parameters.concatenated = reader.getConcatenated();
+    parameters.noncanonical = reader.getNoncanonical();
+    
+	close(fd);
+	
+	try
+	{
+		delete message;
+	}
+	catch (exception e) {}
+}
+
+bool Sketch::sketchFileBySequence(FILE * file, ThreadPool<Sketch::SketchInput, Sketch::SketchOutput> * threadPool)
+{
+	gzFile fp = gzdopen(fileno(file), "r");
+	kseq_t *seq = kseq_init(fp);
+	
+    int l;
+    int count = 0;
+	bool skipped = false;
+	
+	while ((l = kseq_read(seq)) >= 0)
+	{
+		if ( l < parameters.kmerSize )
+		{
+			skipped = true;
+			continue;
+		}
+		
+		if ( parameters.windowed )
+		{
+			positionHashesByReference.resize(count + 1);
+		}
+		
+		//if ( verbosity > 0 && parameters.windowed ) cout << '>' << seq->name.s << " (" << l << "nt)" << endl << endl;
+		//if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
+		//printf("seq: %s\n", seq->seq.s);
+		//if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
+		
+		// buffer this out since kseq will overwrite (SketchInput will delete)
+		//
+		char * seqCopy = new char[l];
+		//
+		memcpy(seqCopy, seq->seq.s, l);
+		
+		threadPool->runWhenThreadAvailable(new SketchInput("", seqCopy, l, string(seq->name.s, seq->name.l), string(seq->comment.s, seq->comment.l), parameters), sketchSequence);
+		
+		while ( threadPool->outputAvailable() )
+		{
+			useThreadOutput(threadPool->popOutputWhenAvailable());
+		}
+    	
+		count++;
+	}
+	
+	if (  l != -1 )
+	{
+		return false;
+	}
+	
+	return true;
+}
+
+void Sketch::useThreadOutput(SketchOutput * output)
+{
+	references.insert(references.end(), output->references.begin(), output->references.end());
+	positionHashesByReference.insert(positionHashesByReference.end(), output->positionHashesByReference.begin(), output->positionHashesByReference.end());
+	delete output;
 }
 
 void Sketch::warnKmerSize(uint64_t lengthMax, const std::string & lengthMaxName, double randomChance, int kMin, int warningCount) const
@@ -603,14 +416,6 @@ void Sketch::createIndex()
     }
     
     kmerSpace = pow(4, parameters.kmerSize); // TODO: alphabet?
-}
-
-void Sketch::setMinHashesForReference(uint64_t referenceIndex, const HashSet & hashes)
-{
-    HashList & hashList = references[referenceIndex].hashesSorted;
-    hashList.clear();
-    hashes.toHashList(hashList);
-    hashList.sort();
 }
 
 void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, bloom_filter * bloomFilter, char * seq, uint64_t length, const Sketch::Parameters & parameters, uint64_t & kmersTotal, uint64_t & kmersUsed)
@@ -1083,6 +888,153 @@ bool hasSuffix(string const & whole, string const & suffix)
     return false;
 }
 
+Sketch::SketchOutput * loadCapnp(Sketch::SketchInput * input)
+{
+	const char * file = input->fileName.c_str();
+    int fd = open(file, O_RDONLY);
+    
+    struct stat fileInfo;
+    
+    if ( stat(file, &fileInfo) == -1 )
+    {
+        return 0;
+    }
+    
+	Sketch::SketchOutput * output = new Sketch::SketchOutput();
+	vector<Sketch::Reference> & references = output->references;
+	
+    void * data = mmap(NULL, fileInfo.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    
+    capnp::ReaderOptions readerOptions;
+    
+    readerOptions.traversalLimitInWords = 1000000000000;
+    readerOptions.nestingLimit = 1000000;
+    
+    capnp::FlatArrayMessageReader * message = new capnp::FlatArrayMessageReader(kj::ArrayPtr<const capnp::word>(reinterpret_cast<const capnp::word *>(data), fileInfo.st_size / sizeof(capnp::word)), readerOptions);
+    capnp::MinHash::Reader reader = message->getRoot<capnp::MinHash>();
+    
+    capnp::MinHash::ReferenceList::Reader referenceListReader = reader.getReferenceList();
+    
+    capnp::List<capnp::MinHash::ReferenceList::Reference>::Reader referencesReader = referenceListReader.getReferences();
+    
+    references.resize(referencesReader.size());
+    
+    for ( uint64_t i = 0; i < referencesReader.size(); i++ )
+    {
+        capnp::MinHash::ReferenceList::Reference::Reader referenceReader = referencesReader[i];
+        
+        Sketch::Reference & reference = references[i];
+        
+        reference.name = referenceReader.getName();
+        reference.comment = referenceReader.getComment();
+        
+        if ( referenceReader.getLength64() )
+        {
+        	reference.length = referenceReader.getLength64();
+        }
+        else
+        {
+	        reference.length = referenceReader.getLength();
+	    }
+        
+        reference.hashesSorted.setUse64(input->parameters.kmerSize > 16);
+        
+        if ( input->parameters.kmerSize > 16 )
+        {
+            capnp::List<uint64_t>::Reader hashesReader = referenceReader.getHashes64();
+        
+        	uint64_t hashCount = hashesReader.size();
+        	
+        	if ( hashCount > input->parameters.minHashesPerWindow )
+        	{
+        		hashCount = input->parameters.minHashesPerWindow;
+        	}
+        	
+            reference.hashesSorted.resize(hashCount);
+        
+            for ( uint64_t j = 0; j < hashesReader.size(); j++ )
+            {
+                reference.hashesSorted.set64(j, hashesReader[j]);
+            }
+        }
+        else
+        {
+            capnp::List<uint32_t>::Reader hashesReader = referenceReader.getHashes32();
+        	
+        	uint64_t hashCount = hashesReader.size();
+        	
+        	if ( hashCount > input->parameters.minHashesPerWindow )
+        	{
+        		hashCount = input->parameters.minHashesPerWindow;
+        	}
+        	
+            reference.hashesSorted.resize(hashCount);
+        
+            for ( uint64_t j = 0; j < hashCount; j++ )
+            {
+                reference.hashesSorted.set32(j, hashesReader[j]);
+            }
+        }
+    }
+    
+    capnp::MinHash::LocusList::Reader locusListReader = reader.getLocusList();
+    capnp::List<capnp::MinHash::LocusList::Locus>::Reader lociReader = locusListReader.getLoci();
+    
+    output->positionHashesByReference.resize(references.size());
+    
+    for ( uint64_t i = 0; i < lociReader.size(); i++ )
+    {
+        capnp::MinHash::LocusList::Locus::Reader locusReader = lociReader[i];
+        //cout << locusReader.getHash() << '\t' << locusReader.getSequence() << '\t' << locusReader.getPosition() << endl;
+        output->positionHashesByReference[locusReader.getSequence()].push_back(Sketch::PositionHash(locusReader.getPosition(), locusReader.getHash64()));
+    }
+    
+    /*
+    cout << endl << "References:" << endl << endl;
+    
+    vector< vector<string> > columns(3);
+    
+    columns[0].push_back("ID");
+    columns[1].push_back("Length");
+    columns[2].push_back("Name/Comment");
+    
+    for ( uint64_t i = 0; i < references.size(); i++ )
+    {
+        columns[0].push_back(to_string(i));
+        columns[1].push_back(to_string(references[i].length));
+        columns[2].push_back(references[i].name + " " + references[i].comment);
+    }
+    
+    printColumns(columns);
+    cout << endl;
+    */
+    
+    /*
+    printf("\nCombined hash table:\n");
+    
+    cout << "   kmer:  " << kmerSize << endl;
+    cout << "   comp:  " << compressionFactor << endl << endl;
+    
+    for ( LociByHash_umap::iterator i = lociByHash.begin(); i != lociByHash.end(); i++ )
+    {
+        printf("Hash %u:\n", i->first);
+        
+        for ( int j = 0; j < i->second.size(); j++ )
+        {
+            printf("   Seq: %d\tPos: %d\n", i->second.at(j).sequence, i->second.at(j).position);
+        }
+    }
+    
+    cout << endl;
+    */
+    
+    munmap(data, fileInfo.st_size);
+    close(fd);
+    delete message;
+    
+    return output;
+}
+
 void reverseComplement(const char * src, char * dest, int length)
 {
     for ( int i = 0; i < length; i++ )
@@ -1100,6 +1052,204 @@ void reverseComplement(const char * src, char * dest, int length)
         
         dest[length - i - 1] = base;
     }
+}
+
+void setMinHashesForReference(Sketch::Reference & reference, const HashSet & hashes)
+{
+    HashList & hashList = reference.hashesSorted;
+    hashList.clear();
+    hashes.toHashList(hashList);
+    hashList.sort();
+}
+
+Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
+{
+	FILE * inStream = 0;
+	
+	if ( input->fileName == "-" )
+	{
+		inStream = stdin;
+	}
+	else
+	{
+		inStream = fopen(input->fileName.c_str(), "r");
+	}
+	
+	gzFile fp = gzdopen(fileno(inStream), "r");
+	kseq_t *seq = kseq_init(fp);
+	
+	const Sketch::Parameters & parameters = input->parameters;
+	HashSet minHashes(parameters.kmerSize);
+	HashPriorityQueue minHashesQueue(parameters.kmerSize); // only used for non-windowed
+	
+	Sketch::SketchOutput * output = new Sketch::SketchOutput();
+	
+	output->references.resize(1);
+	Sketch::Reference & reference = output->references[0];
+	
+	if ( input->fileName != "-" )
+	{
+		reference.name = input->fileName;
+	}
+	
+    bool use64 = parameters.kmerSize > 16;
+    
+	reference.length = 0;
+	reference.hashesSorted.setUse64(use64);
+	
+    bloom_filter * bloomFilter = 0;
+    
+    uint64_t kmersTotal;
+    uint64_t kmersUsed;
+    
+	if ( parameters.bloomFilter )
+	{
+		reference.length = parameters.genomeSize;
+		
+		bloom_parameters bloomParams;
+		
+		bloomParams.projected_element_count = (uint64_t)parameters.genomeSize * 10l; // TODO: error rate based on platform and coverage
+		bloomParams.false_positive_probability = parameters.bloomError;
+		bloomParams.maximum_size = (uint64_t)parameters.memoryMax * 8l;
+		bloomParams.compute_optimal_parameters();
+		
+		kmersTotal = 0;
+		kmersUsed = 0;
+		
+		//if ( i == 0 && verbosity > 0 )
+		{
+			//cerr << "   Bloom table size (bytes): " << bloomParams.optimal_parameters.table_size / 8 << endl;
+		}
+		
+		bloomFilter = new bloom_filter(bloomParams);
+	}
+	
+    int l;
+    int count = 0;
+	bool skipped = false;
+	
+	
+	while ((l = kseq_read(seq)) >= 0)
+	{
+		if ( l < parameters.kmerSize )
+		{
+			skipped = true;
+			continue;
+		}
+		
+		if ( parameters.windowed )
+		{
+			// TODO positionHashesByReference.resize(count + 1);
+		}
+		
+		//if ( verbosity > 0 && parameters.windowed ) cout << '>' << seq->name.s << " (" << l << "nt)" << endl << endl;
+		//if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
+		//printf("seq: %s\n", seq->seq.s);
+		//if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
+		
+		if ( ! parameters.bloomFilter )
+		{
+			reference.length += l;
+			
+			if ( input->fileName == "-" && reference.name == "" )
+			{
+				reference.name = seq->name.s;
+			}
+		}
+		
+		if ( parameters.windowed )
+		{
+			// TODO getMinHashPositions(positionHashesByReference[count], seq->seq.s, l, parameters, verbosity);
+		}
+		else
+		{
+			addMinHashes(minHashes, minHashesQueue, bloomFilter, seq->seq.s, l, parameters, kmersTotal, kmersUsed);
+		}
+	}
+	
+	if (  l != -1 )
+	{
+		cerr << "\nERROR: reading " << input->fileName << "." << endl;
+		exit(1);
+	}
+	
+	if ( reference.length == 0 )
+	{
+		if ( skipped )
+		{
+			cerr << "\nWARNING: All fasta records in " << input->fileName << "were shorter than the k-mer size (" << parameters.kmerSize << ")." << endl;
+		}
+		else
+		{
+			cerr << "\nERROR: Did not find fasta records in \"" << input->fileName << "\"." << endl;
+		}
+		
+		exit(1);
+	}
+	
+	if ( parameters.concatenated )
+	{
+		if ( ! parameters.windowed )
+		{
+			setMinHashesForReference(reference, minHashes);
+		}
+		
+		if ( bloomFilter != 0 )
+		{
+			//if ( verbosity > 0 )
+			{
+				//cerr << "   " << kmersTotal - kmersUsed << " of " << kmersTotal << " kmers filtered from " << (files[i] == "-" ? "stdin" : files[i]) << endl;
+			}
+			
+			delete bloomFilter;
+		}
+		
+		count++;
+	}
+	
+	kseq_destroy(seq);
+	gzclose(fp);
+	fclose(inStream);
+	
+	return output;
+}
+
+Sketch::SketchOutput * sketchSequence(Sketch::SketchInput * input)
+{
+	const Sketch::Parameters & parameters = input->parameters;
+	
+	HashSet minHashes(parameters.kmerSize);
+	HashPriorityQueue minHashesQueue(parameters.kmerSize); // only used for non-windowed
+	
+	Sketch::SketchOutput * output = new Sketch::SketchOutput();
+	
+	output->references.resize(1);
+	Sketch::Reference & reference = output->references[0];
+	
+    bool use64 = parameters.kmerSize > 16;
+    
+	reference.length = input->length;
+	reference.name = input->name;
+	reference.comment = input->comment;
+	reference.hashesSorted.setUse64(use64);
+	
+	// unused, but needed to pass to addMinHashes
+	//
+	uint64_t kmersTotal;
+	uint64_t kmersUsed;
+	
+	if ( parameters.windowed )
+	{
+		// TODO getMinHashPositions(positionHashesByReference[count], input->seq, l, parameters, verbosity);
+	}
+	else
+	{
+		addMinHashes(minHashes, minHashesQueue, 0, input->seq, input->length, parameters, kmersTotal, kmersUsed);
+	}
+	
+	setMinHashesForReference(reference, minHashes);
+	
+	return output;
 }
 
 // The following functions are adapted from http://www.zlib.net/zpipe.c
