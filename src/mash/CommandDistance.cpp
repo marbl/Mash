@@ -198,37 +198,42 @@ int CommandDistance::run() const
     
     sketchQuery.initFromFiles(queryFiles, parameters, 0, true);
     
-    for ( uint64_t i = 0; i < sketchQuery.getReferenceCount(); i++ )
+    uint64_t pairCount = sketchRef.getReferenceCount() * sketchQuery.getReferenceCount();
+    uint64_t pairsPerThread = pairCount / parameters.parallelism;
+    
+    if ( pairsPerThread == 0 )
     {
-        for ( uint64_t j = 0; j < sketchRef.getReferenceCount(); j++ )
+    	pairsPerThread = 1;
+    }
+    
+    static uint64_t maxPairsPerThread = 0x1000;
+    
+    if ( pairsPerThread > maxPairsPerThread )
+    {
+        pairsPerThread = maxPairsPerThread;
+    }
+    
+    uint64_t iFloor = pairsPerThread / sketchRef.getReferenceCount();
+    uint64_t iMod = pairsPerThread % sketchRef.getReferenceCount();
+    
+    for ( uint64_t i = 0, j = 0; i < sketchQuery.getReferenceCount(); i += iFloor, j += iMod )
+    {
+        if ( j >= sketchRef.getReferenceCount() )
         {
-            threadPool.runWhenThreadAvailable(new CompareInput(sketchRef, sketchQuery, j, i, parameters, distanceMax, pValueMax));
-        /*
-        if ( ! isSketch )
-        {
-            for ( int j = 0; j < sketchQuery->getReferenceCount(); j++ )
+            if ( i == sketchQuery.getReferenceCount() - 1 )
             {
-                int length = sketchQuery->getReference(j).length;
-                
-                if ( length > lengthThreshold )
-                {
-                    if ( warningCount == 0 || length > lengthMax )
-                    {
-                        lengthMax = length;
-                        lengthMaxName = sketchQuery->getReference(j).name;
-                        randomChance = sketchQuery->getRandomKmerChance(j);
-                        kMin = sketchQuery->getMinKmerSize(j);
-                    }
-                    
-                    warningCount++;
-                }
+                break;
             }
+            
+            i++;
+            j -= sketchRef.getReferenceCount();
         }
-        */
-            while ( threadPool.outputAvailable() )
-            {
-                writeOutput(threadPool.popOutputWhenAvailable(), table);
-            }
+        
+        threadPool.runWhenThreadAvailable(new CompareInput(sketchRef, sketchQuery, j, i, pairsPerThread, parameters, distanceMax, pValueMax));
+        
+        while ( threadPool.outputAvailable() )
+        {
+            writeOutput(threadPool.popOutputWhenAvailable(), table);
         }
     }
     
@@ -247,30 +252,44 @@ int CommandDistance::run() const
 
 void CommandDistance::writeOutput(CompareOutput * output, bool table) const
 {
-    uint64_t refCount = output->sketchRef.getReferenceCount();
+    uint64_t i = output->indexQuery;
+    uint64_t j = output->indexRef;
     
-    if ( table && output->indexRef == 0 )
+    for ( uint64_t k = 0; k < output->pairCount && i < output->sketchQuery.getReferenceCount(); k++ )
     {
-        cout << output->sketchQuery.getReference(output->indexQuery).name;
-    }
-    
-    if ( table )
-    {
-        cout << '\t';
-    
-        if ( output->pass )
+        const CompareOutput::PairOutput * pair = &output->pairs[k];
+        
+        if ( table && j == 0 )
         {
-            cout << output->distance;
+            cout << output->sketchQuery.getReference(i).name;
         }
-    }
-    else if ( output->pass )
-    {
-        cout << output->sketchRef.getReference(output->indexRef).name << '\t' << output->sketchQuery.getReference(output->indexQuery).name << '\t' << output->distance << '\t' << output->pValue << '\t' << output->numer << '/' << output->denom << endl;
-    }
+        
+        if ( table )
+        {
+            cout << '\t';
     
-    if ( table && output->indexQuery == output->sketchQuery.getReferenceCount() - 1 )
-    {
-        cout << endl;
+            if ( pair->pass )
+            {
+                cout << pair->distance;
+            }
+        }
+        else if ( pair->pass )
+        {
+            cout << output->sketchRef.getReference(j).name << '\t' << output->sketchQuery.getReference(i).name << '\t' << pair->distance << '\t' << pair->pValue << '\t' << pair->numer << '/' << pair->denom << endl;
+        }
+    
+        if ( table && i == output->sketchQuery.getReferenceCount() - 1 )
+        {
+            cout << endl;
+        }
+        
+        j++;
+        
+        if ( j == output->sketchRef.getReferenceCount() )
+        {
+            j = 0;
+            i++;
+        }
     }
     
     delete output;
@@ -281,18 +300,32 @@ CommandDistance::CompareOutput * compare(CommandDistance::CompareInput * input)
     const Sketch & sketchRef = input->sketchRef;
     const Sketch & sketchQuery = input->sketchQuery;
     
-    CommandDistance::CompareOutput * output = new CommandDistance::CompareOutput(input->sketchRef, input->sketchQuery, input->indexRef, input->indexQuery);
+    CommandDistance::CompareOutput * output = new CommandDistance::CompareOutput(input->sketchRef, input->sketchQuery, input->indexRef, input->indexQuery, input->pairCount);
     
     uint64_t sketchSize = sketchQuery.getMinHashesPerWindow() < sketchRef.getMinHashesPerWindow() ?
         sketchQuery.getMinHashesPerWindow() :
         sketchRef.getMinHashesPerWindow();
     
-    compareSketches(output, sketchRef.getReference(input->indexRef), sketchQuery.getReference(input->indexQuery), sketchSize, sketchRef.getKmerSize(), sketchRef.getKmerSpace(), input->maxDistance, input->maxPValue);
+    uint64_t i = input->indexQuery;
+    uint64_t j = input->indexRef;
+    
+    for ( uint64_t k = 0; k < input->pairCount && i < sketchQuery.getReferenceCount(); k++ )
+    {
+        compareSketches(&output->pairs[k], sketchRef.getReference(j), sketchQuery.getReference(i), sketchSize, sketchRef.getKmerSize(), sketchRef.getKmerSpace(), input->maxDistance, input->maxPValue);
+        
+        j++;
+        
+        if ( j == sketchRef.getReferenceCount() )
+        {
+            j = 0;
+            i++;
+        }
+    }
     
     return output;
 }
 
-void compareSketches(CommandDistance::CompareOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue)
+void compareSketches(CommandDistance::CompareOutput::PairOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue)
 {
     uint64_t i = 0;
     uint64_t j = 0;

@@ -16,12 +16,13 @@ public:
     
     struct ContainInput
     {
-        ContainInput(const Sketch & sketchRefNew, const Sketch & sketchQueryNew, uint64_t indexRefNew, uint64_t indexQueryNew, const Sketch::Parameters & parametersNew)
+        ContainInput(const Sketch & sketchRefNew, const Sketch & sketchQueryNew, uint64_t indexRefNew, uint64_t indexQueryNew, uint64_t pairCountNew, const Sketch::Parameters & parametersNew)
             :
             sketchRef(sketchRefNew),
             sketchQuery(sketchQueryNew),
             indexRef(indexRefNew),
             indexQuery(indexQueryNew),
+            pairCount(pairCountNew),
             parameters(parametersNew)
             {}
         
@@ -30,6 +31,7 @@ public:
 		
         uint64_t indexRef;
         uint64_t indexQuery;
+        uint64_t pairCount;
         
         std::string nameRef;
         const Sketch::Parameters & parameters;
@@ -37,22 +39,36 @@ public:
     
     struct ContainOutput
     {
-        ContainOutput(const Sketch & sketchRefNew, const Sketch & sketchQueryNew, uint64_t indexRefNew, uint64_t indexQueryNew)
+        ContainOutput(const Sketch & sketchRefNew, const Sketch & sketchQueryNew, uint64_t indexRefNew, uint64_t indexQueryNew, uint64_t pairCountNew)
             :
             sketchRef(sketchRefNew),
             sketchQuery(sketchQueryNew),
             indexRef(indexRefNew),
-            indexQuery(indexQueryNew)
-        {}
+            indexQuery(indexQueryNew),
+            pairCount(pairCountNew)
+        {
+            pairs = new PairOutput[pairCount];
+        }
         
-		float score;
-		float error;
+        ~ContainOutput()
+        {
+            delete [] pairs;
+        }
+        
+        struct PairOutput
+        {
+			double score;
+			double error;
+		};
     
         const Sketch & sketchRef;
         const Sketch & sketchQuery;
 		
         uint64_t indexRef;
         uint64_t indexQuery;
+        uint64_t pairCount;
+        
+        PairOutput * pairs;
     };
     
     CommandContain();
@@ -65,6 +81,6 @@ private:
 };
 
 CommandContain::ContainOutput * contain(CommandContain::ContainInput * data);
-float containSketches(const HashList & hashesSortedRef, const HashList & hashesSortedQuery, float & errorToSet);
+double containSketches(const HashList & hashesSortedRef, const HashList & hashesSortedQuery, double & errorToSet);
 
 #endif

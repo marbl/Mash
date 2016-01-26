@@ -143,16 +143,42 @@ int CommandContain::run() const
     
     sketchQuery.initFromFiles(queryFiles, parameters, 0, true);
     
-    for ( uint64_t i = 0; i < sketchQuery.getReferenceCount(); i++ )
+    uint64_t pairCount = sketchRef.getReferenceCount() * sketchQuery.getReferenceCount();
+    uint64_t pairsPerThread = pairCount / parameters.parallelism;
+    
+    if ( pairsPerThread == 0 )
     {
-        for ( uint64_t j = 0; j < sketchRef.getReferenceCount(); j++ )
+    	pairsPerThread = 1;
+    }
+    
+    static uint64_t maxPairsPerThread = 0x1000;
+    
+    if ( pairsPerThread > maxPairsPerThread )
+    {
+        pairsPerThread = maxPairsPerThread;
+    }
+    
+    uint64_t iFloor = pairsPerThread / sketchRef.getReferenceCount();
+    uint64_t iMod = pairsPerThread % sketchRef.getReferenceCount();
+    
+    for ( uint64_t i = 0, j = 0; i < sketchQuery.getReferenceCount(); i += iFloor, j += iMod )
+    {
+        if ( j >= sketchRef.getReferenceCount() )
         {
-	        threadPool.runWhenThreadAvailable(new ContainInput(sketchRef, sketchQuery, j, i, parameters));
+            if ( i == sketchQuery.getReferenceCount() - 1 )
+            {
+                break;
+            }
+            
+            i++;
+            j -= sketchRef.getReferenceCount();
+        }
         
-			while ( threadPool.outputAvailable() )
-			{
-				writeOutput(threadPool.popOutputWhenAvailable(), parameters.error);
-			}
+		threadPool.runWhenThreadAvailable(new ContainInput(sketchRef, sketchQuery, j, i, pairsPerThread, parameters));
+	
+		while ( threadPool.outputAvailable() )
+		{
+			writeOutput(threadPool.popOutputWhenAvailable(), parameters.error);
 		}
     }
     
@@ -166,9 +192,25 @@ int CommandContain::run() const
 
 void CommandContain::writeOutput(ContainOutput * output, float error) const
 {
-	if ( output->error <= error )
-	{
-		cout << output->score << '\t' << output->error << '\t' << output->sketchRef.getReference(output->indexRef).name << '\t' << output->sketchQuery.getReference(output->indexQuery).name << endl;
+    uint64_t i = output->indexQuery;
+    uint64_t j = output->indexRef;
+    
+    for ( uint64_t k = 0; k < output->pairCount && i < output->sketchQuery.getReferenceCount(); k++ )
+    {
+        const ContainOutput::PairOutput * pair = &output->pairs[k];
+        
+		if ( pair->error <= error )
+		{
+			cout << pair->score << '\t' << pair->error << '\t' << output->sketchRef.getReference(j).name << '\t' << output->sketchQuery.getReference(i).name << endl;
+		}
+        
+        j++;
+        
+        if ( j == output->sketchRef.getReferenceCount() )
+        {
+            j = 0;
+            i++;
+        }
 	}
     
     delete output;
@@ -179,14 +221,20 @@ CommandContain::ContainOutput * contain(CommandContain::ContainInput * input)
     const Sketch & sketchRef = input->sketchRef;
     const Sketch & sketchQuery = input->sketchQuery;
     
-    CommandContain::ContainOutput * output = new CommandContain::ContainOutput(input->sketchRef, input->sketchQuery, input->indexRef, input->indexQuery);
+    CommandContain::ContainOutput * output = new CommandContain::ContainOutput(input->sketchRef, input->sketchQuery, input->indexRef, input->indexQuery, input->pairCount);
     
-	output->score = containSketches(sketchRef.getReference(input->indexRef).hashesSorted, sketchQuery.getReference(input->indexQuery).hashesSorted, output->error);
+    uint64_t i = input->indexQuery;
+    uint64_t j = input->indexRef;
+    
+    for ( uint64_t k = 0; k < input->pairCount && i < sketchQuery.getReferenceCount(); k++ )
+    {
+		output->pairs[k].score = containSketches(sketchRef.getReference(input->indexRef).hashesSorted, sketchQuery.getReference(input->indexQuery).hashesSorted, output->pairs[k].error);
+    }
     
     return output;
 }
 
-float containSketches(const HashList & hashesSortedRef, const HashList & hashesSortedQuery, float & errorToSet)
+double containSketches(const HashList & hashesSortedRef, const HashList & hashesSortedQuery, double & errorToSet)
 {
     int common = 0;
     int denom = hashesSortedRef.size() < hashesSortedQuery.size() ?
@@ -217,5 +265,5 @@ float containSketches(const HashList & hashesSortedRef, const HashList & hashesS
     
     errorToSet = 1. / sqrt(j);
     
-    return float(common) / j;
+    return double(common) / j;
 }
