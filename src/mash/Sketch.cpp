@@ -58,7 +58,7 @@ uint64_t Sketch::getReferenceIndex(string id) const
     }
 }
 
-int Sketch::initFromFiles(const vector<string> & files, const Parameters & parametersNew, int verbosity, bool enforceParameters)
+int Sketch::initFromFiles(const vector<string> & files, const Parameters & parametersNew, int verbosity, bool enforceParameters, bool contain)
 {
 	// TODO: handle capnp
 	
@@ -94,7 +94,7 @@ int Sketch::initFromFiles(const vector<string> & files, const Parameters & param
 				continue;
 			}
 			
-            if ( sketchTest.getMinHashesPerWindow() < parameters.minHashesPerWindow )
+            if ( ! contain && sketchTest.getMinHashesPerWindow() < parameters.minHashesPerWindow )
             {
                 cerr << "\nWARNING: The sketch file " << files[i] << " has a target sketch size (" << sketchTest.getMinHashesPerWindow() << ") that is smaller than the current sketch size (" << parameters.minHashesPerWindow << "). This sketch will be skipped." << endl << endl;
                 continue;
