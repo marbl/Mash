@@ -4,6 +4,7 @@
 #include "HashList.h"
 #include "HashPriorityQueue.h"
 #include "HashSet.h"
+#include <math.h>
 
 class MinHashHeap
 {
