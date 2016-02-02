@@ -135,11 +135,8 @@ int CommandDistance::run() const
                 return 1;
             }
         }
-        else
-        {
-            parameters.minHashesPerWindow = sketchRef.getMinHashesPerWindow();
-        }
         
+        parameters.minHashesPerWindow = sketchRef.getMinHashesPerWindow();
         parameters.kmerSize = sketchRef.getKmerSize();
         parameters.noncanonical = sketchRef.getNoncanonical();
     }

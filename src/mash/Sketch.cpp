@@ -60,8 +60,6 @@ uint64_t Sketch::getReferenceIndex(string id) const
 
 int Sketch::initFromFiles(const vector<string> & files, const Parameters & parametersNew, int verbosity, bool enforceParameters, bool contain)
 {
-	// TODO: handle capnp
-	
     parameters = parametersNew;
     
 	ThreadPool<Sketch::SketchInput, Sketch::SketchOutput> threadPool(0, parameters.parallelism);
@@ -107,7 +105,8 @@ int Sketch::initFromFiles(const vector<string> & files, const Parameters & param
             
             // init fully
             //
-			threadPool.runWhenThreadAvailable(new SketchInput(files[i], 0, 0, "", "", parameters), loadCapnp);
+			//threadPool.runWhenThreadAvailable(new SketchInput(files[i], 0, 0, "", "", parameters), loadCapnp);
+			useThreadOutput(loadCapnp(new SketchInput(files[i], 0, 0, "", "", parameters)));
         }
         else      
 		{
@@ -952,7 +951,7 @@ Sketch::SketchOutput * loadCapnp(Sketch::SketchInput * input)
         	
             reference.hashesSorted.resize(hashCount);
         
-            for ( uint64_t j = 0; j < hashesReader.size(); j++ )
+            for ( uint64_t j = 0; j < hashCount; j++ )
             {
                 reference.hashesSorted.set64(j, hashesReader[j]);
             }
