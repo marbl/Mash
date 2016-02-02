@@ -105,8 +105,7 @@ int Sketch::initFromFiles(const vector<string> & files, const Parameters & param
             
             // init fully
             //
-			//threadPool.runWhenThreadAvailable(new SketchInput(files[i], 0, 0, "", "", parameters), loadCapnp);
-			useThreadOutput(loadCapnp(new SketchInput(files[i], 0, 0, "", "", parameters)));
+			threadPool.runWhenThreadAvailable(new SketchInput(files[i], 0, 0, "", "", parameters), loadCapnp);
         }
         else      
 		{
