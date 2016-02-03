@@ -1095,6 +1095,11 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 		}
 	}
 	
+	if ( parameters.reads )
+	{
+		reference.length = minHashHeap.estimateSetSize();
+	}
+	
 	if (  l != -1 )
 	{
 		cerr << "\nERROR: reading " << input->fileName << "." << endl;
