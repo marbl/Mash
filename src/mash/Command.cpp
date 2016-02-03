@@ -161,10 +161,8 @@ Command::Command()
     addAvailableOption("silent", Option(Option::Boolean, "s", "Output", "Silent", ""));
     addAvailableOption("individual", Option(Option::Boolean, "i", "Sketch", "Sketch individual sequences, rather than whole files.", ""));
     addAvailableOption("warning", Option(Option::Number, "w", "Sketch", "Probability threshold for warning about low k-mer size.", "0.01", 0, 1));
-    addAvailableOption("unique", Option(Option::Boolean, "u", "Sketch", "Remove (most) unique kmers using a Bloom Filter. This is useful for reducing noise from sequencing errors in read sets. See Bloom filter options below. Incompatible with -i.", ""));
-    addAvailableOption("genome", Option(Option::Size, "g", "Bloom", "Expected genome size (raw bases or with K/M/G/T). Helps pick the Bloom Filter size. Should be within an order of magnitude of the true size. Implies -u.", "5M"));
-    addAvailableOption("memory", Option(Option::Size, "m", "Bloom", "Maximum Bloom Filter memory usage (raw bytes or with K/M/G/T). More memory will allow more thorough detection of unique kmers, so this should be as high as is practical for the computing environment (though it may not actually be used). Implies -u.", "1G"));
-    addAvailableOption("bloomError", Option(Option::Number, "e", "Bloom", "Target false-negative rate for Bloom filtering unique kmers with. Implies -u.", "0.1", 0, 1));
+    addAvailableOption("reads", Option(Option::Boolean, "r", "Sketch", "Input is a read set. See Reads options below. Incompatible with -i.", ""));
+    addAvailableOption("minCov", Option(Option::Integer, "m", "Reads", "Minimum copies of each kmer required to pass noise filter for reads.", "2"));
     addAvailableOption("noncanonical", Option(Option::Boolean, "n", "Sketch", "Non-canonical. By default, canonical DNA kmers (alphabetical minima of forward-reverse pairs) are used, and kmers with non-acgtACGT characters are ignored. This option uses kmers as they appear and allows all characters.", ""));
     addAvailableOption("threads", Option(Option::Integer, "p", "", "Parallelism. This many threads will be spawned, each one handling one query sequence at a time.", "1"));
     addAvailableOption("pacbio", Option(Option::Boolean, "pacbio", "", "Use default settings for PacBio sequences.", ""));
@@ -174,7 +172,7 @@ Command::Command()
     categoryDisplayNames["Input"] = "Input";
     categoryDisplayNames["Output"] = "Output";
     categoryDisplayNames["Sketch"] = "Sketching";
-    categoryDisplayNames["Bloom"] = "Sketching (Bloom filter)";
+    categoryDisplayNames["Reads"] = "Sketching (reads)";
 }
 
 void Command::print() const

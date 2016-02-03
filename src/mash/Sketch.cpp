@@ -416,7 +416,7 @@ void Sketch::createIndex()
     kmerSpace = pow(4, parameters.kmerSize); // TODO: alphabet?
 }
 
-void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, bloom_filter * bloomFilter, char * seq, uint64_t length, const Sketch::Parameters & parameters, uint64_t & kmersTotal, uint64_t & kmersUsed)
+void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const Sketch::Parameters & parameters)
 {
     int kmerSize = parameters.kmerSize;
     uint64_t mins = parameters.minHashesPerWindow;
@@ -513,49 +513,7 @@ void addMinHashes(HashSet & minHashes, HashPriorityQueue & minHashesQueue, bloom
         
         if ( debug ) cout << endl;
         
-        if
-        (
-            (
-                minHashesQueue.size() < mins ||
-                hashLessThan(hash, minHashesQueue.top(), use64)
-            )
-            && ! minHashes.contains(hash)
-        )
-        {
-            if ( bloomFilter )
-            {
-                kmersTotal++;
-                std::string kmerString(kmer, kmerSize);
-            
-                //cout << kmerString;
-            
-                if ( ! bloomFilter->contains(kmerString) )
-                {
-                    filter = true;
-                    //cout << " (filtered)";
-                }
-            
-                //cout << endl;
-            
-                bloomFilter->insert(kmerString);
-            
-                if ( filter )
-                {
-                    continue;
-                }
-            
-                kmersUsed++;
-            }
-        
-            minHashes.insert(hash);
-            minHashesQueue.push(hash);
-            
-            if ( minHashesQueue.size() > mins )
-            {
-                minHashes.erase(minHashesQueue.top());
-                minHashesQueue.pop();
-            }
-        }
+		minHashHeap.tryInsert(hash);
     }
     
     if ( ! noncanonical )
@@ -1052,7 +1010,7 @@ void reverseComplement(const char * src, char * dest, int length)
     }
 }
 
-void setMinHashesForReference(Sketch::Reference & reference, const HashSet & hashes)
+void setMinHashesForReference(Sketch::Reference & reference, const MinHashHeap & hashes)
 {
     HashList & hashList = reference.hashesSorted;
     hashList.clear();
@@ -1077,8 +1035,6 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 	kseq_t *seq = kseq_init(fp);
 	
 	const Sketch::Parameters & parameters = input->parameters;
-	HashSet minHashes(parameters.kmerSize);
-	HashPriorityQueue minHashesQueue(parameters.kmerSize); // only used for non-windowed
 	
 	Sketch::SketchOutput * output = new Sketch::SketchOutput();
 	
@@ -1092,40 +1048,14 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 	
     bool use64 = parameters.kmerSize > 16;
     
+    MinHashHeap minHashHeap(parameters.kmerSize > 16, parameters.minHashesPerWindow, parameters.reads ? parameters.minCov : 1);
+
 	reference.length = 0;
 	reference.hashesSorted.setUse64(use64);
-	
-    bloom_filter * bloomFilter = 0;
-    
-    uint64_t kmersTotal;
-    uint64_t kmersUsed;
-    
-	if ( parameters.bloomFilter )
-	{
-		reference.length = parameters.genomeSize;
-		
-		bloom_parameters bloomParams;
-		
-		bloomParams.projected_element_count = (uint64_t)parameters.genomeSize * 10l; // TODO: error rate based on platform and coverage
-		bloomParams.false_positive_probability = parameters.bloomError;
-		bloomParams.maximum_size = (uint64_t)parameters.memoryMax * 8l;
-		bloomParams.compute_optimal_parameters();
-		
-		kmersTotal = 0;
-		kmersUsed = 0;
-		
-		//if ( i == 0 && verbosity > 0 )
-		{
-			//cerr << "   Bloom table size (bytes): " << bloomParams.optimal_parameters.table_size / 8 << endl;
-		}
-		
-		bloomFilter = new bloom_filter(bloomParams);
-	}
 	
     int l;
     int count = 0;
 	bool skipped = false;
-	
 	
 	while ((l = kseq_read(seq)) >= 0)
 	{
@@ -1145,7 +1075,7 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 		//printf("seq: %s\n", seq->seq.s);
 		//if (seq->qual.l) printf("qual: %s\n", seq->qual.s);
 		
-		if ( ! parameters.bloomFilter )
+		if ( ! parameters.reads )
 		{
 			reference.length += l;
 			
@@ -1161,7 +1091,7 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 		}
 		else
 		{
-			addMinHashes(minHashes, minHashesQueue, bloomFilter, seq->seq.s, l, parameters, kmersTotal, kmersUsed);
+	        addMinHashes(minHashHeap, seq->seq.s, l, parameters);
 		}
 	}
 	
@@ -1189,21 +1119,17 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 	{
 		if ( ! parameters.windowed )
 		{
-			setMinHashesForReference(reference, minHashes);
-		}
-		
-		if ( bloomFilter != 0 )
-		{
-			//if ( verbosity > 0 )
-			{
-				//cerr << "   " << kmersTotal - kmersUsed << " of " << kmersTotal << " kmers filtered from " << (files[i] == "-" ? "stdin" : files[i]) << endl;
-			}
-			
-			delete bloomFilter;
+			setMinHashesForReference(reference, minHashHeap);
 		}
 		
 		count++;
 	}
+	
+    if ( parameters.reads )
+    {
+       	cerr << "Estimated genome size: " << minHashHeap.estimateSetSize() << endl;
+    	cerr << "Estimated coverage:    " << minHashHeap.estimateMultiplicity() << endl;
+    }
 	
 	kseq_destroy(seq);
 	gzclose(fp);
@@ -1216,9 +1142,6 @@ Sketch::SketchOutput * sketchSequence(Sketch::SketchInput * input)
 {
 	const Sketch::Parameters & parameters = input->parameters;
 	
-	HashSet minHashes(parameters.kmerSize);
-	HashPriorityQueue minHashesQueue(parameters.kmerSize); // only used for non-windowed
-	
 	Sketch::SketchOutput * output = new Sketch::SketchOutput();
 	
 	output->references.resize(1);
@@ -1226,15 +1149,12 @@ Sketch::SketchOutput * sketchSequence(Sketch::SketchInput * input)
 	
     bool use64 = parameters.kmerSize > 16;
     
+    MinHashHeap minHashHeap(parameters.kmerSize > 16, parameters.minHashesPerWindow, parameters.reads ? parameters.minCov : 1);
+
 	reference.length = input->length;
 	reference.name = input->name;
 	reference.comment = input->comment;
 	reference.hashesSorted.setUse64(use64);
-	
-	// unused, but needed to pass to addMinHashes
-	//
-	uint64_t kmersTotal;
-	uint64_t kmersUsed;
 	
 	if ( parameters.windowed )
 	{
@@ -1242,10 +1162,10 @@ Sketch::SketchOutput * sketchSequence(Sketch::SketchInput * input)
 	}
 	else
 	{
-		addMinHashes(minHashes, minHashesQueue, 0, input->seq, input->length, parameters, kmersTotal, kmersUsed);
+        addMinHashes(minHashHeap, input->seq, input->length, parameters);
 	}
 	
-	setMinHashesForReference(reference, minHashes);
+	setMinHashesForReference(reference, minHashHeap);
 	
 	return output;
 }

@@ -29,10 +29,8 @@ CommandContain::CommandContain()
     useOption("sketchSize");
     useOption("individual");
     useOption("noncanonical");
-    useOption("unique");
-    useOption("memory");
-    useOption("genome");
-    useOption("bloomError");
+    useOption("reads");
+    useOption("minCov");
 }
 
 int CommandContain::run() const
@@ -53,18 +51,15 @@ int CommandContain::run() const
     parameters.concatenated = ! options.at("individual").active;
     parameters.noncanonical = options.at("noncanonical").active;
     parameters.error = options.at("errorThreshold").getArgumentAsNumber();
-    parameters.bloomFilter = options.at("unique").active;
-    parameters.genomeSize = options.at("genome").getArgumentAsNumber();
-    parameters.memoryMax = options.at("memory").getArgumentAsNumber();
-    parameters.bloomError = options.at("bloomError").getArgumentAsNumber();
-    parameters.parallelism = threads;
+    parameters.reads = options.at("reads").active;
+    parameters.minCov = options.at("minCov").getArgumentAsNumber();
     
     if ( options.at("genome").active || options.at("memory").active )
     {
-        parameters.bloomFilter = true;
+        parameters.reads = true;
     }
     
-    if ( parameters.bloomFilter )
+    if ( parameters.reads )
     {
         parameters.concatenated = true;
     }
@@ -103,19 +98,7 @@ int CommandContain::run() const
     
     if ( isSketch )
     {
-        if ( options.at("sketchSize").active )
-        {
-            if ( parameters.bloomFilter && parameters.minHashesPerWindow != sketchRef.getMinHashesPerWindow() )
-            {
-                cerr << "ERROR: The sketch size must match the reference when using a bloom filter (leave this option out to inherit from the reference sketch)." << endl;
-                return 1;
-            }
-        }
-        else
-        {
-            parameters.minHashesPerWindow = sketchRef.getMinHashesPerWindow();
-        }
-        
+        parameters.minHashesPerWindow = sketchRef.getMinHashesPerWindow();
         parameters.kmerSize = sketchRef.getKmerSize();
         parameters.noncanonical = sketchRef.getNoncanonical();
     }
