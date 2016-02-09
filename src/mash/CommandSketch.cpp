@@ -31,6 +31,7 @@ CommandSketch::CommandSketch()
     useOption("warning");
     useOption("reads");
     useOption("minCov");
+    useOption("targetCov");
     //useOption("illumina");
     //useOption("pacbio");
     //useOption("nanopore");
@@ -57,6 +58,7 @@ int CommandSketch::run() const
     parameters.noncanonical = options.at("noncanonical").active;
     parameters.reads = options.at("reads").active;
     parameters.minCov = options.at("minCov").getArgumentAsNumber();
+    parameters.targetCov = options.at("targetCov").getArgumentAsNumber();
     parameters.windowed = false;//options.at("windowed").active;
     parameters.windowSize = 0;//options.at("window").getArgumentAsNumber();
     parameters.warning = options.at("warning").getArgumentAsNumber();

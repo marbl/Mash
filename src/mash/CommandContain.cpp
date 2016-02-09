@@ -31,6 +31,7 @@ CommandContain::CommandContain()
     useOption("noncanonical");
     useOption("reads");
     useOption("minCov");
+    useOption("targetCov");
 }
 
 int CommandContain::run() const
@@ -53,6 +54,7 @@ int CommandContain::run() const
     parameters.error = options.at("errorThreshold").getArgumentAsNumber();
     parameters.reads = options.at("reads").active;
     parameters.minCov = options.at("minCov").getArgumentAsNumber();
+    parameters.targetCov = options.at("targetCov").getArgumentAsNumber();
     
     if ( options.at("genome").active || options.at("memory").active )
     {

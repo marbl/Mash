@@ -1092,6 +1092,12 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 		else
 		{
 	        addMinHashes(minHashHeap, seq->seq.s, l, parameters);
+	        
+	        if ( parameters.reads && parameters.targetCov > 0 && minHashHeap.estimateMultiplicity() >= parameters.targetCov )
+	        {
+	        	l = -1; // success code
+	        	break;
+	        }
 		}
 	}
 	

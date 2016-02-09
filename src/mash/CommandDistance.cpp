@@ -42,6 +42,7 @@ CommandDistance::CommandDistance()
     useOption("noncanonical");
     useOption("reads");
     useOption("minCov");
+    useOption("targetCov");
 }
 
 int CommandDistance::run() const
@@ -67,6 +68,7 @@ int CommandDistance::run() const
     parameters.noncanonical = options.at("noncanonical").active;
     parameters.reads = options.at("reads").active;
     parameters.minCov = options.at("minCov").getArgumentAsNumber();
+    parameters.targetCov = options.at("targetCov").getArgumentAsNumber();
     parameters.warning = options.at("warning").getArgumentAsNumber();
     parameters.parallelism = threads;
     

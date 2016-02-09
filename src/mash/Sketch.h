@@ -42,7 +42,8 @@ public:
             noncanonical(false),
             protein(false),
             reads(false),
-            minCov(0)
+            minCov(0),
+            targetCov(0)
             {}
         
         Parameters(const Parameters & other)
@@ -58,7 +59,8 @@ public:
             noncanonical(other.noncanonical),
             protein(other.protein),
             reads(other.reads),
-            minCov(other.minCov)
+            minCov(other.minCov),
+            targetCov(other.targetCov)
             {}
         
         int parallelism;
@@ -73,6 +75,7 @@ public:
         bool protein;
         bool reads;
         uint32_t minCov;
+        uint64_t targetCov;
     };
     
     struct PositionHash
