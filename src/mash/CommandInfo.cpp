@@ -19,8 +19,9 @@ CommandInfo::CommandInfo()
     argumentString = "<sketch>";
     
     useOption("help");
-    addOption("header", Option(Option::Boolean, "H", "", "Only show header info. Do not list each sketch. Incompatible with -t", ""));
-    addOption("tabular", Option(Option::Boolean, "t", "", "Tabular output (rather than padded), with no header. Incompatible with -H.", ""));
+    addOption("header", Option(Option::Boolean, "H", "", "Only show header info. Do not list each sketch. Incompatible with -t and -c.", ""));
+    addOption("tabular", Option(Option::Boolean, "t", "", "Tabular output (rather than padded), with no header. Incompatible with -H and -c.", ""));
+    addOption("counts", Option(Option::Boolean, "c", "", "Show hash count histograms for each sketch. Incompatible with -H and -t.", ""));
 }
 
 int CommandInfo::run() const
@@ -33,10 +34,23 @@ int CommandInfo::run() const
     
     bool header = options.at("header").active;
     bool tabular = options.at("tabular").active;
+    bool counts = options.at("counts").active;
     
     if ( header && tabular )
     {
     	cerr << "ERROR: The options -H and -t are incompatible." << endl;
+    	return 1;
+    }
+    
+    if ( header && counts )
+    {
+    	cerr << "ERROR: The options -H and -c are incompatible." << endl;
+    	return 1;
+    }
+    
+    if ( tabular && counts )
+    {
+    	cerr << "ERROR: The options -t and -c are incompatible." << endl;
     	return 1;
     }
     
@@ -53,6 +67,11 @@ int CommandInfo::run() const
     params.parallelism = 1;
     
     sketch.initFromFiles(arguments, params);
+    
+    if ( counts )
+    {
+    	return printCounts(sketch);
+    }
     
     if ( tabular )
     {
@@ -110,4 +129,35 @@ int CommandInfo::run() const
     }
     
     return 0;
+}
+
+int CommandInfo::printCounts(const Sketch & sketch) const
+{
+	if ( sketch.getReferenceCount() == 0 )
+	{
+		cerr << "ERROR: Sketch file contains no sketches" << endl;
+		return 1;
+	}
+	
+	if ( ! sketch.hasHashCounts() )
+	{
+		cerr << "ERROR: Sketch file does not have hash counts. Re-sketch with counting enabled to use this feature." << endl;
+		return 1;
+	}
+	
+	cout << "#Sketch\tBin\tFrequency" << endl;
+	
+	map<uint32_t, uint64_t> histogram;
+	
+	for ( uint64_t i = 0; i < sketch.getReferenceCount(); i++ )
+	{
+		const string & name = sketch.getReference(i).name;
+		
+		sketch.getReferenceHistogram(i, histogram);
+		
+		for ( map<uint32_t, uint64_t>::const_iterator j = histogram.begin(); j != histogram.end(); j++ )
+		{
+			cout << name << '\t' << j->first << '\t' << j->second << endl;
+		}
+	}
 }

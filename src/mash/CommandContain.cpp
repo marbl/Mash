@@ -56,7 +56,7 @@ int CommandContain::run() const
     parameters.minCov = options.at("minCov").getArgumentAsNumber();
     parameters.targetCov = options.at("targetCov").getArgumentAsNumber();
     
-    if ( options.at("genome").active || options.at("memory").active )
+    if ( options.at("minCov").active || options.at("targetCov").active )
     {
         parameters.reads = true;
     }

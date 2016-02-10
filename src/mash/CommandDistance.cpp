@@ -72,7 +72,7 @@ int CommandDistance::run() const
     parameters.warning = options.at("warning").getArgumentAsNumber();
     parameters.parallelism = threads;
     
-    if ( options.at("minCov").active )
+    if ( options.at("minCov").active || options.at("targetCov").active )
     {
         parameters.reads = true;
     }

@@ -17,6 +17,10 @@ public:
     CommandInfo();
     
     int run() const; // override
+    
+private:
+	
+	int printCounts(const Sketch & sketch) const;
 };
 
 #endif

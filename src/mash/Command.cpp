@@ -162,8 +162,8 @@ Command::Command()
     addAvailableOption("individual", Option(Option::Boolean, "i", "Sketch", "Sketch individual sequences, rather than whole files.", ""));
     addAvailableOption("warning", Option(Option::Number, "w", "Sketch", "Probability threshold for warning about low k-mer size.", "0.01", 0, 1));
     addAvailableOption("reads", Option(Option::Boolean, "r", "Sketch", "Input is a read set. See Reads options below. Incompatible with -i.", ""));
-    addAvailableOption("minCov", Option(Option::Integer, "m", "Reads", "Minimum copies of each kmer required to pass noise filter for reads.", "2"));
-    addAvailableOption("targetCov", Option(Option::Integer, "c", "Reads", "Target coverage. Sketching will conclude if this coverage is reached before the end of the input file (estimated by average k-mer multiplicity).", "10"));
+    addAvailableOption("minCov", Option(Option::Integer, "m", "Reads", "Minimum copies of each kmer required to pass noise filter for reads. Implies -r.", "2"));
+    addAvailableOption("targetCov", Option(Option::Integer, "c", "Reads", "Target coverage. Sketching will conclude if this coverage is reached before the end of the input file (estimated by average k-mer multiplicity). Implies -r.", "10"));
     addAvailableOption("noncanonical", Option(Option::Boolean, "n", "Sketch", "Non-canonical. By default, canonical DNA kmers (alphabetical minima of forward-reverse pairs) are used, and kmers with non-acgtACGT characters are ignored. This option uses kmers as they appear and allows all characters.", ""));
     addAvailableOption("threads", Option(Option::Integer, "p", "", "Parallelism. This many threads will be spawned, each one handling one query sequence at a time.", "1"));
     addAvailableOption("pacbio", Option(Option::Boolean, "pacbio", "", "Use default settings for PacBio sequences.", ""));

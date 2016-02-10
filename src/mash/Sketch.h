@@ -10,6 +10,7 @@
 #include "mash/capnp/MinHash.capnp.h"
 #include <unordered_map>
 #include <unordered_set>
+#include <map>
 #include <vector>
 #include <string>
 #include "MinHashHeap.h"
@@ -112,6 +113,7 @@ public:
         std::string comment;
         uint64_t length;
         HashList hashesSorted;
+        std::vector<uint32_t> counts;
     };
     
     struct SketchInput
@@ -162,11 +164,13 @@ public:
 	double getRandomKmerChance(uint64_t reference) const;
     const Reference & getReference(uint64_t index) const {return references.at(index);}
     uint64_t getReferenceCount() const {return references.size();}
+    void getReferenceHistogram(uint64_t index, std::map<uint32_t, uint64_t> & histogram) const;
     uint64_t getReferenceIndex(std::string id) const;
     int getKmerSize() const {return parameters.kmerSize;}
     double getKmerSpace() const {return kmerSpace;}
     uint64_t getWindowSize() const {return parameters.windowSize;}
     bool getNoncanonical() const {return parameters.noncanonical;}
+    bool hasHashCounts() const {return references.size() > 0 && references.at(0).counts.size() > 0;}
     bool hasLociByHash(hash_t hash) const {return lociByHash.count(hash);}
     int initFromFiles(const std::vector<std::string> & files, const Parameters & parametersNew, int verbosity = 0, bool enforceParameters = false, bool contain = false);
     void initParametersFromCapnp(const char * file);

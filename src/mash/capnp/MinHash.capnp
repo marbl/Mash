@@ -23,6 +23,7 @@ struct MinHash
 			comment @4 : Text;
 			hashes32 @5 : List(UInt32);
 			hashes64 @6 : List(UInt64);
+			counts32 @8 : List(UInt32);
 		}
 		
 		references @0 : List(Reference);

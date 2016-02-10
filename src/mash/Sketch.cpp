@@ -46,6 +46,27 @@ double Sketch::getRandomKmerChance(uint64_t reference) const
 	return 1. / (pow(parameters.protein ? 20 : 4, parameters.kmerSize) / references[reference].length + 1.);
 }
 
+void Sketch::getReferenceHistogram(uint64_t index, map<uint32_t, uint64_t> & histogram) const
+{
+	const Reference & reference = references.at(index);
+	
+	histogram.clear();
+	
+	for ( uint64_t i = 0; i < reference.counts.size(); i++ )
+	{
+		uint32_t count = reference.counts.at(i);
+		
+		if ( histogram.count(count) == 0 )
+		{
+			histogram[count] = 1;
+		}
+		else
+		{
+			histogram[count] = histogram.at(count) + 1;
+		}
+	}
+}
+
 uint64_t Sketch::getReferenceIndex(string id) const
 {
     if ( referenceIndecesById.count(id) == 1 )
@@ -335,26 +356,32 @@ int Sketch::writeToCapnp(const char * file) const
             {
                 capnp::List<uint64_t>::Builder hashes64Builder = referenceBuilder.initHashes64(hashes.size());
             
-                uint64_t index = 0;
-            
                 for ( uint64_t j = 0; j != hashes.size(); j++ )
                 {
-                    hashes64Builder.set(index, hashes.at(j).hash64);
-                    index++;
+                    hashes64Builder.set(j, hashes.at(j).hash64);
                 }
             }
             else
             {
                 capnp::List<uint32_t>::Builder hashes32Builder = referenceBuilder.initHashes32(hashes.size());
             
-                uint64_t index = 0;
-            
                 for ( uint64_t j = 0; j != hashes.size(); j++ )
                 {
-                    hashes32Builder.set(index, hashes.at(j).hash32);
-                    index++;
+                    hashes32Builder.set(j, hashes.at(j).hash32);
                 }
             }
+            
+            if ( references[i].counts.size() > 0 && parameters.reads )
+            {
+            	const vector<uint32_t> & counts = references[i].counts;
+            	
+                capnp::List<uint32_t>::Builder countsBuilder = referenceBuilder.initCounts32(counts.size());
+                
+				for ( uint64_t j = 0; j != counts.size(); j++ )
+				{
+					countsBuilder.set(j, counts.at(j));
+				}
+			}
         }
     }
     
@@ -894,12 +921,13 @@ Sketch::SketchOutput * loadCapnp(Sketch::SketchInput * input)
 	    }
         
         reference.hashesSorted.setUse64(input->parameters.kmerSize > 16);
+        uint64_t hashCount;
         
         if ( input->parameters.kmerSize > 16 )
         {
             capnp::List<uint64_t>::Reader hashesReader = referenceReader.getHashes64();
         
-        	uint64_t hashCount = hashesReader.size();
+        	hashCount = hashesReader.size();
         	
         	if ( hashCount > input->parameters.minHashesPerWindow )
         	{
@@ -917,7 +945,7 @@ Sketch::SketchOutput * loadCapnp(Sketch::SketchInput * input)
         {
             capnp::List<uint32_t>::Reader hashesReader = referenceReader.getHashes32();
         	
-        	uint64_t hashCount = hashesReader.size();
+        	hashCount = hashesReader.size();
         	
         	if ( hashCount > input->parameters.minHashesPerWindow )
         	{
@@ -930,6 +958,18 @@ Sketch::SketchOutput * loadCapnp(Sketch::SketchInput * input)
             {
                 reference.hashesSorted.set32(j, hashesReader[j]);
             }
+        }
+        
+        if ( referenceReader.hasCounts32() )
+        {
+			capnp::List<uint32_t>::Reader countsReader = referenceReader.getCounts32();
+		
+			reference.counts.resize(hashCount);
+		
+			for ( uint64_t j = 0; j < hashCount; j++ )
+			{
+				reference.counts[j] = countsReader[j];
+			}
         }
     }
     
@@ -1015,6 +1055,7 @@ void setMinHashesForReference(Sketch::Reference & reference, const MinHashHeap &
     HashList & hashList = reference.hashesSorted;
     hashList.clear();
     hashes.toHashList(hashList);
+    hashes.toCounts(reference.counts);
     hashList.sort();
 }
 

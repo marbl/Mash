@@ -64,7 +64,7 @@ int CommandSketch::run() const
     parameters.warning = options.at("warning").getArgumentAsNumber();
     parameters.parallelism = options.at("threads").getArgumentAsNumber();
     
-    if ( options.at("minCov").active )
+    if ( options.at("minCov").active || options.at("targetCov").active )
     {
         parameters.reads = true;
     }
