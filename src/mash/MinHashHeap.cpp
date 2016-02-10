@@ -81,6 +81,7 @@ void MinHashHeap::tryInsert(hash_u hash)
 		
 		if ( hashes.size() > cardinalityMaximum )
 		{
+			multiplicitySum -= hashes.count(hashesQueue.top());
 			hashes.erase(hashesQueue.top());
 			
 			// loop since there could be zombie hashes (gone from hashesPending)
