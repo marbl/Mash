@@ -19,7 +19,8 @@ CommandInfo::CommandInfo()
     argumentString = "<sketch>";
     
     useOption("help");
-    addOption("header", Option(Option::Boolean, "H", "", "Only show header info. Do not list each sketch.", ""));
+    addOption("header", Option(Option::Boolean, "H", "", "Only show header info. Do not list each sketch. Incompatible with -t", ""));
+    addOption("tabular", Option(Option::Boolean, "t", "", "Tabular output (rather than padded), with no header. Incompatible with -H.", ""));
 }
 
 int CommandInfo::run() const
@@ -31,6 +32,13 @@ int CommandInfo::run() const
     }
     
     bool header = options.at("header").active;
+    bool tabular = options.at("tabular").active;
+    
+    if ( header && tabular )
+    {
+    	cerr << "ERROR: The options -H and -t are incompatible." << endl;
+    	return 1;
+    }
     
     const string & file = arguments[0];
     
@@ -46,34 +54,59 @@ int CommandInfo::run() const
     
     sketch.initFromFiles(arguments, params);
     
-    cout << "Header:" << endl;
-    cout << "  Kmer:                          " << sketch.getKmerSize() << endl;
-    cout << "  Target min-hashes per sketch:  " << sketch.getMinHashesPerWindow() << endl;
-    cout << "  Canonical kmers:               " << (sketch.getNoncanonical() ? "no" : "yes") << endl;
-    
+    if ( tabular )
+    {
+    	cout << "#Hashes\tLength\tID\tComment" << endl;
+    }
+    else
+    {
+		cout << "Header:" << endl;
+		cout << "  Kmer:                          " << sketch.getKmerSize() << endl;
+		cout << "  Target min-hashes per sketch:  " << sketch.getMinHashesPerWindow() << endl;
+		cout << "  Canonical kmers:               " << (sketch.getNoncanonical() ? "no" : "yes") << endl;
+		cout << "  Sketches:                      " << sketch.getReferenceCount() << endl;
+	}
+	
     if ( ! header )
     {
-        cout << endl;
-        cout << "Sketches (" << sketch.getReferenceCount() << "):" << endl;
-        
         vector<vector<string>> columns(4);
         
-        columns[0].push_back("Hashes");
-        columns[1].push_back("Length");
-        columns[2].push_back("ID");
-        columns[3].push_back("Comment");
+        if ( ! tabular )
+        {
+			cout << endl;
+			cout << "Sketches:" << endl;
+		
+			columns[0].push_back("Hashes");
+			columns[1].push_back("Length");
+			columns[2].push_back("ID");
+			columns[3].push_back("Comment");
+		}
         
         for ( uint64_t i = 0; i < sketch.getReferenceCount(); i++ )
         {
             const Sketch::Reference & ref = sketch.getReference(i);
             
-            columns[0].push_back(to_string(ref.hashesSorted.size()));
-            columns[1].push_back(to_string(ref.length));
-            columns[2].push_back(ref.name);
-            columns[3].push_back(ref.comment);
+            if ( tabular )
+            {
+            	cout
+            		<< ref.hashesSorted.size() << '\t'
+            		<< ref.length << '\t'
+            		<< ref.name << '\t'
+            		<< ref.comment << endl;
+            }
+            else
+            {
+				columns[0].push_back(to_string(ref.hashesSorted.size()));
+				columns[1].push_back(to_string(ref.length));
+				columns[2].push_back(ref.name);
+				columns[3].push_back(ref.comment);
+			}
         }
         
-        printColumns(columns, 2, 2, "-", 0);
+        if ( ! tabular )
+        {
+	        printColumns(columns, 2, 2, "-", 0);
+	    }
     }
     
     return 0;
