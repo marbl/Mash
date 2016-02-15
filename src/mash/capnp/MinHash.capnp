@@ -48,6 +48,8 @@ struct MinHash
 	concatenated @3 : Bool;
 	error @6 : Float32;
 	noncanonical @7 : Bool;
+	alphabet @8 : Text;
+	preserveCase @9 : Bool;
 	
 	referenceList @4 : ReferenceList;
 	locusList @5 : LocusList;

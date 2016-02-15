@@ -22,6 +22,7 @@
 #include <capnp/message.h>
 #include <capnp/serialize.h>
 #include <sys/mman.h>
+#include <math.h>
 
 #define SET_BINARY_MODE(file)
 #define CHUNK 16384
@@ -31,6 +32,17 @@ using namespace std;
 
 typedef map < Sketch::hash_t, vector<Sketch::PositionHash> > LociByHash_map;
 
+void Sketch::getAlphabetAsString(string & alphabet) const
+{
+	for ( int i = 0; i < 256; i++ )
+	{
+		if ( parameters.alphabet[i] )
+		{
+			alphabet.append(1, i);
+		}
+	}
+}
+
 const vector<Sketch::Locus> & Sketch::getLociByHash(Sketch::hash_t hash) const
 {
     return lociByHash.at(hash);
@@ -38,12 +50,12 @@ const vector<Sketch::Locus> & Sketch::getLociByHash(Sketch::hash_t hash) const
 
 int Sketch::getMinKmerSize(uint64_t reference) const
 {
-	return ceil(log(references[reference].length * (1 - parameters.warning) / parameters.warning) / log(parameters.protein ? 20 : 4));
+	return ceil(log(references[reference].length * (1 - parameters.warning) / parameters.warning) / log(parameters.alphabetSize));
 }
 
 double Sketch::getRandomKmerChance(uint64_t reference) const
 {
-	return 1. / (pow(parameters.protein ? 20 : 4, parameters.kmerSize) / references[reference].length + 1.);
+	return 1. / (kmerSpace / references[reference].length + 1.);
 }
 
 void Sketch::getReferenceHistogram(uint64_t index, map<uint32_t, uint64_t> & histogram) const
@@ -103,21 +115,33 @@ int Sketch::initFromFiles(const vector<string> & files, const Parameters & param
         	
 			if ( sketchTest.getKmerSize() != parameters.kmerSize )
 			{
-				cerr << "\nWARNING: The sketch " << files[i] << " has a kmer size (" << sketchTest.getKmerSize() << ") that does not match the current kmer size (" << parameters.kmerSize << "). This file will be skipped.\n\n";
-				continue;
-			}
-		
-			if ( sketchTest.getNoncanonical() != parameters.noncanonical )
-			{
-				cerr << "\nWARNING: The sketch " << files[i] << " is " << (sketchTest.getNoncanonical() ? "noncanonical" : "canonical") << ", which is incompatible with the current setting. This file will be skipped." << endl << endl;
+				cerr << "\nWARNING: The sketch " << files[i] << " has a kmer size (" << sketchTest.getKmerSize() << ") that does not match the current kmer size (" << parameters.kmerSize << "). This file will be skipped." << endl << endl;
 				continue;
 			}
 			
             if ( ! contain && sketchTest.getMinHashesPerWindow() < parameters.minHashesPerWindow )
             {
-                cerr << "\nWARNING: The sketch file " << files[i] << " has a target sketch size (" << sketchTest.getMinHashesPerWindow() << ") that is smaller than the current sketch size (" << parameters.minHashesPerWindow << "). This sketch will be skipped." << endl << endl;
+                cerr << "\nWARNING: The sketch file " << files[i] << " has a target sketch size (" << sketchTest.getMinHashesPerWindow() << ") that is smaller than the current sketch size (" << parameters.minHashesPerWindow << "). This file will be skipped." << endl << endl;
                 continue;
             }
+            
+            string alphabet;
+            string alphabetTest;
+            
+            getAlphabetAsString(alphabet);
+            sketchTest.getAlphabetAsString(alphabetTest);
+            
+            if ( alphabet != alphabetTest )
+            {
+            	cerr << "\nWARNING: The sketch file " << files[i] << " has different alphabet (" << alphabetTest << ") than the current alphabet (" << alphabet << "). This file will be skipped." << endl << endl;
+            	continue;
+            }
+		
+			if ( sketchTest.getNoncanonical() != parameters.noncanonical )
+			{
+				cerr << "\nWARNING: The sketch file " << files[i] << " is " << (sketchTest.getNoncanonical() ? "noncanonical" : "canonical") << ", which is incompatible with the current setting. This file will be skipped." << endl << endl;
+				continue;
+			}
             
             if ( sketchTest.getMinHashesPerWindow() > parameters.minHashesPerWindow )
             {
@@ -231,6 +255,15 @@ void Sketch::initParametersFromCapnp(const char * file)
     parameters.concatenated = reader.getConcatenated();
     parameters.noncanonical = reader.getNoncanonical();
     
+    if ( reader.hasAlphabet() )
+    {
+    	setAlphabetFromString(parameters, reader.getAlphabet().cStr());
+    }
+    else
+    {
+    	setAlphabetFromString(parameters, alphabetNucleotide);
+    }
+    
 	close(fd);
 	
 	try
@@ -298,26 +331,6 @@ void Sketch::useThreadOutput(SketchOutput * output)
 	delete output;
 }
 
-void Sketch::warnKmerSize(uint64_t lengthMax, const std::string & lengthMaxName, double randomChance, int kMin, int warningCount) const
-{
-	cerr << "\nWARNING: For the k-mer size used (" << parameters.kmerSize
-		<< "), the random match probability (" << randomChance
-		<< ") is above the specified warning threshold ("
-		<< parameters.warning << ") for the sequence \"" << lengthMaxName
-		<< "\" of size " << lengthMax;
-	
-	if ( warningCount > 1 )
-	{
-		cerr << " (and " << (warningCount - 1) << " others)";
-	}
-	
-	cerr << ". Distances to "
-		<< (warningCount == 1 ? "this sequence" : "these sequences")
-		<< " may be underestimated as a result. To meet the threshold of "
-		<< parameters.warning << ", a k-mer size of at least " << kMin
-		<< " is required.\n\n";
-}
-
 bool Sketch::writeToFile() const
 {
     return writeToCapnp(file.c_str()) == 0;
@@ -352,7 +365,7 @@ int Sketch::writeToCapnp(const char * file) const
         {
             const HashList & hashes = references[i].hashesSorted;
             
-            if ( parameters.kmerSize > 16 )
+            if ( parameters.use64 )
             {
                 capnp::List<uint64_t>::Builder hashes64Builder = referenceBuilder.initHashes64(hashes.size());
             
@@ -417,6 +430,10 @@ int Sketch::writeToCapnp(const char * file) const
     builder.setConcatenated(parameters.concatenated);
     builder.setNoncanonical(parameters.noncanonical);
     
+    string alphabet;
+    getAlphabetAsString(alphabet);
+    builder.setAlphabet(alphabet);
+    
     writeMessageToFd(fd, message);
     close(fd);
     
@@ -440,7 +457,7 @@ void Sketch::createIndex()
         }
     }
     
-    kmerSpace = pow(4, parameters.kmerSize); // TODO: alphabet?
+    kmerSpace = pow(parameters.alphabetSize, parameters.kmerSize);
 }
 
 void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const Sketch::Parameters & parameters)
@@ -457,18 +474,17 @@ void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const 
     //
     for ( uint64_t i = 0; i < length; i++ )
     {
-        if ( seq[i] > 90 )
+        if ( seq[i] > 96 && seq[i] < 123 )
         {
             seq[i] -= 32;
         }
     }
     
-    bool use64 = kmerSize > 16;
-    
-    char * seqRev = new char[length];
+    char * seqRev;
     
     if ( ! noncanonical )
     {
+    	seqRev = new char[length];
         reverseComplement(seq, seqRev, length);
     }
     
@@ -477,35 +493,33 @@ void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const 
         bool useRevComp = false;
         bool debug = false;
         
+		// repeatedly skip kmers with bad characters
+		
+		bool bad = false;
+		
+		for ( uint64_t j = i; j < i + kmerSize && i + kmerSize <= length; j++ )
+		{
+			if ( ! parameters.alphabet[seq[j]] )
+			{
+				i = j; // skip to past the bad character
+				bad = true;
+				break;
+			}
+		}
+		
+		if ( bad )
+		{
+			continue;
+		}
+	
+		if ( i + kmerSize > length )
+		{
+			// skipped to end
+			break;
+		}
+            
         if ( ! noncanonical )
         {
-            // repeatedly skip kmers with bad characters
-            
-            bool bad = false;
-            
-            for ( uint64_t j = i; j < i + kmerSize && i + kmerSize <= length; j++ )
-            {
-                char c = seq[j];
-            
-                if ( c != 'A' && c != 'C' && c != 'G' && c != 'T' )
-                {
-                    i = j; // skip to past the bad character
-                    bad = true;
-                    break;
-                }
-            }
-            
-            if ( bad )
-            {
-                continue;
-            }
-        
-            if ( i + kmerSize > length )
-            {
-                // skipped to end
-                break;
-            }
-            
             useRevComp = true;
             bool prefixEqual = true;
         
@@ -536,7 +550,7 @@ void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const 
         const char * kmer = useRevComp ? seqRev + length - i - kmerSize : seq + i;
         bool filter = false;
         
-        hash_u hash = getHash(useRevComp ? seqRev + length - i - kmerSize : seq + i, kmerSize);
+        hash_u hash = getHash(useRevComp ? seqRev + length - i - kmerSize : seq + i, kmerSize, parameters.use64);
         
         if ( debug ) cout << endl;
         
@@ -647,7 +661,7 @@ void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * s
         
         if ( i >= nextValidKmer )
         {
-            Sketch::hash_t hash = getHash(seq + i, kmerSize).hash64; // TODO: dynamic
+            Sketch::hash_t hash = getHash(seq + i, kmerSize, parameters.use64).hash64; // TODO: dynamic
             
             if ( verbosity > 1 )
             {
@@ -920,10 +934,10 @@ Sketch::SketchOutput * loadCapnp(Sketch::SketchInput * input)
 	        reference.length = referenceReader.getLength();
 	    }
         
-        reference.hashesSorted.setUse64(input->parameters.kmerSize > 16);
+        reference.hashesSorted.setUse64(input->parameters.use64);
         uint64_t hashCount;
         
-        if ( input->parameters.kmerSize > 16 )
+        if ( input->parameters.use64 )
         {
             capnp::List<uint64_t>::Reader hashesReader = referenceReader.getHashes64();
         
@@ -1050,6 +1064,37 @@ void reverseComplement(const char * src, char * dest, int length)
     }
 }
 
+void setAlphabetFromString(Sketch::Parameters & parameters, const char * characters)
+{
+    parameters.alphabetSize = 0;
+    memset(parameters.alphabet, 0, 256);
+    
+	const char * character = characters;
+	
+	while ( *character != 0 )
+	{
+		char characterUpper = *character;
+		
+        if ( characterUpper > 96 && characterUpper < 123 )
+        {
+            characterUpper -= 32;
+        }
+        
+		parameters.alphabet[characterUpper] = true;
+		character++;
+	}
+    
+    for ( int i = 0; i < 256; i++ )
+    {
+    	if ( parameters.alphabet[i] )
+    	{
+	    	parameters.alphabetSize++;
+	    }
+    }
+    
+    parameters.use64 = pow(parameters.alphabetSize, parameters.kmerSize) > pow(2, 32);
+}
+
 void setMinHashesForReference(Sketch::Reference & reference, const MinHashHeap & hashes)
 {
     HashList & hashList = reference.hashesSorted;
@@ -1087,12 +1132,10 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 		reference.name = input->fileName;
 	}
 	
-    bool use64 = parameters.kmerSize > 16;
-    
-    MinHashHeap minHashHeap(parameters.kmerSize > 16, parameters.minHashesPerWindow, parameters.reads ? parameters.minCov : 1);
+    MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.reads ? parameters.minCov : 1);
 
 	reference.length = 0;
-	reference.hashesSorted.setUse64(use64);
+	reference.hashesSorted.setUse64(parameters.use64);
 	
     int l;
     int count = 0;
@@ -1199,14 +1242,12 @@ Sketch::SketchOutput * sketchSequence(Sketch::SketchInput * input)
 	output->references.resize(1);
 	Sketch::Reference & reference = output->references[0];
 	
-    bool use64 = parameters.kmerSize > 16;
-    
-    MinHashHeap minHashHeap(parameters.kmerSize > 16, parameters.minHashesPerWindow, parameters.reads ? parameters.minCov : 1);
+    MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.reads ? parameters.minCov : 1);
 
 	reference.length = input->length;
 	reference.name = input->name;
 	reference.comment = input->comment;
-	reference.hashesSorted.setUse64(use64);
+	reference.hashesSorted.setUse64(parameters.use64);
 	
 	if ( parameters.windowed )
 	{

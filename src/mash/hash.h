@@ -20,7 +20,7 @@ union hash_u
     hash64_t hash64;
 };
 
-hash_u getHash(const char * seq, int length);
+hash_u getHash(const char * seq, int length, bool use64);
 bool hashLessThan(hash_u hash1, hash_u hash2, bool use64);
 
 #endif

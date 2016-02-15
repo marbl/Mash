@@ -13,6 +13,7 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <string.h>
 #include "MinHashHeap.h"
 #include "ThreadPool.h"
 
@@ -21,6 +22,9 @@ static const int capnpHeaderLength = strlen(capnpHeader);
 
 static const char * suffixSketch = ".msh";
 static const char * suffixSketchWindowed = ".msw";
+
+static const char * alphabetNucleotide = "ACGT";
+static const char * alphabetProtein = "ACDEFGHIKLMNPQRSTVWY";
 
 class Sketch
 {
@@ -34,6 +38,9 @@ public:
             :
             parallelism(0),
             kmerSize(0),
+            alphabetSize(0),
+            preserveCase(false),
+            use64(false),
             error(0),
             warning(0),
             minHashesPerWindow(0),
@@ -45,12 +52,17 @@ public:
             reads(false),
             minCov(0),
             targetCov(0)
-            {}
+        {
+        	memset(alphabet, 0, 256);
+        }
         
         Parameters(const Parameters & other)
             :
             parallelism(other.parallelism),
             kmerSize(other.kmerSize),
+            alphabetSize(other.alphabetSize),
+            preserveCase(other.preserveCase),
+            use64(other.use64),
             error(other.error),
             warning(other.warning),
             minHashesPerWindow(other.minHashesPerWindow),
@@ -62,10 +74,16 @@ public:
             reads(other.reads),
             minCov(other.minCov),
             targetCov(other.targetCov)
-            {}
+		{
+			memcpy(alphabet, other.alphabet, 256);
+		}
         
         int parallelism;
         int kmerSize;
+        bool alphabet[256];
+        uint32_t alphabetSize;
+        bool preserveCase;
+        bool use64;
         double error;
         double warning;
         uint64_t minHashesPerWindow;
@@ -154,7 +172,8 @@ public:
 	    std::vector<std::vector<PositionHash>> positionHashesByReference;
     };
     
-    void checkKmerSize() const;
+    void getAlphabetAsString(std::string & alphabet) const;
+    uint32_t getAlphabetSize() const {return parameters.alphabetSize;}
     bool getConcatenated() const {return parameters.concatenated;}
     float getError() const {return parameters.error;}
     int getHashCount() const {return lociByHash.size();}
@@ -168,6 +187,7 @@ public:
     uint64_t getReferenceIndex(std::string id) const;
     int getKmerSize() const {return parameters.kmerSize;}
     double getKmerSpace() const {return kmerSpace;}
+    bool getUse64() const {return parameters.use64;}
     uint64_t getWindowSize() const {return parameters.windowSize;}
     bool getNoncanonical() const {return parameters.noncanonical;}
     bool hasHashCounts() const {return references.size() > 0 && references.at(0).counts.size() > 0;}
@@ -199,6 +219,7 @@ void getMinHashPositions(std::vector<Sketch::PositionHash> & loci, char * seq, u
 bool hasSuffix(std::string const & whole, std::string const & suffix);
 Sketch::SketchOutput * loadCapnp(Sketch::SketchInput * input);
 void reverseComplement(const char * src, char * dest, int length);
+void setAlphabetFromString(Sketch::Parameters & parameters, const char * characters);
 void setMinHashesForReference(Sketch::Reference & reference, const MinHashHeap & hashes);
 Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input);
 Sketch::SketchOutput * sketchSequence(Sketch::SketchInput * input);

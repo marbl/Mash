@@ -152,7 +152,7 @@ void Command::addOption(string name, Option option)
 Command::Command()
 {
     addAvailableOption("help", Option(Option::Boolean, "h", "", "Help", ""));
-    addAvailableOption("kmer", Option(Option::Integer, "k", "Sketch", "Kmer size. Hashes will be based on strings of this many nucleotides.", "21", 1, 32));
+    addAvailableOption("kmer", Option(Option::Integer, "k", "Sketch", "Kmer size. Hashes will be based on strings of this many nucleotides. Canonical nucleotides are used by default (see Alphabet options below).", "21", 1, 32));
     addAvailableOption("windowed", Option(Option::Boolean, "w", "Sketch", "Windowed", ""));
     addAvailableOption("window", Option(Option::Integer, "l", "Sketch", "Window length. Hashes that are minima in any window of this size will be stored.", "10000"));
     addAvailableOption("error", Option(Option::Number, "e", "Sketch", "Error bound. The (maximum) number of min-hashes in each sketch will be one divided by this number squared.", "0.05"));
@@ -164,7 +164,9 @@ Command::Command()
     addAvailableOption("reads", Option(Option::Boolean, "r", "Sketch", "Input is a read set. See Reads options below. Incompatible with -i.", ""));
     addAvailableOption("minCov", Option(Option::Integer, "m", "Reads", "Minimum copies of each kmer required to pass noise filter for reads. Implies -r.", "2"));
     addAvailableOption("targetCov", Option(Option::Integer, "c", "Reads", "Target coverage. Sketching will conclude if this coverage is reached before the end of the input file (estimated by average k-mer multiplicity). Implies -r.", "10"));
-    addAvailableOption("noncanonical", Option(Option::Boolean, "n", "Sketch", "Non-canonical. By default, canonical DNA kmers (alphabetical minima of forward-reverse pairs) are used, and kmers with non-acgtACGT characters are ignored. This option uses kmers as they appear and allows all characters.", ""));
+    addAvailableOption("protein", Option(Option::Boolean, "a", "Alphabet", "Use amino acid alphabet (all letters except BJOUXZ, case insensitive). Implies -n, -k 9.", ""));
+    addAvailableOption("alphabet", Option(Option::String, "z", "Alphabet", "Alphabet to base hashes on (case ignored). K-mers with other characters will be ignored. Implies -n.", ""));
+    addAvailableOption("noncanonical", Option(Option::Boolean, "n", "Alphabet", "Non-canonical. By default, canonical DNA kmers (alphabetical minima of forward-reverse pairs) are used, and kmers with non-acgtACGT characters are ignored. This option uses kmers as they appear and allows all characters.", ""));
     addAvailableOption("threads", Option(Option::Integer, "p", "", "Parallelism. This many threads will be spawned, each one handling one query sequence at a time.", "1"));
     addAvailableOption("pacbio", Option(Option::Boolean, "pacbio", "", "Use default settings for PacBio sequences.", ""));
     addAvailableOption("illumina", Option(Option::Boolean, "illumina", "", "Use default settings for Illumina sequences.", ""));
@@ -174,6 +176,7 @@ Command::Command()
     categoryDisplayNames["Output"] = "Output";
     categoryDisplayNames["Sketch"] = "Sketching";
     categoryDisplayNames["Reads"] = "Sketching (reads)";
+    categoryDisplayNames["Alphabet"] = "Sketching (alphabet)";
 }
 
 void Command::print() const
@@ -241,6 +244,9 @@ void Command::print() const
 						break;
 					case Option::File:
 						type = "path";
+						break;
+					case Option::String:
+						type = "text";
 						break;
 				}
 			

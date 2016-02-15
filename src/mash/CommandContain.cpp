@@ -9,6 +9,7 @@
 #include <iostream>
 #include <zlib.h>
 #include "ThreadPool.h"
+#include "sketchParameterSetup.h"
 #include <math.h>
 
 using namespace::std;
@@ -26,6 +27,8 @@ CommandContain::CommandContain()
     useOption("help");
     useOption("threads");
     useOption("kmer");
+    useOption("protein");
+    useOption("alphabet");
     useOption("sketchSize");
     useOption("individual");
     useOption("noncanonical");
@@ -47,24 +50,7 @@ int CommandContain::run() const
     
     Sketch::Parameters parameters;
     
-    parameters.kmerSize = options.at("kmer").getArgumentAsNumber();
-    parameters.minHashesPerWindow = options.at("sketchSize").getArgumentAsNumber();
-    parameters.concatenated = ! options.at("individual").active;
-    parameters.noncanonical = options.at("noncanonical").active;
-    parameters.error = options.at("errorThreshold").getArgumentAsNumber();
-    parameters.reads = options.at("reads").active;
-    parameters.minCov = options.at("minCov").getArgumentAsNumber();
-    parameters.targetCov = options.at("targetCov").getArgumentAsNumber();
-    
-    if ( options.at("minCov").active || options.at("targetCov").active )
-    {
-        parameters.reads = true;
-    }
-    
-    if ( parameters.reads )
-    {
-        parameters.concatenated = true;
-    }
+    sketchParameterSetup(parameters, *(Command *)this);
     
     Sketch sketchRef;
     
@@ -85,6 +71,16 @@ int CommandContain::run() const
             cerr << "ERROR: The option " << options.at("noncanonical").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
             return 1;
         }
+        
+        if ( options.at("protein").active )
+        {
+            cerr << "ERROR: The option " << options.at("protein").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
+        }
+        
+        if ( options.at("alphabet").active )
+        {
+            cerr << "ERROR: The option " << options.at("alphabet").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
+        }
     }
     else
     {
@@ -103,6 +99,10 @@ int CommandContain::run() const
         parameters.minHashesPerWindow = sketchRef.getMinHashesPerWindow();
         parameters.kmerSize = sketchRef.getKmerSize();
         parameters.noncanonical = sketchRef.getNoncanonical();
+        
+        string alphabet;
+        sketchRef.getAlphabetAsString(alphabet);
+        setAlphabetFromString(parameters, alphabet.c_str());
     }
     else
     {

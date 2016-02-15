@@ -35,7 +35,8 @@ public:
             Number,
             Integer,
             Size,
-            File
+            File,
+            String
         }
         type;
         
@@ -63,6 +64,7 @@ public:
     virtual ~Command() {};
     
     void addOption(std::string name, Option option);
+    const Option & getOption(std::string name) const;
     void print() const;
     virtual int run() const = 0;
     int run(int argc, const char ** argv);
@@ -89,6 +91,7 @@ private:
     std::map<std::string, std::string> categoryDisplayNames;
 };
 
+inline const Command::Option & Command::getOption(std::string name) const {return options.at(name);}
 void splitFile(const std::string & file, std::vector<std::string> & lines);
 void printColumns(const std::vector<std::vector<std::string>> & columns, int indent = 2, int spacing = 2, const char * missing = "-", int max = 80);
 void printColumns(const std::vector<std::vector<std::string>> & columns, const std::vector<std::pair<int, std::string>> & dividers, int indent = 2, int spacing = 2, const char * missing = "-", int max = 80);

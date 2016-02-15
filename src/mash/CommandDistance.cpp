@@ -9,6 +9,7 @@
 #include <iostream>
 #include <zlib.h>
 #include "ThreadPool.h"
+#include "sketchParameterSetup.h"
 #include <math.h>
 
 #ifdef USE_BOOST
@@ -36,6 +37,8 @@ CommandDistance::CommandDistance()
     addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
     addOption("distance", Option(Option::Number, "d", "Output", "Maximum distance to report.", "1.0", 0., 1.));
     useOption("kmer");
+    useOption("protein");
+    useOption("alphabet");
     useOption("sketchSize");
     useOption("individual");
     useOption("warning");
@@ -62,30 +65,10 @@ int CommandDistance::run() const
     
     Sketch::Parameters parameters;
     
-    parameters.kmerSize = options.at("kmer").getArgumentAsNumber();
-    parameters.minHashesPerWindow = options.at("sketchSize").getArgumentAsNumber();
-    parameters.concatenated = ! options.at("individual").active;
-    parameters.noncanonical = options.at("noncanonical").active;
-    parameters.reads = options.at("reads").active;
-    parameters.minCov = options.at("minCov").getArgumentAsNumber();
-    parameters.targetCov = options.at("targetCov").getArgumentAsNumber();
-    parameters.warning = options.at("warning").getArgumentAsNumber();
-    parameters.parallelism = threads;
-    
-    if ( options.at("minCov").active || options.at("targetCov").active )
-    {
-        parameters.reads = true;
-    }
-    
-    if ( parameters.reads && ! parameters.concatenated )
-    {
-        cerr << "ERROR: The option " << options.at("individual").identifier << " cannot be used with " << options.at("unique").identifier << "." << endl;
-        return 1;
-    }
+    sketchParameterSetup(parameters, *(Command *)this);
     
     Sketch sketchRef;
     
-    uint64_t lengthThreshold = (parameters.warning * pow(parameters.protein ? 20 : 4, parameters.kmerSize)) / (1. - parameters.warning);
     uint64_t lengthMax;
     double randomChance;
     int kMin;
@@ -109,6 +92,16 @@ int CommandDistance::run() const
             cerr << "ERROR: The option " << options.at("noncanonical").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
             return 1;
         }
+        
+        if ( options.at("protein").active )
+        {
+            cerr << "ERROR: The option " << options.at("protein").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
+        }
+        
+        if ( options.at("alphabet").active )
+        {
+            cerr << "ERROR: The option " << options.at("alphabet").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
+        }
     }
     else
     {
@@ -121,6 +114,8 @@ int CommandDistance::run() const
     //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
     
     sketchRef.initFromFiles(refArgVector, parameters);
+    
+    double lengthThreshold = (parameters.warning * sketchRef.getKmerSpace()) / (1. - parameters.warning);
     
     if ( isSketch )
     {
@@ -136,6 +131,10 @@ int CommandDistance::run() const
         parameters.minHashesPerWindow = sketchRef.getMinHashesPerWindow();
         parameters.kmerSize = sketchRef.getKmerSize();
         parameters.noncanonical = sketchRef.getNoncanonical();
+        
+        string alphabet;
+        sketchRef.getAlphabetAsString(alphabet);
+        setAlphabetFromString(parameters, alphabet.c_str());
     }
     else
     {
@@ -238,7 +237,7 @@ int CommandDistance::run() const
     
     if ( warningCount > 0 && ! parameters.reads )
     {
-    	sketchRef.warnKmerSize(lengthMax, lengthMaxName, randomChance, kMin, warningCount);
+    	warnKmerSize(parameters, *this, lengthMax, lengthMaxName, randomChance, kMin, warningCount);
     }
     
     return 0;

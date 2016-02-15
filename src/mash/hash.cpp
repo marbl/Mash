@@ -7,11 +7,9 @@
 #include "hash.h"
 #include "MurmurHash3.h"
 
-hash_u getHash(const char * seq, int length)
+hash_u getHash(const char * seq, int length, bool use64)
 {
     //for ( int i = 0; i < length; i++ ) { cout << *(seq + i); } cout << endl;
-    
-    bool use64 = length > 16;
     
 #ifdef ARCH_32
     char data[use64 ? 8 : 4];

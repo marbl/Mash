@@ -79,10 +79,13 @@ int CommandInfo::run() const
     }
     else
     {
+    	string alphabet;
+    	sketch.getAlphabetAsString(alphabet);
+    	
 		cout << "Header:" << endl;
-		cout << "  Kmer:                          " << sketch.getKmerSize() << endl;
+		cout << "  K-mer size:                    " << sketch.getKmerSize() << " (" << (sketch.getUse64() ? "64" : "32") << "-bit hashes)" << endl;
+		cout << "  Alphabet:                      " << alphabet << " (" << sketch.getAlphabetSize() << (sketch.getNoncanonical() ? "" : ", canonical") << ")" << endl;
 		cout << "  Target min-hashes per sketch:  " << sketch.getMinHashesPerWindow() << endl;
-		cout << "  Canonical kmers:               " << (sketch.getNoncanonical() ? "no" : "yes") << endl;
 		cout << "  Sketches:                      " << sketch.getReferenceCount() << endl;
 	}
 	
@@ -160,4 +163,6 @@ int CommandInfo::printCounts(const Sketch & sketch) const
 			cout << name << '\t' << j->first << '\t' << j->second << endl;
 		}
 	}
+	
+	return 0;
 }

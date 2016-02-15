@@ -6,6 +6,7 @@
 
 #include "CommandSketch.h"
 #include "Sketch.h"
+#include "sketchParameterSetup.h"
 #include <iostream>
 
 using namespace::std;
@@ -22,6 +23,8 @@ CommandSketch::CommandSketch()
     addOption("list", Option(Option::Boolean, "l", "Input", "List input. Each file contains a list of sequence files, one per line.", ""));
     addOption("prefix", Option(Option::File, "o", "Output", "Output prefix (first input file used if unspecified). The suffix '.msh' will be appended.", ""));
     useOption("kmer");
+    useOption("protein");
+    useOption("alphabet");
     //useOption("windowed");
     //useOption("window");
     useOption("sketchSize");
@@ -52,34 +55,7 @@ int CommandSketch::run() const
     
     Sketch::Parameters parameters;
     
-    parameters.kmerSize = options.at("kmer").getArgumentAsNumber();
-    parameters.minHashesPerWindow = options.at("sketchSize").getArgumentAsNumber();
-    parameters.concatenated = ! options.at("individual").active;
-    parameters.noncanonical = options.at("noncanonical").active;
-    parameters.reads = options.at("reads").active;
-    parameters.minCov = options.at("minCov").getArgumentAsNumber();
-    parameters.targetCov = options.at("targetCov").getArgumentAsNumber();
-    parameters.windowed = false;//options.at("windowed").active;
-    parameters.windowSize = 0;//options.at("window").getArgumentAsNumber();
-    parameters.warning = options.at("warning").getArgumentAsNumber();
-    parameters.parallelism = options.at("threads").getArgumentAsNumber();
-    
-    if ( options.at("minCov").active || options.at("targetCov").active )
-    {
-        parameters.reads = true;
-    }
-    
-    if ( parameters.reads && ! parameters.concatenated )
-    {
-        cerr << "ERROR: The option " << options.at("individual").identifier << " cannot be used with " << options.at("unique").identifier << "." << endl;
-        return 1;
-    }
-    
-    if ( parameters.concatenated && parameters.windowed )
-    {
-        cerr << "ERROR: " << options.at("concat").identifier << " and " << options.at("windowed").identifier << " are incompatible." << endl;
-        return 1;
-    }
+    sketchParameterSetup(parameters, *(Command *)this);
     
     for ( int i = 0; i < arguments.size(); i++ )
     {
@@ -92,7 +68,6 @@ int CommandSketch::run() const
     
     Sketch sketch;
     
-    uint64_t lengthThreshold = (parameters.warning * pow(parameters.protein ? 20 : 4, parameters.kmerSize)) / (1. - parameters.warning);
     uint64_t lengthMax;
     double randomChance;
     int kMin;
@@ -114,6 +89,8 @@ int CommandSketch::run() const
     }
     
     sketch.initFromFiles(files, parameters, verbosity);
+    
+    double lengthThreshold = (parameters.warning * sketch.getKmerSpace()) / (1. - parameters.warning);
     
 	for ( int i = 0; i < sketch.getReferenceCount(); i++ )
 	{
@@ -164,7 +141,7 @@ int CommandSketch::run() const
     
     if ( warningCount > 0 && ! parameters.reads )
     {
-    	sketch.warnKmerSize(lengthMax, lengthMaxName, randomChance, kMin, warningCount);
+    	warnKmerSize(parameters, *this, lengthMax, lengthMaxName, randomChance, kMin, warningCount);
     }
     
     return 0;
