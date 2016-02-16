@@ -27,12 +27,12 @@ CommandContain::CommandContain()
     useOption("help");
     useOption("threads");
     useOption("kmer");
+    useOption("noncanonical");
     useOption("protein");
     useOption("alphabet");
     useOption("case");
     useOption("sketchSize");
     useOption("individual");
-    useOption("noncanonical");
     useOption("reads");
     useOption("minCov");
     useOption("targetCov");

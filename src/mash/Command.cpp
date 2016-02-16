@@ -137,22 +137,15 @@ void Command::Option::setArgument(string argumentNew)
 
 void Command::addOption(string name, Option option)
 {
-	// keep track of category order
-	//
-	if ( optionNamesByCategory.count(option.category) == 0 )
-	{
-		categories.push_back(option.category);
-	}
-	
     options[name] = option;
-    optionNamesByCategory[option.category].insert(name);
+    optionNamesByCategory[option.category].push_back(name);
     optionNamesByIdentifier[option.identifier] = name;
 }
 
 Command::Command()
 {
     addAvailableOption("help", Option(Option::Boolean, "h", "", "Help", ""));
-    addAvailableOption("kmer", Option(Option::Integer, "k", "Sketch", "Kmer size. Hashes will be based on strings of this many nucleotides. Canonical nucleotides are used by default (see Alphabet options below).", "21", 1, 32));
+    addAvailableOption("kmer", Option(Option::Integer, "k", "Sketch", "K-mer size. Hashes will be based on strings of this many nucleotides. Canonical nucleotides are used by default (see Alphabet options below).", "21", 1, 32));
     addAvailableOption("windowed", Option(Option::Boolean, "w", "Sketch", "Windowed", ""));
     addAvailableOption("window", Option(Option::Integer, "l", "Sketch", "Window length. Hashes that are minima in any window of this size will be stored.", "10000"));
     addAvailableOption("error", Option(Option::Number, "e", "Sketch", "Error bound. The (maximum) number of min-hashes in each sketch will be one divided by this number squared.", "0.05"));
@@ -162,22 +155,22 @@ Command::Command()
     addAvailableOption("individual", Option(Option::Boolean, "i", "Sketch", "Sketch individual sequences, rather than whole files.", ""));
     addAvailableOption("warning", Option(Option::Number, "w", "Sketch", "Probability threshold for warning about low k-mer size.", "0.01", 0, 1));
     addAvailableOption("reads", Option(Option::Boolean, "r", "Sketch", "Input is a read set. See Reads options below. Incompatible with -i.", ""));
-    addAvailableOption("minCov", Option(Option::Integer, "m", "Reads", "Minimum copies of each kmer required to pass noise filter for reads. Implies -r.", "2"));
+    addAvailableOption("minCov", Option(Option::Integer, "m", "Reads", "Minimum copies of each k-mer required to pass noise filter for reads. Implies -r.", "2"));
     addAvailableOption("targetCov", Option(Option::Integer, "c", "Reads", "Target coverage. Sketching will conclude if this coverage is reached before the end of the input file (estimated by average k-mer multiplicity). Implies -r.", "10"));
-    addAvailableOption("protein", Option(Option::Boolean, "a", "Alphabet", "Use amino acid alphabet (all letters except BJOUXZ, case insensitive). Implies -n, -k 9.", ""));
-    addAvailableOption("alphabet", Option(Option::String, "z", "Alphabet", "Alphabet to base hashes on (case ignored). K-mers with other characters will be ignored. Implies -n.", ""));
     addAvailableOption("noncanonical", Option(Option::Boolean, "n", "Alphabet", "Preserve strand (by default, strand is ignored by using canonical DNA k-mers, which are alphabetical minima of forward-reverse pairs). Implied if an alphabet is specified with -a or -z.", ""));
-    addAvailableOption("case", Option(Option::Boolean, "Z", "Alphabet", "Preserve case in k-mers and alphabet (case is ignored by default). Cases in sequences but not in the current alphabet will be skipped.", ""));
+    addAvailableOption("protein", Option(Option::Boolean, "a", "Alphabet", "Use amino acid alphabet (A-Z, except BJOUXZ). Implies -n, -k 9.", ""));
+    addAvailableOption("alphabet", Option(Option::String, "z", "Alphabet", "Alphabet to base hashes on (case ignored). K-mers with other characters will be ignored. Implies -n.", ""));
+    addAvailableOption("case", Option(Option::Boolean, "Z", "Alphabet", "Preserve case in k-mers and alphabet (case is ignored by default). Sequence letters whose case is not in the current alphabet will be skipped when sketching.", ""));
     addAvailableOption("threads", Option(Option::Integer, "p", "", "Parallelism. This many threads will be spawned for processing.", "1"));
     addAvailableOption("pacbio", Option(Option::Boolean, "pacbio", "", "Use default settings for PacBio sequences.", ""));
     addAvailableOption("illumina", Option(Option::Boolean, "illumina", "", "Use default settings for Illumina sequences.", ""));
     addAvailableOption("nanopore", Option(Option::Boolean, "nanopore", "", "Use default settings for Oxford Nanopore sequences.", ""));
     
-    categoryDisplayNames["Input"] = "Input";
-    categoryDisplayNames["Output"] = "Output";
-    categoryDisplayNames["Sketch"] = "Sketching";
-    categoryDisplayNames["Reads"] = "Sketching (reads)";
-    categoryDisplayNames["Alphabet"] = "Sketching (alphabet)";
+    addCategory("Input", "Input");
+    addCategory("Output", "Output");
+    addCategory("Sketch", "Sketching");
+    addCategory("Reads", "Sketching (reads)");
+    addCategory("Alphabet", "Sketching (alphabet)");
 }
 
 void Command::print() const
@@ -218,14 +211,14 @@ void Command::print() const
 			dividers.push_back(pair<int, string>(columns[0].size(), "..." + categoryDisplayNames.at(*i) + "..."));
 		}
 		
-		for ( set<string>::const_iterator j = optionNamesByCategory.at(*i).begin(); j != optionNamesByCategory.at(*i).end(); j++ )
+		for ( vector<string>::const_iterator j = optionNamesByCategory.at(*i).begin(); j != optionNamesByCategory.at(*i).end(); j++ )
 		{
 			const Option & option = options.at(*j);
 		
 			string optionString = "-" + option.identifier;
-		
+			
 			string range;
-		
+			
 			if ( option.type != Option::Boolean )
 			{
 				string type;
@@ -335,6 +328,17 @@ void Command::useOption(string name)
 void Command::addAvailableOption(string name, Option option)
 {
     optionsAvailable[name] = option;
+}
+
+void Command::addCategory(string name, string displayName)
+{
+	// keep track of category order
+	//
+	if ( categoryDisplayNames.count(name) == 0 )
+	{
+		categories.push_back(name);
+	    categoryDisplayNames[name] = displayName;
+	}
 }
 
 void splitFile(const string & file, vector<string> & lines)

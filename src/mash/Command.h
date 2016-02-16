@@ -84,9 +84,10 @@ protected:
 private:
     
     void addAvailableOption(std::string name, Option option);
+	void addCategory(std::string name, std::string displayName);
     
     std::map<std::string, std::string> optionNamesByIdentifier;
-    std::map<std::string, std::set<std::string> > optionNamesByCategory;
+    std::map<std::string, std::vector<std::string> > optionNamesByCategory;
     std::vector<std::string> categories;
     std::map<std::string, std::string> categoryDisplayNames;
 };

@@ -37,13 +37,13 @@ CommandDistance::CommandDistance()
     addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
     addOption("distance", Option(Option::Number, "d", "Output", "Maximum distance to report.", "1.0", 0., 1.));
     useOption("kmer");
+    useOption("noncanonical");
     useOption("protein");
     useOption("alphabet");
     useOption("case");
     useOption("sketchSize");
     useOption("individual");
     useOption("warning");
-    useOption("noncanonical");
     useOption("reads");
     useOption("minCov");
     useOption("targetCov");

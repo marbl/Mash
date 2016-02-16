@@ -23,6 +23,7 @@ CommandSketch::CommandSketch()
     addOption("list", Option(Option::Boolean, "l", "Input", "List input. Each file contains a list of sequence files, one per line.", ""));
     addOption("prefix", Option(Option::File, "o", "Output", "Output prefix (first input file used if unspecified). The suffix '.msh' will be appended.", ""));
     useOption("kmer");
+    useOption("noncanonical");
     useOption("protein");
     useOption("alphabet");
     useOption("case");
@@ -39,7 +40,6 @@ CommandSketch::CommandSketch()
     //useOption("illumina");
     //useOption("pacbio");
     //useOption("nanopore");
-    useOption("noncanonical");
     useOption("threads");
 }
 
