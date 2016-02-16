@@ -166,6 +166,7 @@ Command::Command()
     addAvailableOption("illumina", Option(Option::Boolean, "illumina", "", "Use default settings for Illumina sequences.", ""));
     addAvailableOption("nanopore", Option(Option::Boolean, "nanopore", "", "Use default settings for Oxford Nanopore sequences.", ""));
     
+    addCategory("", "");
     addCategory("Input", "Input");
     addCategory("Output", "Output");
     addCategory("Sketch", "Sketching");
