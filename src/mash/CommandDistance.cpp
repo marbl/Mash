@@ -273,15 +273,15 @@ void CommandDistance::writeOutput(CompareOutput * output, bool table) const
             cout << output->sketchRef.getReference(j).name << '\t' << output->sketchQuery.getReference(i).name << '\t' << pair->distance << '\t' << pair->pValue << '\t' << pair->numer << '/' << pair->denom << endl;
         }
     
-        if ( table && i == output->sketchQuery.getReferenceCount() - 1 )
-        {
-            cout << endl;
-        }
-        
         j++;
         
         if ( j == output->sketchRef.getReferenceCount() )
         {
+            if ( table )
+            {
+                cout << endl;
+            }
+            
             j = 0;
             i++;
         }
