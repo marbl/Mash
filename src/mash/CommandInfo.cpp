@@ -84,7 +84,7 @@ int CommandInfo::run() const
     	
 		cout << "Header:" << endl;
 		cout << "  K-mer size:                    " << sketch.getKmerSize() << " (" << (sketch.getUse64() ? "64" : "32") << "-bit hashes)" << endl;
-		cout << "  Alphabet:                      " << alphabet << " (" << sketch.getAlphabetSize() << (sketch.getNoncanonical() ? "" : ", canonical") << ")" << endl;
+		cout << "  Alphabet:                      " << alphabet << (sketch.getNoncanonical() ? "" : " (canonical)") << (sketch.getPreserveCase() ? " (case-sensitive)" : "") << endl;
 		cout << "  Target min-hashes per sketch:  " << sketch.getMinHashesPerWindow() << endl;
 		cout << "  Sketches:                      " << sketch.getReferenceCount() << endl;
 	}

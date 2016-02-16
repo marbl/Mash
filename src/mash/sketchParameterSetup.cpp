@@ -22,6 +22,7 @@ int sketchParameterSetup(Sketch::Parameters & parameters, const Command & comman
     parameters.windowSize = 0;//command.getOption("window").getArgumentAsNumber();
     parameters.warning = command.getOption("warning").getArgumentAsNumber();
     parameters.parallelism = command.getOption("threads").getArgumentAsNumber();
+    parameters.preserveCase = command.getOption("case").active;
     
     if ( command.getOption("minCov").active || command.getOption("targetCov").active )
     {
@@ -52,6 +53,7 @@ int sketchParameterSetup(Sketch::Parameters & parameters, const Command & comman
     }
     else if ( command.getOption("alphabet").active )
     {
+    	parameters.noncanonical = true;
     	setAlphabetFromString(parameters, command.getOption("alphabet").argument.c_str());
     }
     else

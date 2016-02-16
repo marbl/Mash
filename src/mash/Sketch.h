@@ -48,7 +48,6 @@ public:
             windowed(false),
             concatenated(false),
             noncanonical(false),
-            protein(false),
             reads(false),
             minCov(0),
             targetCov(0)
@@ -70,7 +69,6 @@ public:
             windowed(other.windowed),
             concatenated(other.concatenated),
             noncanonical(other.noncanonical),
-            protein(other.protein),
             reads(other.reads),
             minCov(other.minCov),
             targetCov(other.targetCov)
@@ -91,7 +89,6 @@ public:
         bool windowed;
         bool concatenated;
         bool noncanonical;
-        bool protein;
         bool reads;
         uint32_t minCov;
         uint64_t targetCov;
@@ -180,6 +177,7 @@ public:
     const std::vector<Locus> & getLociByHash(hash_t hash) const;
     float getMinHashesPerWindow() const {return parameters.minHashesPerWindow;}
 	int getMinKmerSize(uint64_t reference) const;
+	bool getPreserveCase() const {return parameters.preserveCase;}
 	double getRandomKmerChance(uint64_t reference) const;
     const Reference & getReference(uint64_t index) const {return references.at(index);}
     uint64_t getReferenceCount() const {return references.size();}

@@ -143,6 +143,12 @@ int Sketch::initFromFiles(const vector<string> & files, const Parameters & param
 				continue;
 			}
             
+            if ( alphabet != alphabetTest )
+            {
+            	cerr << "\nWARNING: The sketch file " << files[i] << " has different alphabet (" << alphabetTest << ") than the current alphabet (" << alphabet << "). This file will be skipped." << endl << endl;
+            	continue;
+            }
+			
             if ( sketchTest.getMinHashesPerWindow() > parameters.minHashesPerWindow )
             {
                 cerr << "\nWARNING: The sketch file " << files[i] << " has a target sketch size (" << sketchTest.getMinHashesPerWindow() << ") that is larger than the current sketch size (" << parameters.minHashesPerWindow << "). Its sketches will be reduced." << endl << endl;
@@ -254,6 +260,7 @@ void Sketch::initParametersFromCapnp(const char * file)
     parameters.windowSize = reader.getWindowSize();
     parameters.concatenated = reader.getConcatenated();
     parameters.noncanonical = reader.getNoncanonical();
+   	parameters.preserveCase = reader.getPreserveCase();
     
     if ( reader.hasAlphabet() )
     {
@@ -263,7 +270,6 @@ void Sketch::initParametersFromCapnp(const char * file)
     {
     	setAlphabetFromString(parameters, alphabetNucleotide);
     }
-    
 	close(fd);
 	
 	try
@@ -429,6 +435,7 @@ int Sketch::writeToCapnp(const char * file) const
     builder.setWindowSize(parameters.windowSize);
     builder.setConcatenated(parameters.concatenated);
     builder.setNoncanonical(parameters.noncanonical);
+    builder.setPreserveCase(parameters.preserveCase);
     
     string alphabet;
     getAlphabetAsString(alphabet);
@@ -474,7 +481,7 @@ void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const 
     //
     for ( uint64_t i = 0; i < length; i++ )
     {
-        if ( seq[i] > 96 && seq[i] < 123 )
+        if ( ! parameters.preserveCase && seq[i] > 96 && seq[i] < 123 )
         {
             seq[i] -= 32;
         }
@@ -1075,7 +1082,7 @@ void setAlphabetFromString(Sketch::Parameters & parameters, const char * charact
 	{
 		char characterUpper = *character;
 		
-        if ( characterUpper > 96 && characterUpper < 123 )
+        if ( ! parameters.preserveCase && characterUpper > 96 && characterUpper < 123 )
         {
             characterUpper -= 32;
         }

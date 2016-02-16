@@ -25,6 +25,7 @@ CommandSketch::CommandSketch()
     useOption("kmer");
     useOption("protein");
     useOption("alphabet");
+    useOption("case");
     //useOption("windowed");
     //useOption("window");
     useOption("sketchSize");

@@ -39,6 +39,7 @@ CommandDistance::CommandDistance()
     useOption("kmer");
     useOption("protein");
     useOption("alphabet");
+    useOption("case");
     useOption("sketchSize");
     useOption("individual");
     useOption("warning");
@@ -131,6 +132,7 @@ int CommandDistance::run() const
         parameters.minHashesPerWindow = sketchRef.getMinHashesPerWindow();
         parameters.kmerSize = sketchRef.getKmerSize();
         parameters.noncanonical = sketchRef.getNoncanonical();
+        parameters.preserveCase = sketchRef.getPreserveCase();
         
         string alphabet;
         sketchRef.getAlphabetAsString(alphabet);

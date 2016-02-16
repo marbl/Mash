@@ -166,8 +166,9 @@ Command::Command()
     addAvailableOption("targetCov", Option(Option::Integer, "c", "Reads", "Target coverage. Sketching will conclude if this coverage is reached before the end of the input file (estimated by average k-mer multiplicity). Implies -r.", "10"));
     addAvailableOption("protein", Option(Option::Boolean, "a", "Alphabet", "Use amino acid alphabet (all letters except BJOUXZ, case insensitive). Implies -n, -k 9.", ""));
     addAvailableOption("alphabet", Option(Option::String, "z", "Alphabet", "Alphabet to base hashes on (case ignored). K-mers with other characters will be ignored. Implies -n.", ""));
-    addAvailableOption("noncanonical", Option(Option::Boolean, "n", "Alphabet", "Non-canonical. By default, canonical DNA kmers (alphabetical minima of forward-reverse pairs) are used, and kmers with non-acgtACGT characters are ignored. This option uses kmers as they appear and allows all characters.", ""));
-    addAvailableOption("threads", Option(Option::Integer, "p", "", "Parallelism. This many threads will be spawned, each one handling one query sequence at a time.", "1"));
+    addAvailableOption("noncanonical", Option(Option::Boolean, "n", "Alphabet", "Preserve strand (by default, strand is ignored by using canonical DNA k-mers, which are alphabetical minima of forward-reverse pairs). Implied if an alphabet is specified with -a or -z.", ""));
+    addAvailableOption("case", Option(Option::Boolean, "Z", "Alphabet", "Preserve case in k-mers and alphabet (case is ignored by default). Cases in sequences but not in the current alphabet will be skipped.", ""));
+    addAvailableOption("threads", Option(Option::Integer, "p", "", "Parallelism. This many threads will be spawned for processing.", "1"));
     addAvailableOption("pacbio", Option(Option::Boolean, "pacbio", "", "Use default settings for PacBio sequences.", ""));
     addAvailableOption("illumina", Option(Option::Boolean, "illumina", "", "Use default settings for Illumina sequences.", ""));
     addAvailableOption("nanopore", Option(Option::Boolean, "nanopore", "", "Use default settings for Oxford Nanopore sequences.", ""));
