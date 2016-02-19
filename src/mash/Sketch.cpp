@@ -113,18 +113,6 @@ int Sketch::initFromFiles(const vector<string> & files, const Parameters & param
         		initParametersFromCapnp(files[i].c_str());
         	}
         	
-			if ( sketchTest.getKmerSize() != parameters.kmerSize )
-			{
-				cerr << "\nWARNING: The sketch " << files[i] << " has a kmer size (" << sketchTest.getKmerSize() << ") that does not match the current kmer size (" << parameters.kmerSize << "). This file will be skipped." << endl << endl;
-				continue;
-			}
-			
-            if ( ! contain && sketchTest.getMinHashesPerWindow() < parameters.minHashesPerWindow )
-            {
-                cerr << "\nWARNING: The sketch file " << files[i] << " has a target sketch size (" << sketchTest.getMinHashesPerWindow() << ") that is smaller than the current sketch size (" << parameters.minHashesPerWindow << "). This file will be skipped." << endl << endl;
-                continue;
-            }
-            
             string alphabet;
             string alphabetTest;
             
@@ -137,18 +125,24 @@ int Sketch::initFromFiles(const vector<string> & files, const Parameters & param
             	continue;
             }
 		
+			if ( sketchTest.getKmerSize() != parameters.kmerSize )
+			{
+				cerr << "\nWARNING: The sketch " << files[i] << " has a kmer size (" << sketchTest.getKmerSize() << ") that does not match the current kmer size (" << parameters.kmerSize << "). This file will be skipped." << endl << endl;
+				continue;
+			}
+			
+            if ( ! contain && sketchTest.getMinHashesPerWindow() < parameters.minHashesPerWindow )
+            {
+                cerr << "\nWARNING: The sketch file " << files[i] << " has a target sketch size (" << sketchTest.getMinHashesPerWindow() << ") that is smaller than the current sketch size (" << parameters.minHashesPerWindow << "). This file will be skipped." << endl << endl;
+                continue;
+            }
+            
 			if ( sketchTest.getNoncanonical() != parameters.noncanonical )
 			{
 				cerr << "\nWARNING: The sketch file " << files[i] << " is " << (sketchTest.getNoncanonical() ? "noncanonical" : "canonical") << ", which is incompatible with the current setting. This file will be skipped." << endl << endl;
 				continue;
 			}
             
-            if ( alphabet != alphabetTest )
-            {
-            	cerr << "\nWARNING: The sketch file " << files[i] << " has different alphabet (" << alphabetTest << ") than the current alphabet (" << alphabet << "). This file will be skipped." << endl << endl;
-            	continue;
-            }
-			
             if ( sketchTest.getMinHashesPerWindow() > parameters.minHashesPerWindow )
             {
                 cerr << "\nWARNING: The sketch file " << files[i] << " has a target sketch size (" << sketchTest.getMinHashesPerWindow() << ") that is larger than the current sketch size (" << parameters.minHashesPerWindow << "). Its sketches will be reduced." << endl << endl;

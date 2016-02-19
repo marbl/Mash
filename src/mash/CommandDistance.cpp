@@ -84,24 +84,26 @@ int CommandDistance::run() const
     {
         if ( options.at("kmer").active )
         {
-            cerr << "ERROR: The option " << options.at("kmer").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
+            cerr << "ERROR: The option -" << options.at("kmer").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
             return 1;
         }
         
         if ( options.at("noncanonical").active )
         {
-            cerr << "ERROR: The option " << options.at("noncanonical").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
+            cerr << "ERROR: The option -" << options.at("noncanonical").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
             return 1;
         }
         
         if ( options.at("protein").active )
         {
-            cerr << "ERROR: The option " << options.at("protein").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
+            cerr << "ERROR: The option -" << options.at("protein").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
+            return 1;
         }
         
         if ( options.at("alphabet").active )
         {
-            cerr << "ERROR: The option " << options.at("alphabet").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
+            cerr << "ERROR: The option -" << options.at("alphabet").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
+            return 1;
         }
     }
     else

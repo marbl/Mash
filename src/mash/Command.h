@@ -65,6 +65,7 @@ public:
     
     void addOption(std::string name, Option option);
     const Option & getOption(std::string name) const;
+    inline bool hasOption(std::string name) const {return options.count(name);}
     void print() const;
     virtual int run() const = 0;
     int run(int argc, const char ** argv);

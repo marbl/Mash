@@ -23,7 +23,7 @@ CommandContain::CommandContain()
     argumentString = "<reference> <query> [<query>] ...";
     
     addOption("list", Option(Option::Boolean, "l", "Input", "List input. Each query file contains a list of sequence files, one per line. The reference file is not affected.", ""));
-    addOption("errorThreshold", Option(Option::Number, "E", "Output", "Error bound threshold for reporting scores values. Error bounds can generally be increased by increasing the sketch size of the reference.", "0.05"));
+    addOption("errorThreshold", Option(Option::Number, "e", "Output", "Error bound threshold for reporting scores values. Error bounds can generally be increased by increasing the sketch size of the reference.", "0.05"));
     useOption("help");
     useOption("threads");
     useOption("kmer");
@@ -50,6 +50,8 @@ int CommandContain::run() const
     bool list = options.at("list").active;
     
     Sketch::Parameters parameters;
+    
+    parameters.error = options.at("errorThreshold").getArgumentAsNumber();
     
     sketchParameterSetup(parameters, *(Command *)this);
     

@@ -20,10 +20,14 @@ int sketchParameterSetup(Sketch::Parameters & parameters, const Command & comman
     parameters.targetCov = command.getOption("targetCov").getArgumentAsNumber();
     parameters.windowed = false;//command.getOption("windowed").active;
     parameters.windowSize = 0;//command.getOption("window").getArgumentAsNumber();
-    parameters.warning = command.getOption("warning").getArgumentAsNumber();
     parameters.parallelism = command.getOption("threads").getArgumentAsNumber();
     parameters.preserveCase = command.getOption("case").active;
     
+	if ( command.hasOption("warning") )
+	{
+	    parameters.warning = command.getOption("warning").getArgumentAsNumber();
+	}
+	
     if ( command.getOption("minCov").active || command.getOption("targetCov").active )
     {
         parameters.reads = true;
