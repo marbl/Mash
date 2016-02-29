@@ -218,7 +218,15 @@ CommandContain::ContainOutput * contain(CommandContain::ContainInput * input)
     
     for ( uint64_t k = 0; k < input->pairCount && i < sketchQuery.getReferenceCount(); k++ )
     {
-		output->pairs[k].score = containSketches(sketchRef.getReference(input->indexRef).hashesSorted, sketchQuery.getReference(input->indexQuery).hashesSorted, output->pairs[k].error);
+		output->pairs[k].score = containSketches(sketchRef.getReference(j).hashesSorted, sketchQuery.getReference(i).hashesSorted, output->pairs[k].error);
+        
+        j++;
+        
+        if ( j == sketchRef.getReferenceCount() )
+        {
+            j = 0;
+            i++;
+        }
     }
     
     return output;
