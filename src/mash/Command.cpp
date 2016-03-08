@@ -207,7 +207,7 @@ void Command::print() const
     
     for ( vector<string>::const_iterator i = categories.begin(); i != categories.end(); i++ )
     {
-		if ( *i != "" )
+		if ( *i != "" && optionNamesByCategory.at(*i).size() != 0 )
 		{
 			dividers.push_back(pair<int, string>(columns[0].size(), "..." + categoryDisplayNames.at(*i) + "..."));
 		}
@@ -339,6 +339,7 @@ void Command::addCategory(string name, string displayName)
 	{
 		categories.push_back(name);
 	    categoryDisplayNames[name] = displayName;
+	    optionNamesByCategory[name] = vector<string>();
 	}
 }
 
