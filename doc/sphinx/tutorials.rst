@@ -63,7 +63,7 @@ Download and unzip the pre-sketched RefSeq archive:
 
 .. download::
 
-`refseq.msh.gz <http://gembox.cbcb.umd.edu/mash/RefSeqSketches.msh.gz>`_
+`RefSeqSketches.msh.gz <http://gembox.cbcb.umd.edu/mash/RefSeqSketches.msh.gz>`_
 
 Sketch the reads (not provided here; 10x-100x coverage of a single bacterial genome
 with any sequencing technology should work), using :code:`-u` to improve results
@@ -78,7 +78,7 @@ sketch as the query:
 
 .. code::
 
-  mash dist refseq.msh reads.fastq.msh > distances.tab
+  mash dist RefSeqSketches.msh reads.fastq.msh > distances.tab
 
 Sort the results to see the top hits and their p-values:
 
