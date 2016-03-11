@@ -59,11 +59,11 @@ reference (which there are two of in the sketch file):
 Querying read sets against an existing RefSeq sketch
 ----------------------------------------------------
 
-Download the pre-sketched RefSeq archive:
+Download and unzip the pre-sketched RefSeq archive:
 
 .. download::
 
-`refseq.msh <https://github.com/marbl/Mash/raw/master/data/refseq.msh>`_
+`refseq.msh.gz <http://gembox.cbcb.umd.edu/mash/RefSeqSketches.msh.gz>`_
 
 Sketch the reads (not provided here; 10x-100x coverage of a single bacterial genome
 with any sequencing technology should work), using :code:`-u` to improve results
