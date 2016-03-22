@@ -7,8 +7,8 @@ Simple distance estimation
 Download example *E. coli* genomes:
 
 .. download::
-| `genome1.fna <https://github.com/marbl/Mash/raw/master/data/genome1.fna>`_ 
-| `genome2.fna <https://github.com/marbl/Mash/raw/master/data/genome2.fna>`_
+| `genome1.fna <https://gembox.cbcb.umd.edu/mash/genome1.fna>`_ 
+| `genome2.fna <https://gembox.cbcb.umd.edu/mash/genome2.fna>`_
 
 Run:
 
@@ -37,7 +37,7 @@ Pairwise comparisons with compound sketch files
 
 Download additional example *E. coli* genome:
 
-| `genome3.fna <https://github.com/marbl/Mash/raw/master/data/genome3.fna>`_
+| `genome3.fna <https://gembox.cbcb.umd.edu/mash/genome3.fna>`_
 
 Sketch the first two genomes to create a combined archive, use :code:`mash info`
 to verify its contents, and estimate pairwise distances:
@@ -59,11 +59,11 @@ reference (which there are two of in the sketch file):
 Querying read sets against an existing RefSeq sketch
 ----------------------------------------------------
 
-Download the pre-sketched RefSeq archive:
+Download and gunzip the pre-sketched RefSeq archive:
 
 .. download::
 
-`refseq.msh <https://github.com/marbl/Mash/raw/master/data/refseq.msh>`_
+`RefSeqSketches.msh.gz <http://gembox.cbcb.umd.edu/mash/RefSeqSketches.msh.gz>`_
 
 Sketch the reads (not provided here; 10x-100x coverage of a single bacterial genome
 with any sequencing technology should work), using :code:`-u` to improve results
@@ -78,7 +78,7 @@ sketch as the query:
 
 .. code::
 
-  mash dist refseq.msh reads.fastq.msh > distances.tab
+  mash dist RefSeqSketches.msh reads.fastq.msh > distances.tab
 
 Sort the results to see the top hits and their p-values:
 
