@@ -53,7 +53,10 @@ int CommandContain::run() const
     
     parameters.error = options.at("errorThreshold").getArgumentAsNumber();
     
-    sketchParameterSetup(parameters, *(Command *)this);
+    if ( sketchParameterSetup(parameters, *(Command *)this) )
+    {
+    	return 1;
+    }
     
     Sketch sketchRef;
     

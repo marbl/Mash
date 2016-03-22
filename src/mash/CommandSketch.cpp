@@ -56,7 +56,10 @@ int CommandSketch::run() const
     
     Sketch::Parameters parameters;
     
-    sketchParameterSetup(parameters, *(Command *)this);
+    if ( sketchParameterSetup(parameters, *(Command *)this) )
+    {
+    	return 1;
+    }
     
     for ( int i = 0; i < arguments.size(); i++ )
     {

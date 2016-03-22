@@ -66,7 +66,10 @@ int CommandDistance::run() const
     
     Sketch::Parameters parameters;
     
-    sketchParameterSetup(parameters, *(Command *)this);
+    if ( sketchParameterSetup(parameters, *(Command *)this) )
+    {
+    	return 1;
+    }
     
     Sketch sketchRef;
     
