@@ -45,6 +45,7 @@ CommandDistance::CommandDistance()
     useOption("individual");
     useOption("warning");
     useOption("reads");
+    useOption("memory");
     useOption("minCov");
     useOption("targetCov");
 }

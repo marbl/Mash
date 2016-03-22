@@ -49,6 +49,7 @@ public:
             concatenated(false),
             noncanonical(false),
             reads(false),
+            memoryBound(0),
             minCov(0),
             targetCov(0)
         {
@@ -70,6 +71,7 @@ public:
             concatenated(other.concatenated),
             noncanonical(other.noncanonical),
             reads(other.reads),
+            memoryBound(other.memoryBound),
             minCov(other.minCov),
             targetCov(other.targetCov)
 		{
@@ -90,6 +92,7 @@ public:
         bool concatenated;
         bool noncanonical;
         bool reads;
+        uint64_t memoryBound;
         uint32_t minCov;
         uint64_t targetCov;
     };

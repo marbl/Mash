@@ -1133,7 +1133,7 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 		reference.name = input->fileName;
 	}
 	
-    MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.reads ? parameters.minCov : 1);
+    MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.reads ? parameters.minCov : 1, parameters.memoryBound);
 
 	reference.length = 0;
 	reference.hashesSorted.setUse64(parameters.use64);

@@ -5,12 +5,14 @@
 #include "HashPriorityQueue.h"
 #include "HashSet.h"
 #include <math.h>
+#include "bloom_filter.hpp"
 
 class MinHashHeap
 {
 public:
 
-	MinHashHeap(bool use64New, uint64_t cardinalityMaximumNew, uint64_t multiplicityMinimumNew = 1);
+	MinHashHeap(bool use64New, uint64_t cardinalityMaximumNew, uint64_t multiplicityMinimumNew = 1, uint64_t memoryBoundBytes = 0);
+	~MinHashHeap();
 	void computeStats();
 	void clear();
 	double estimateMultiplicity() const;
@@ -33,6 +35,11 @@ private:
 	uint64_t multiplicityMinimum;
 	
 	uint64_t multiplicitySum;
+	
+    bloom_filter * bloomFilter;
+    
+    uint64_t kmersTotal;
+    uint64_t kmersUsed;
 };
 
 inline double MinHashHeap::estimateMultiplicity() const {return (double)multiplicitySum / hashes.size();}

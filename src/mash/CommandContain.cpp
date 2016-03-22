@@ -34,6 +34,7 @@ CommandContain::CommandContain()
     useOption("sketchSize");
     useOption("individual");
     useOption("reads");
+    useOption("memory");
     useOption("minCov");
     useOption("targetCov");
 }

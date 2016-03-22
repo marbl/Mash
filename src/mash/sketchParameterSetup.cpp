@@ -28,6 +28,19 @@ int sketchParameterSetup(Sketch::Parameters & parameters, const Command & comman
 	    parameters.warning = command.getOption("warning").getArgumentAsNumber();
 	}
 	
+	if ( command.getOption("memory").active )
+	{
+		parameters.reads = true;
+		parameters.minCov = 2;
+		parameters.memoryBound = command.getOption("memory").getArgumentAsNumber();
+		
+		if ( command.getOption("minCov").active )
+		{
+			cerr << "ERROR: The option " << command.getOption("minCov").identifier << " cannot be used with " << command.getOption("memory").identifier << "." << endl;
+			return 1;
+		}
+	}
+	
     if ( command.getOption("minCov").active || command.getOption("targetCov").active )
     {
         parameters.reads = true;
