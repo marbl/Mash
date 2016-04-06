@@ -1150,6 +1150,8 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 			continue;
 		}
 		
+		count++;
+		
 		if ( parameters.windowed )
 		{
 			// TODO positionHashesByReference.resize(count + 1);
@@ -1211,20 +1213,16 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 		exit(1);
 	}
 	
-	if ( parameters.concatenated )
+	if ( ! parameters.windowed )
 	{
-		if ( ! parameters.windowed )
-		{
-			setMinHashesForReference(reference, minHashHeap);
-		}
-		
-		count++;
+		setMinHashesForReference(reference, minHashHeap);
 	}
 	
     if ( parameters.reads )
     {
        	cerr << "Estimated genome size: " << minHashHeap.estimateSetSize() << endl;
     	cerr << "Estimated coverage:    " << minHashHeap.estimateMultiplicity() << endl;
+    	cerr << "Reads used:            " << count << endl;
     }
 	
 	kseq_destroy(seq);

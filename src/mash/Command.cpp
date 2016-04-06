@@ -163,7 +163,7 @@ Command::Command()
     addAvailableOption("reads", Option(Option::Boolean, "r", "Sketch", "Input is a read set. See Reads options below. Incompatible with -i.", ""));
     addAvailableOption("memory", Option(Option::Size, "b", "Reads", "Memory bound for k-mer copy counting (raw bytes or with K/M/G/T). If specified, a Bloom filter will be used instead of exact counts, so some unique k-mers will pass erroneously, and copies cannot be counted beyond 2. Implies -r, -m 2."));
     addAvailableOption("minCov", Option(Option::Integer, "m", "Reads", "Minimum copies of each k-mer required to pass noise filter for reads. Implies -r.", "2"));
-    addAvailableOption("targetCov", Option(Option::Integer, "c", "Reads", "Target coverage. Sketching will conclude if this coverage is reached before the end of the input file (estimated by average k-mer multiplicity). Implies -r.", "10"));
+    addAvailableOption("targetCov", Option(Option::Number, "c", "Reads", "Target coverage. Sketching will conclude if this coverage is reached before the end of the input file (estimated by average k-mer multiplicity). Implies -r.", "10"));
     addAvailableOption("noncanonical", Option(Option::Boolean, "n", "Alphabet", "Preserve strand (by default, strand is ignored by using canonical DNA k-mers, which are alphabetical minima of forward-reverse pairs). Implied if an alphabet is specified with -a or -z.", ""));
     addAvailableOption("protein", Option(Option::Boolean, "a", "Alphabet", "Use amino acid alphabet (A-Z, except BJOUXZ). Implies -n, -k 9.", ""));
     addAvailableOption("alphabet", Option(Option::String, "z", "Alphabet", "Alphabet to base hashes on (case ignored). K-mers with other characters will be ignored. Implies -n.", ""));

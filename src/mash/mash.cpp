@@ -4,6 +4,7 @@
 //
 // See the LICENSE.txt file included with this software for license information.
 
+#include "CommandBounds.h"
 #include "CommandList.h"
 #include "CommandSketch.h"
 #include "CommandFind.h"
@@ -26,6 +27,7 @@ int main(int argc, const char ** argv)
 #endif
     commandList.addCommand(new CommandInfo());
     commandList.addCommand(new CommandPaste());
+    commandList.addCommand(new CommandBounds());
     
     return commandList.run(argc, argv);
 }

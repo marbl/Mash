@@ -1,0 +1,95 @@
+// Copyright © 2015, Battelle National Biodefense Institute (BNBI);
+// all rights reserved. Authored by: Brian Ondov, Todd Treangen,
+// Sergey Koren, and Adam Phillippy
+//
+// See the LICENSE.txt file included with this software for license information.
+
+#include "CommandBounds.h"
+#include <iostream>
+#include <math.h>
+
+#ifdef USE_BOOST
+    #include <boost/math/distributions/binomial.hpp>
+    using namespace::boost::math;
+#else
+    #include <gsl/gsl_cdf.h>
+#endif
+
+using namespace::std;
+
+CommandBounds::CommandBounds()
+: Command()
+{
+    name = "bounds";
+    summary = "Estimate error bounds.";
+    description = "Estimate error bounds for various sketch sizes and Mash distances based on a given k-mer size and probability.";
+    argumentString = "";
+    
+    useOption("help");
+    addOption("kmer", Option(Option::Integer, "k", "", "K-mer size.", "21"));
+    addOption("prob", Option(Option::Number, "p", "", "Probability of each error bound being true.", "0.99", 0, 1));
+}
+
+int CommandBounds::run() const
+{
+    if ( options.at("help").active )
+    {
+        print();
+        return 0;
+    }
+    
+	const int sketchSizeCount = 9;
+	const double sketchSizes[] = {100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000};
+	
+	const int distCount = 8;
+	const double dists[] = {0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4};
+	
+	int k = getOption("kmer").getArgumentAsNumber();
+	double q2 = (1.0 - getOption("prob").getArgumentAsNumber()) / 2.0;
+	
+	cout << "\tMash distance" << endl;
+	cout << "Sketch";
+	
+	for ( int i = 0; i < distCount; i++ )
+	{
+		cout << '\t' << dists[i];
+	}
+	
+	cout << endl;
+	
+	for ( int i = 0; i < sketchSizeCount; i++ )
+	{
+		int s = sketchSizes[i];
+		cout << s;
+		
+		for ( int j = 0; j < distCount; j++ )
+		{
+			double m2j = 1.0 / (2.0 * exp(k * dists[j]) - 1.0);
+			
+			int x = 0;
+			
+			while ( x < s )
+			{
+#ifdef USE_BOOST
+			    double cdfx = cdf(binomial(s, m2j), x);
+#else
+			    double cdfx = gsl_cdf_binomial_P(x, m2j, s);
+#endif
+				if ( cdfx > q2 )
+				{
+					break;
+				}
+				
+				x++;
+			}
+			
+			double je = double(x) / s;
+			double j2m = -1.0 / k * log(2.0 * je / (1.0 + je));
+			cout << '\t' << j2m - dists[j];
+		}
+		
+		cout << endl;
+	}
+	
+	return 0;
+}

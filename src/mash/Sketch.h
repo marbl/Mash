@@ -94,7 +94,7 @@ public:
         bool reads;
         uint64_t memoryBound;
         uint32_t minCov;
-        uint64_t targetCov;
+        double targetCov;
     };
     
     struct PositionHash
