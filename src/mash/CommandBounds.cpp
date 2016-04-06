@@ -21,13 +21,13 @@ CommandBounds::CommandBounds()
 : Command()
 {
     name = "bounds";
-    summary = "Estimate error bounds.";
-    description = "Estimate error bounds for various sketch sizes and Mash distances based on a given k-mer size and probability.";
+    summary = "Print a table of Mash error bounds.";
+    description = "Print a table of Mash error bounds for various sketch sizes and Mash distances based on a given k-mer size and desired confidence.";
     argumentString = "";
     
     useOption("help");
-    addOption("kmer", Option(Option::Integer, "k", "", "K-mer size.", "21"));
-    addOption("prob", Option(Option::Number, "p", "", "Probability of each error bound being true.", "0.99", 0, 1));
+    addOption("kmer", Option(Option::Integer, "k", "", "k-mer size.", "21"));
+    addOption("prob", Option(Option::Number, "p", "", "Mash distance estimates will be within the given error bounds with this probability.", "0.99", 0, 1));
 }
 
 int CommandBounds::run() const
