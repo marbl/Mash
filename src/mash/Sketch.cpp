@@ -1190,7 +1190,14 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 	
 	if ( parameters.reads )
 	{
-		reference.length = minHashHeap.estimateSetSize();
+		if ( parameters.genomeSize != 0 )
+		{
+			reference.length = parameters.genomeSize;
+		}
+		else
+		{
+			reference.length = minHashHeap.estimateSetSize();
+		}
 	}
 	
 	if (  l != -1 )
@@ -1222,7 +1229,11 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
     {
        	cerr << "Estimated genome size: " << minHashHeap.estimateSetSize() << endl;
     	cerr << "Estimated coverage:    " << minHashHeap.estimateMultiplicity() << endl;
-    	cerr << "Reads used:            " << count << endl;
+    	
+    	if ( parameters.targetCov > 0 )
+    	{
+	    	cerr << "Reads used:            " << count << endl;
+	    }
     }
 	
 	kseq_destroy(seq);

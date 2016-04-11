@@ -30,24 +30,12 @@ CommandDistance::CommandDistance()
     argumentString = "<reference> <query> [<query>] ...";
     
     useOption("help");
-    useOption("threads");
     addOption("list", Option(Option::Boolean, "l", "Input", "List input. Each query file contains a list of sequence files, one per line. The reference file is not affected.", ""));
     addOption("table", Option(Option::Boolean, "t", "Output", "Table output (will not report p-values, but fields will be blank if they do not meet the p-value threshold).", ""));
     //addOption("log", Option(Option::Boolean, "L", "Output", "Log scale distances and divide by k-mer size to provide a better analog to phylogenetic distance. The special case of zero shared min-hashes will result in a distance of 1.", ""));
     addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
     addOption("distance", Option(Option::Number, "d", "Output", "Maximum distance to report.", "1.0", 0., 1.));
-    useOption("kmer");
-    useOption("noncanonical");
-    useOption("protein");
-    useOption("alphabet");
-    useOption("case");
-    useOption("sketchSize");
-    useOption("individual");
-    useOption("warning");
-    useOption("reads");
-    useOption("memory");
-    useOption("minCov");
-    useOption("targetCov");
+    useSketchOptions();
 }
 
 int CommandDistance::run() const

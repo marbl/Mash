@@ -69,7 +69,6 @@ public:
     void print() const;
     virtual int run() const = 0;
     int run(int argc, const char ** argv);
-    void useOption(std::string name);
     
     std::string name;
     std::string summary;
@@ -77,7 +76,10 @@ public:
     std::string argumentString;
     
 protected:
-
+	
+    void useOption(std::string name);
+	void useSketchOptions();
+	
     std::map<std::string, Option> options;
     std::map<std::string, Option> optionsAvailable;
     std::vector<std::string> arguments;

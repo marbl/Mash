@@ -25,18 +25,7 @@ CommandContain::CommandContain()
     addOption("list", Option(Option::Boolean, "l", "Input", "List input. Each query file contains a list of sequence files, one per line. The reference file is not affected.", ""));
     addOption("errorThreshold", Option(Option::Number, "e", "Output", "Error bound threshold for reporting scores values. Error bounds can generally be increased by increasing the sketch size of the reference.", "0.05"));
     useOption("help");
-    useOption("threads");
-    useOption("kmer");
-    useOption("noncanonical");
-    useOption("protein");
-    useOption("alphabet");
-    useOption("case");
-    useOption("sketchSize");
-    useOption("individual");
-    useOption("reads");
-    useOption("memory");
-    useOption("minCov");
-    useOption("targetCov");
+    useSketchOptions();
 }
 
 int CommandContain::run() const

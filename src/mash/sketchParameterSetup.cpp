@@ -31,7 +31,7 @@ int sketchParameterSetup(Sketch::Parameters & parameters, const Command & comman
 	if ( command.getOption("memory").active )
 	{
 		parameters.reads = true;
-		parameters.minCov = 2;
+		//parameters.minCov = 2;
 		parameters.memoryBound = command.getOption("memory").getArgumentAsNumber();
 		
 		if ( command.getOption("minCov").active )
@@ -44,6 +44,12 @@ int sketchParameterSetup(Sketch::Parameters & parameters, const Command & comman
     if ( command.getOption("minCov").active || command.getOption("targetCov").active )
     {
         parameters.reads = true;
+    }
+    
+    if ( command.getOption("genome").active )
+    {
+    	parameters.reads = true;
+    	parameters.genomeSize = command.getOption("genome").getArgumentAsNumber();
     }
     
     if ( parameters.reads && ! parameters.concatenated )

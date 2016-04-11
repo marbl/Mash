@@ -51,7 +51,8 @@ public:
             reads(false),
             memoryBound(0),
             minCov(0),
-            targetCov(0)
+            targetCov(0),
+            genomeSize(0)
         {
         	memset(alphabet, 0, 256);
         }
@@ -73,7 +74,8 @@ public:
             reads(other.reads),
             memoryBound(other.memoryBound),
             minCov(other.minCov),
-            targetCov(other.targetCov)
+            targetCov(other.targetCov),
+            genomeSize(other.genomeSize)
 		{
 			memcpy(alphabet, other.alphabet, 256);
 		}
@@ -95,6 +97,7 @@ public:
         uint64_t memoryBound;
         uint32_t minCov;
         double targetCov;
+        uint64_t genomeSize;
     };
     
     struct PositionHash

@@ -43,6 +43,12 @@ void Command::Option::setArgument(string argumentNew)
     
     if ( type == Number || type == Integer )
     {
+    	if ( argument.size() == 0 )
+    	{
+    		argumentAsNumber = 0;
+    		return;
+    	}
+    	
         bool failed = false;
     	
         try
@@ -162,8 +168,9 @@ Command::Command()
     addAvailableOption("warning", Option(Option::Number, "w", "Sketch", "Probability threshold for warning about low k-mer size.", "0.01", 0, 1));
     addAvailableOption("reads", Option(Option::Boolean, "r", "Sketch", "Input is a read set. See Reads options below. Incompatible with -i.", ""));
     addAvailableOption("memory", Option(Option::Size, "b", "Reads", "Memory bound for k-mer copy counting (raw bytes or with K/M/G/T). If specified, a Bloom filter will be used instead of exact counts, so some unique k-mers will pass erroneously, and copies cannot be counted beyond 2. Implies -r, -m 2."));
-    addAvailableOption("minCov", Option(Option::Integer, "m", "Reads", "Minimum copies of each k-mer required to pass noise filter for reads. Implies -r.", "2"));
-    addAvailableOption("targetCov", Option(Option::Number, "c", "Reads", "Target coverage. Sketching will conclude if this coverage is reached before the end of the input file (estimated by average k-mer multiplicity). Implies -r.", "10"));
+    addAvailableOption("minCov", Option(Option::Integer, "m", "Reads", "Minimum copies of each k-mer required to pass noise filter for reads. Implies -r.", "1"));
+    addAvailableOption("targetCov", Option(Option::Number, "c", "Reads", "Target coverage. Sketching will conclude if this coverage is reached before the end of the input file (estimated by average k-mer multiplicity). Implies -r."));
+    addAvailableOption("genome", Option(Option::Size, "g", "Reads", "Genome size. If specified, will be used for p-value calculation instead of an estimated size from k-mer content. Implies -r."));
     addAvailableOption("noncanonical", Option(Option::Boolean, "n", "Alphabet", "Preserve strand (by default, strand is ignored by using canonical DNA k-mers, which are alphabetical minima of forward-reverse pairs). Implied if an alphabet is specified with -a or -z.", ""));
     addAvailableOption("protein", Option(Option::Boolean, "a", "Alphabet", "Use amino acid alphabet (A-Z, except BJOUXZ). Implies -n, -k 9.", ""));
     addAvailableOption("alphabet", Option(Option::String, "z", "Alphabet", "Alphabet to base hashes on (case ignored). K-mers with other characters will be ignored. Implies -n.", ""));
@@ -331,6 +338,29 @@ int Command::run(int argc, const char ** argv)
 void Command::useOption(string name)
 {
     addOption(name, optionsAvailable.at(name));
+}
+
+void Command::useSketchOptions()
+{
+    useOption("threads");
+    useOption("kmer");
+    useOption("noncanonical");
+    useOption("protein");
+    useOption("alphabet");
+    useOption("case");
+    //useOption("windowed");
+    //useOption("window");
+    useOption("sketchSize");
+    useOption("individual");
+    useOption("warning");
+    useOption("reads");
+    useOption("memory");
+    useOption("minCov");
+    useOption("targetCov");
+    useOption("genome");
+    //useOption("illumina");
+    //useOption("pacbio");
+    //useOption("nanopore");
 }
 
 void Command::addAvailableOption(string name, Option option)
