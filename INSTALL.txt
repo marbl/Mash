@@ -13,7 +13,7 @@ Dependencies:
        GNU Scientific Library ( http://www.gnu.org/software/gsl/ )
      or..
        Boost Library ( http://www.boost.org ) (see "-with-boost" below)
-   - Zlib ( included with OS X and most Linuxes, http://www.zlib.net )
+   - Zlib ( included with OS X and most Linuxes, http://www.zlib.net ) *
 
 
 Steps:
@@ -44,19 +44,29 @@ Linux
   linked statically. To do this, ensure that you have a statically built library
   (libstdc++.a) and add "-static-libstdc++" to $CPPFLAGS before running "make".
   You may also need to use "-L <dir>"in $CPPFLAGS to tell GCC where to find
-  libstdc++.a.
+  libstdc++.a. GSL can be statically linked to avoid a runtime dependency (see
+  configure options below).
 
 
-Notes:
-------
-* When running ./configure, use --prefix to install somewhere other than
-  /usr/local.
-* Sudo will be necessary for 'make install' if write permission
-  is not available in --prefix (e.g. by default).
-* Use --with-capnp=... or --with-gsl if the Cap'n Proto or GNU Scientific
-  libraries are not in the default location (/usr/local). These should absolute
+Configure options:
+------------------
+--prefix=</path/to/install>
+  Installs binaries to bin/ and libraries to lib/ within this path. The default
+  is /usr/local/, which will typically require sudo for make install. Must be
+  absolute path.
+--with-capnp=</path/to/capnp/> or  the
+  Where to find the Cap'n Proto install if not in the default location
+  (/usr/local). Must be absolute path and should not include bin/ or lib/
   paths and should not include "bin" or "lib".
-* Use --with-boost=... to provide the location to Boost, which will then be use
-  instead of GSL.
+--with-gsl=</path/to/gsl/>
+  Where to find the GNU Scientific library install if not in the default
+  location (/usr/local). Must be absolute path and should not include bin/ or
+  lib/.
+--enable-static-gsl
+  Statically link the GNU Scientific library instead of dynamically.
+--with-boost=</path/to/boost/>
+  Use Boost from this location, instead of GSL. Must be absolute path and should
+  not include bin/ or lib/.
+  
 * If Zlib is not installed in a standard system location (it usually is),
   CXXFLAGS and LDFLAGS will have to be modified before making.
