@@ -167,13 +167,13 @@ Command::Command()
     addAvailableOption("individual", Option(Option::Boolean, "i", "Sketch", "Sketch individual sequences, rather than whole files.", ""));
     addAvailableOption("warning", Option(Option::Number, "w", "Sketch", "Probability threshold for warning about low k-mer size.", "0.01", 0, 1));
     addAvailableOption("reads", Option(Option::Boolean, "r", "Sketch", "Input is a read set. See Reads options below. Incompatible with -i.", ""));
-    addAvailableOption("memory", Option(Option::Size, "b", "Reads", "Memory bound for k-mer copy counting (raw bytes or with K/M/G/T). If specified, a Bloom filter will be used instead of exact counts, so some unique k-mers will pass erroneously, and copies cannot be counted beyond 2. Implies -r, -m 2."));
+    addAvailableOption("memory", Option(Option::Size, "b", "Reads", "Use a Bloom filter of this size (raw bytes or with K/M/G/T) to filter out unique k-mers. This is useful if exact filtering with -m uses too much memory. However, some unique k-mers may pass erroneously, and copies cannot be counted beyond 2. Implies -r."));
     addAvailableOption("minCov", Option(Option::Integer, "m", "Reads", "Minimum copies of each k-mer required to pass noise filter for reads. Implies -r.", "1"));
     addAvailableOption("targetCov", Option(Option::Number, "c", "Reads", "Target coverage. Sketching will conclude if this coverage is reached before the end of the input file (estimated by average k-mer multiplicity). Implies -r."));
     addAvailableOption("genome", Option(Option::Size, "g", "Reads", "Genome size. If specified, will be used for p-value calculation instead of an estimated size from k-mer content. Implies -r."));
     addAvailableOption("noncanonical", Option(Option::Boolean, "n", "Alphabet", "Preserve strand (by default, strand is ignored by using canonical DNA k-mers, which are alphabetical minima of forward-reverse pairs). Implied if an alphabet is specified with -a or -z.", ""));
     addAvailableOption("protein", Option(Option::Boolean, "a", "Alphabet", "Use amino acid alphabet (A-Z, except BJOUXZ). Implies -n, -k 9.", ""));
-    addAvailableOption("alphabet", Option(Option::String, "z", "Alphabet", "Alphabet to base hashes on (case ignored). K-mers with other characters will be ignored. Implies -n.", ""));
+    addAvailableOption("alphabet", Option(Option::String, "z", "Alphabet", "Alphabet to base hashes on (case ignored by default; see -Z). K-mers with other characters will be ignored. Implies -n.", ""));
     addAvailableOption("case", Option(Option::Boolean, "Z", "Alphabet", "Preserve case in k-mers and alphabet (case is ignored by default). Sequence letters whose case is not in the current alphabet will be skipped when sketching.", ""));
     addAvailableOption("threads", Option(Option::Integer, "p", "", "Parallelism. This many threads will be spawned for processing.", "1"));
     addAvailableOption("pacbio", Option(Option::Boolean, "pacbio", "", "Use default settings for PacBio sequences.", ""));

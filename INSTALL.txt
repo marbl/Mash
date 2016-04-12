@@ -63,10 +63,12 @@ Configure options:
   location (/usr/local). Must be absolute path and should not include bin/ or
   lib/.
 --enable-static-gsl
-  Statically link the GNU Scientific library instead of dynamically.
+  Statically link the GNU Scientific library instead of dynamically. Be mindful
+  of licensure if distributing.
 --with-boost=</path/to/boost/>
   Use Boost from this location, instead of GSL. Must be absolute path and should
-  not include bin/ or lib/.
+  not include bin/ or lib/. Will be statically linked. Be mindful of licensure
+  if distributing.
   
 * If Zlib is not installed in a standard system location (it usually is),
   CXXFLAGS and LDFLAGS will have to be modified before making.
