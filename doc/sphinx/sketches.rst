@@ -75,7 +75,7 @@ out k-mers with lowercase nucleotides if :code:`-Z` is specified. The amino acid
 alphabet can be specified with :code:`-a`, which also changes the default k-mer
 size to reflect the denser information. A completely custom alphabet can also be
 specified with :code:`-z`. Note that alphabet size affects p-value calculation
-and hash size (see `Assessing significance with p-values <distances.htm#assessing-significance-with-p-values>`_ and `k-mer size`_).
+and hash size (see `Assessing significance with p-values <distances.html#assessing-significance-with-p-values>`_ and `k-mer size`_).
 
 
 Sketching read sets
