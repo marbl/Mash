@@ -91,7 +91,11 @@ sequencing error. The minimum copies of each k-mer required can be specified
 with :code:`-m` (e.g. :code:`-m 2` to filter unique). However, this could
 lead to high memory usage if genome size is high and coverage is low, such as
 in metagenomic read sets. In these cases a Bloom filter can be used (:code:`-b`)
-to filter out most unique k-mers with constant memory.
+to filter out most unique k-mers with constant memory. If coverage is high (e.g.
+>100x), it can be helpful to limit it to save time and to avoid repeat errors
+appearing as legitimate k-mers. This can be done with :code:`-c`, which stops
+sketching reads once the estimated average coverage (based on k-mer
+multiplicity) reaches the target.
 
 Working with sketch files
 -------------------------
