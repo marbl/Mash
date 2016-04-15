@@ -26,7 +26,7 @@ CommandBounds::CommandBounds()
     argumentString = "";
     
     useOption("help");
-    addOption("kmer", Option(Option::Integer, "k", "", "k-mer size.", "21"));
+    addOption("kmer", Option(Option::Integer, "k", "", "k-mer size.", "21", 1, 32));
     addOption("prob", Option(Option::Number, "p", "", "Mash distance estimates will be within the given error bounds with this probability.", "0.99", 0, 1));
 }
 
@@ -46,6 +46,10 @@ int CommandBounds::run() const
 	
 	int k = getOption("kmer").getArgumentAsNumber();
 	double q2 = (1.0 - getOption("prob").getArgumentAsNumber()) / 2.0;
+	
+	cout << endl << "Parameters (run with -h for details):" << endl;
+	cout << "   k:   " << k << endl;
+	cout << "   p:   " << getOption("prob").getArgumentAsNumber() << endl << endl;
 	
 	cout << "\tMash distance" << endl;
 	cout << "Sketch";
@@ -90,6 +94,8 @@ int CommandBounds::run() const
 		
 		cout << endl;
 	}
+	
+	cout << endl;
 	
 	return 0;
 }
