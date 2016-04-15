@@ -63,29 +63,39 @@ Sketch size is specified with :code:`-s`. Sketches of different sizes can be
 compared with :code:`mash dist`, although the comparison will be restricted to
 the smaller of the two sizes.
 
-Strand-independence with canonical k-mers
------------------------------------------
-By default, :code:`mash` will ignore strandedness when sketching by using
-canonical k-mers, as done in `Jellyfish`_. This works by using the reverse
-complement of a k-mer if it comes before the original k-mer alphabetically.
-It also means k-mers that do not contain only nucleotides (A, C, G, T, and their
-lowercases) must be ignored. To use every k-mer as it appears, :code:`-n`
-(noncanonical) can be specified when sketching.
+Strand and alphabet
+-------------------
+By default, :code:`mash` uses a nucleotide alphabet (ACGT), is case-insensitive,
+and will ignore strandedness by using canonical k-mers, as done in
+`Jellyfish`_. This works by using the reverse complement of a k-mer if it comes
+before the original k-mer alphabetically. Strandedness can be preserved with
+:code:`-n` (non-canonical) and case can be preserved with :code:`-Z`. Note that
+the default nucleotide alphabet does not include lowercase and thus will filter
+out k-mers with lowercase nucleotides if :code:`-Z` is specified. The amino acid
+alphabet can be specified with :code:`-a`, which also changes the default k-mer
+size to reflect the denser information. A completely custom alphabet can also be
+specified with :code:`-z`. Note that alphabet size affects p-value calculation
+and hash size (see `Assessing significance with p-values <distances.html#assessing-significance-with-p-values>`_ and `k-mer size`_).
 
-Cleaning up read sets with Bloom filtering
-------------------------------------------
 
-Since MinHash is a k-mer based method, removing unique k-mers greatly improves
-results for read sets, since unique k-mers are likely to represent sequencing
-error. :code:`mash` provides an efficient way to filter without prior k-mer
-counting by using a Bloom filter. This method can underfilter, but it will
-never overfilter (non-unique k-mers are guaranteed to be kept), and it requires
-significantly less time and memory than true k-mer counting. The filter can be
-enabled with :code:`-u` when sketching (in :code:`mash sketch` or :code:`mash
-dist`). The amount of underfiltering can be managed with the parameters of the
-Bloom filter (:code:`-g`, :code:`-e`, and :code:`-m`). Note that high coverage
-can cause duplicated errors, which will pass the filter and skew results. It is
-thus recommended to downsample read sets that have more than ~100x coverage.
+Sketching read sets
+-------------------
+
+When sketching reads instead of complete genomes or assemblies, :code:`-r`
+should be specified, which will estimate genome size from k-mer content
+rather than total sequence length, allowing more accurate p-vlaues. Genome
+size can also be specified directly with :code:`-g`. Additionally, Since
+MinHash is a k-mer based method, removing unique or low-copy k-mers usually
+improves results for read sets, since these k-mers are likely to represent
+sequencing error. The minimum copies of each k-mer required can be specified
+with :code:`-m` (e.g. :code:`-m 2` to filter unique). However, this could
+lead to high memory usage if genome size is high and coverage is low, such as
+in metagenomic read sets. In these cases a Bloom filter can be used (:code:`-b`)
+to filter out most unique k-mers with constant memory. If coverage is high (e.g.
+>100x), it can be helpful to limit it to save time and to avoid repeat errors
+appearing as legitimate k-mers. This can be done with :code:`-c`, which stops
+sketching reads once the estimated average coverage (based on k-mer
+multiplicity) reaches the target.
 
 Working with sketch files
 -------------------------
