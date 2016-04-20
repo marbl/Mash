@@ -66,12 +66,12 @@ Download and gunzip the pre-sketched RefSeq archive:
 `RefSeqSketches.msh.gz <http://gembox.cbcb.umd.edu/mash/RefSeqSketches.msh.gz>`_
 
 Sketch the reads (not provided here; 10x-100x coverage of a single bacterial genome
-with any sequencing technology should work), using :code:`-u` to improve results
-by filtering unique k-mers:
+with any sequencing technology should work), using :code:`-m 2` to improve results
+by ignoring single-copy k-mers, which are more likely to be erroneous:
 
 .. code::
 
-  mash sketch -u reads.fastq
+  mash sketch -m 2 reads.fastq
 
 Run :code:`mash dist` with the RefSeq archive as the reference and the read
 sketch as the query:
