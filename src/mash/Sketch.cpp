@@ -99,7 +99,7 @@ int Sketch::initFromFiles(const vector<string> & files, const Parameters & param
 	
     for ( int i = 0; i < files.size(); i++ )
     {
-        bool isSketch = hasSuffix(files[i], suffixSketch);
+        bool isSketch = hasSuffix(files[i], parameters.windowed ? suffixSketchWindowed : suffixSketch);
         
         if ( isSketch )
         {
@@ -124,7 +124,7 @@ int Sketch::initFromFiles(const vector<string> & files, const Parameters & param
             	cerr << "\nWARNING: The sketch file " << files[i] << " has different alphabet (" << alphabetTest << ") than the current alphabet (" << alphabet << "). This file will be skipped." << endl << endl;
             	continue;
             }
-		
+			
 			if ( sketchTest.getKmerSize() != parameters.kmerSize )
 			{
 				cerr << "\nWARNING: The sketch " << files[i] << " has a kmer size (" << sketchTest.getKmerSize() << ") that does not match the current kmer size (" << parameters.kmerSize << "). This file will be skipped." << endl << endl;
@@ -288,11 +288,6 @@ bool Sketch::sketchFileBySequence(FILE * file, ThreadPool<Sketch::SketchInput, S
 		{
 			skipped = true;
 			continue;
-		}
-		
-		if ( parameters.windowed )
-		{
-			positionHashesByReference.resize(count + 1);
 		}
 		
 		//if ( verbosity > 0 && parameters.windowed ) cout << '>' << seq->name.s << " (" << l << "nt)" << endl << endl;
@@ -996,7 +991,7 @@ Sketch::SketchOutput * loadCapnp(Sketch::SketchInput * input)
     for ( uint64_t i = 0; i < lociReader.size(); i++ )
     {
         capnp::MinHash::LocusList::Locus::Reader locusReader = lociReader[i];
-        //cout << locusReader.getHash() << '\t' << locusReader.getSequence() << '\t' << locusReader.getPosition() << endl;
+        //cout << locusReader.getHash64() << '\t' << locusReader.getSequence() << '\t' << locusReader.getPosition() << endl;
         output->positionHashesByReference[locusReader.getSequence()].push_back(Sketch::PositionHash(locusReader.getPosition(), locusReader.getHash64()));
     }
     
@@ -1152,11 +1147,6 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 		
 		count++;
 		
-		if ( parameters.windowed )
-		{
-			// TODO positionHashesByReference.resize(count + 1);
-		}
-		
 		//if ( verbosity > 0 && parameters.windowed ) cout << '>' << seq->name.s << " (" << l << "nt)" << endl << endl;
 		//if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
 		//printf("seq: %s\n", seq->seq.s);
@@ -1172,19 +1162,12 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 			}
 		}
 		
-		if ( parameters.windowed )
+		addMinHashes(minHashHeap, seq->seq.s, l, parameters);
+		
+		if ( parameters.reads && parameters.targetCov > 0 && minHashHeap.estimateMultiplicity() >= parameters.targetCov )
 		{
-			// TODO getMinHashPositions(positionHashesByReference[count], seq->seq.s, l, parameters, verbosity);
-		}
-		else
-		{
-	        addMinHashes(minHashHeap, seq->seq.s, l, parameters);
-	        
-	        if ( parameters.reads && parameters.targetCov > 0 && minHashHeap.estimateMultiplicity() >= parameters.targetCov )
-	        {
-	        	l = -1; // success code
-	        	break;
-	        }
+			l = -1; // success code
+			break;
 		}
 	}
 	
@@ -1252,8 +1235,6 @@ Sketch::SketchOutput * sketchSequence(Sketch::SketchInput * input)
 	output->references.resize(1);
 	Sketch::Reference & reference = output->references[0];
 	
-    MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.reads ? parameters.minCov : 1);
-
 	reference.length = input->length;
 	reference.name = input->name;
 	reference.comment = input->comment;
@@ -1261,14 +1242,15 @@ Sketch::SketchOutput * sketchSequence(Sketch::SketchInput * input)
 	
 	if ( parameters.windowed )
 	{
-		// TODO getMinHashPositions(positionHashesByReference[count], input->seq, l, parameters, verbosity);
+		output->positionHashesByReference.resize(1);
+		getMinHashPositions(output->positionHashesByReference[0], input->seq, input->length, parameters, 0);
 	}
 	else
 	{
+	    MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.reads ? parameters.minCov : 1);
         addMinHashes(minHashHeap, input->seq, input->length, parameters);
+		setMinHashesForReference(reference, minHashHeap);
 	}
-	
-	setMinHashesForReference(reference, minHashHeap);
 	
 	return output;
 }

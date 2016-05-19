@@ -25,6 +25,9 @@ int main(int argc, const char ** argv)
 #ifdef COMMAND_WITHIN
     commandList.addCommand(new CommandContain());
 #endif
+#ifdef COMMAND_FIND
+	commandList.addCommand(new CommandFind());
+#endif
     commandList.addCommand(new CommandInfo());
     commandList.addCommand(new CommandPaste());
     commandList.addCommand(new CommandBounds());

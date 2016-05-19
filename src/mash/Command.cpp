@@ -158,8 +158,8 @@ Command::Command()
 {
     addAvailableOption("help", Option(Option::Boolean, "h", "", "Help", ""));
     addAvailableOption("kmer", Option(Option::Integer, "k", "Sketch", "K-mer size. Hashes will be based on strings of this many nucleotides. Canonical nucleotides are used by default (see Alphabet options below).", "21", 1, 32));
-    addAvailableOption("windowed", Option(Option::Boolean, "w", "Sketch", "Windowed", ""));
-    addAvailableOption("window", Option(Option::Integer, "l", "Sketch", "Window length. Hashes that are minima in any window of this size will be stored.", "10000"));
+    addAvailableOption("windowed", Option(Option::Boolean, "W", "Sketch", "Windowed", ""));
+    addAvailableOption("window", Option(Option::Integer, "L", "Window", "Window length. Hashes that are minima in any window of this size will be stored.", "10000"));
     //addAvailableOption("error", Option(Option::Number, "e", "Sketch", "Error bound. The (maximum) number of min-hashes in each sketch will be one divided by this number squared.", "0.05"));
     addAvailableOption("sketchSize", Option(Option::Integer, "s", "Sketch", "Sketch size. Each sketch will have at most this many non-redundant min-hashes.", "1000"));
     addAvailableOption("verbose", Option(Option::Boolean, "v", "Output", "Verbose", ""));
@@ -179,11 +179,13 @@ Command::Command()
     addAvailableOption("pacbio", Option(Option::Boolean, "pacbio", "", "Use default settings for PacBio sequences.", ""));
     addAvailableOption("illumina", Option(Option::Boolean, "illumina", "", "Use default settings for Illumina sequences.", ""));
     addAvailableOption("nanopore", Option(Option::Boolean, "nanopore", "", "Use default settings for Oxford Nanopore sequences.", ""));
+    addAvailableOption("factor", Option(Option::Number, "f", "Window", "Compression factor", "100"));
     
     addCategory("", "");
     addCategory("Input", "Input");
     addCategory("Output", "Output");
     addCategory("Sketch", "Sketching");
+    addCategory("Window", "Sketching (windowed)");
     addCategory("Reads", "Sketching (reads)");
     addCategory("Alphabet", "Sketching (alphabet)");
 }
@@ -348,8 +350,11 @@ void Command::useSketchOptions()
     useOption("protein");
     useOption("alphabet");
     useOption("case");
-    //useOption("windowed");
-    //useOption("window");
+#ifdef COMMAND_FIND
+    useOption("windowed");
+    useOption("window");
+    useOption("factor");
+#endif
     useOption("sketchSize");
     useOption("individual");
     useOption("warning");

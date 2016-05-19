@@ -102,7 +102,7 @@ public:
     
     struct PositionHash
     {
-        PositionHash(uint32_t positionNew, uint32_t hashNew) :
+        PositionHash(uint32_t positionNew, hash_t hashNew) :
             position(positionNew),
             hash(hashNew)
             {}
@@ -123,7 +123,6 @@ public:
         uint32_t position;
     };
     
-    typedef std::unordered_map < hash_t, std::vector<Sketch::PositionHash> > LociByHash_umap;
     typedef std::unordered_set<hash_t> Hash_set;
     
     struct Reference

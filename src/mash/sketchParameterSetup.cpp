@@ -18,8 +18,11 @@ int sketchParameterSetup(Sketch::Parameters & parameters, const Command & comman
     parameters.reads = command.getOption("reads").active;
     parameters.minCov = command.getOption("minCov").getArgumentAsNumber();
     parameters.targetCov = command.getOption("targetCov").getArgumentAsNumber();
-    parameters.windowed = false;//command.getOption("windowed").active;
-    parameters.windowSize = 0;//command.getOption("window").getArgumentAsNumber();
+#ifdef COMMAND_FIND
+    parameters.windowed = command.getOption("windowed").active;
+    parameters.windowSize = command.getOption("window").getArgumentAsNumber();
+    parameters.concatenated = false;
+#endif
     parameters.parallelism = command.getOption("threads").getArgumentAsNumber();
     parameters.preserveCase = command.getOption("case").active;
     

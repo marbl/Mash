@@ -12,6 +12,7 @@
 #include <set>
 #include <unordered_set>
 #include "ThreadPool.h"
+#include "sketchParameterSetup.h"
 
 using namespace::std;
 
@@ -29,10 +30,7 @@ CommandFind::CommandFind()
     addOption("threshold", Option(Option::Number, "t", "Output", "Threshold. This fraction of the query sequence's min-hashes must appear in a query-sized window of a reference sequence for the match to be reported.", "0.2", 0.0, 1.0));
     addOption("best", Option(Option::Integer, "b", "Output", "Best hit count. This many of the best hits will be reported (0 to report all hits). Score ties are broken by keeping the hit to the earlier reference or to the left-most position.", "0"));
     addOption("self", Option(Option::Boolean, "self", "Output", "Ignore self matches if query ID appears in reference.", ""));
-    useOption("kmer");
-    useOption("window");
-    useOption("factor");
-    useOption("threads");
+    useSketchOptions();
 }
 
 int CommandFind::run() const
@@ -50,6 +48,12 @@ int CommandFind::run() const
     
 	Sketch::Parameters params;
 	
+    if ( sketchParameterSetup(params, *(Command *)this) )
+    {
+    	return 1;
+    }
+    
+    params.windowed = true;
     Sketch sketch;
     const string & fileReference = arguments[0];
     
@@ -61,9 +65,9 @@ int CommandFind::run() const
     
     if ( hasSuffix(fileReference, suffixSketchWindowed) )
     {
-        if ( options.at("kmer").active || options.at("minsWindowed").active || options.at("window").active )
+        if ( options.at("kmer").active || options.at("sketchSize").active || options.at("window").active )
         {
-            cerr << "ERROR: The options " << options.at("kmer").identifier << ", " << options.at("minsWindowed").identifier << " and " << options.at("window").identifier << " cannot be used when a sketch is provided; these are inherited from the sketch.\n";
+            cerr << "ERROR: The options " << options.at("kmer").identifier << ", " << options.at("sketchSize").identifier << " and " << options.at("window").identifier << " cannot be used when a sketch is provided; these are inherited from the sketch.\n";
             return 1;
         }
     }
@@ -275,6 +279,7 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
     params.minHashesPerWindow = mins;
     params.windowed = true;
     params.windowSize = windowSize;
+    params.use64 = true;
     
     getMinHashPositions(positionHashes, seq, length, params);
     //
@@ -296,7 +301,6 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
     for ( Sketch::Hash_set::const_iterator i = minHashes.begin(); i != minHashes.end(); i++ )
     {
         Sketch::hash_t hash = *i;
-        //cout << "Hash " << hash << endl;
         
         if ( sketch.hasLociByHash(hash) )
         {
