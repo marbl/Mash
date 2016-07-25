@@ -19,9 +19,10 @@ CommandInfo::CommandInfo()
     argumentString = "<sketch>";
     
     useOption("help");
-    addOption("header", Option(Option::Boolean, "H", "", "Only show header info. Do not list each sketch. Incompatible with -t and -c.", ""));
-    addOption("tabular", Option(Option::Boolean, "t", "", "Tabular output (rather than padded), with no header. Incompatible with -H and -c.", ""));
-    addOption("counts", Option(Option::Boolean, "c", "", "Show hash count histograms for each sketch. Incompatible with -H and -t.", ""));
+    addOption("header", Option(Option::Boolean, "H", "", "Only show header info. Do not list each sketch. Incompatible with -d, -t and -c.", ""));
+    addOption("tabular", Option(Option::Boolean, "t", "", "Tabular output (rather than padded), with no header. Incompatible with -d, -H and -c.", ""));
+    addOption("counts", Option(Option::Boolean, "c", "", "Show hash count histograms for each sketch. Incompatible with -d, -H and -t.", ""));
+    addOption("dump", Option(Option::Boolean, "d", "", "Dump sketches in JSON format. Incompatible with -H, -t, and -c.", ""));
 }
 
 int CommandInfo::run() const
@@ -35,6 +36,7 @@ int CommandInfo::run() const
     bool header = options.at("header").active;
     bool tabular = options.at("tabular").active;
     bool counts = options.at("counts").active;
+    bool dump = options.at("dump").active;
     
     if ( header && tabular )
     {
@@ -54,6 +56,27 @@ int CommandInfo::run() const
     	return 1;
     }
     
+	if ( dump )
+	{
+		if ( tabular )
+		{
+			cerr << "ERROR: The options -d and -t are incompatible." << endl;
+			return 1;
+		}
+	
+		if ( header )
+		{
+			cerr << "ERROR: The options -d and -H are incompatible." << endl;
+			return 1;
+		}
+	
+		if ( counts )
+		{
+			cerr << "ERROR: The options -d and -c are incompatible." << endl;
+			return 1;
+		}
+	}
+    
     const string & file = arguments[0];
     
     if ( ! hasSuffix(file, suffixSketch) )
@@ -71,6 +94,10 @@ int CommandInfo::run() const
     if ( counts )
     {
     	return printCounts(sketch);
+    }
+    else if ( dump )
+    {
+		return writeJson(sketch);
     }
     
     if ( tabular )
@@ -163,6 +190,64 @@ int CommandInfo::printCounts(const Sketch & sketch) const
 			cout << name << '\t' << j->first << '\t' << j->second << endl;
 		}
 	}
+	
+	return 0;
+}
+
+int CommandInfo::writeJson(const Sketch & sketch) const
+{
+	string alphabet;
+	sketch.getAlphabetAsString(alphabet);
+	bool use64 = sketch.getUse64();
+	
+	cout << "{" << endl;
+	cout << "	\"kmer\" : " << sketch.getKmerSize() << ',' << endl;
+	cout << "	\"alphabet\" : \"" << alphabet << "\"," << endl;
+	cout << "	\"preserveCase\" : " << (sketch.getPreserveCase() ? "true" : "false") << ',' << endl;
+	cout << "	\"canonical\" : " << (sketch.getNoncanonical() ? "false" : "true") << ',' << endl;
+	cout << "	\"sketchSize\" : " << sketch.getMinHashesPerWindow() << ',' << endl;
+	cout << "	\"hashType\" : \"murmur3\"" << endl;
+	cout << "	\"hashBits\" : " << (use64 ? 64 : 32) << ',' << endl;
+	cout << " 	\"sketches\" :" << endl;
+	cout << "	[" << endl;
+	
+	for ( uint64_t i = 0; i < sketch.getReferenceCount(); i++ )
+	{
+		const Sketch::Reference & ref = sketch.getReference(i);
+		
+		cout << "		{" << endl;
+		cout << "			\"name\" : \"" << ref.name << "\"," << endl;
+		cout << "			\"length\" : " << ref.length << ',' << endl;
+		cout << "			\"comment\" : \"" << ref.comment << "\"," << endl;
+		cout << "			\"hashes\" :" << endl;
+		cout << "			[" << endl;
+		
+		for ( int j = 0; j < ref.hashesSorted.size(); j++ )
+		{
+			cout << "				" << ( use64 ? ref.hashesSorted.at(j).hash64 : ref.hashesSorted.at(j).hash32 );
+			
+			if ( j < ref.hashesSorted.size() - 1 )
+			{
+				cout << ',';
+			}
+			
+			cout << endl;
+		}
+		
+		cout << "			]" << endl;
+		
+		if ( i < sketch.getReferenceCount() - 1 )
+		{
+			cout << "		}," << endl;
+		}
+		else
+		{
+			cout << "		}" << endl;
+		}
+	}
+	
+	cout << "	]" << endl;
+	cout << "}" << endl;
 	
 	return 0;
 }

@@ -21,6 +21,7 @@ public:
 private:
 	
 	int printCounts(const Sketch & sketch) const;
+	int writeJson(const Sketch & sketch) const;
 };
 
 #endif
