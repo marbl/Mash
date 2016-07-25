@@ -200,13 +200,19 @@ int CommandInfo::writeJson(const Sketch & sketch) const
 	sketch.getAlphabetAsString(alphabet);
 	bool use64 = sketch.getUse64();
 	
+#ifdef ARCH_32
+	#define HASH "MurmurHash3_x86_32"
+#else
+	#define HASH "MurmurHash3_x64_128"
+#endif
+	
 	cout << "{" << endl;
 	cout << "	\"kmer\" : " << sketch.getKmerSize() << ',' << endl;
 	cout << "	\"alphabet\" : \"" << alphabet << "\"," << endl;
 	cout << "	\"preserveCase\" : " << (sketch.getPreserveCase() ? "true" : "false") << ',' << endl;
 	cout << "	\"canonical\" : " << (sketch.getNoncanonical() ? "false" : "true") << ',' << endl;
 	cout << "	\"sketchSize\" : " << sketch.getMinHashesPerWindow() << ',' << endl;
-	cout << "	\"hashType\" : \"murmur3\"" << endl;
+	cout << "	\"hashType\" : \"" << HASH << "\"" << endl;
 	cout << "	\"hashBits\" : " << (use64 ? 64 : 32) << ',' << endl;
 	cout << " 	\"sketches\" :" << endl;
 	cout << "	[" << endl;
