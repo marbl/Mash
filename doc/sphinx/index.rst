@@ -13,9 +13,9 @@ Fast genome and metagenome distance estimation using MinHash
 
 |
 
-Preprint
+Publication
 ===========
-`"Fast genome and metagenome distance estimation using MinHash." Ondov et al. <http://biorxiv.org/content/early/2015/10/26/029827>`_
+`Mash: fast genome and metagenome distance estimation using MinHash. Ondov BD, Treangen TJ, Melsted P, Mallonee AB, Bergman NH, Koren S, Phillippy AM. Genome Biol. 2016 Jun 20;17(1):132. doi: 10.1186/s13059-016-0997-x. <http://genomebiology.biomedcentral.com/articles/10.1186/s13059-016-0997-x>`_
 
 .. toctree::
 
