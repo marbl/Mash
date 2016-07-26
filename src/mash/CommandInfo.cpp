@@ -214,6 +214,7 @@ int CommandInfo::writeJson(const Sketch & sketch) const
 	cout << "	\"sketchSize\" : " << sketch.getMinHashesPerWindow() << ',' << endl;
 	cout << "	\"hashType\" : \"" << HASH << "\"" << endl;
 	cout << "	\"hashBits\" : " << (use64 ? 64 : 32) << ',' << endl;
+	cout << "	\"hashSeed\" : " << seed << ',' << endl;
 	cout << " 	\"sketches\" :" << endl;
 	cout << "	[" << endl;
 	
