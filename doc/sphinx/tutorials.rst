@@ -59,14 +59,22 @@ reference (which there are two of in the sketch file):
 Querying read sets against an existing RefSeq sketch
 ----------------------------------------------------
 
-Download and gunzip the pre-sketched RefSeq archive:
+Download and gunzip the pre-sketched RefSeq archive (reads not provided here;
+10x-100x coverage of a single genome with any sequencing technology should
+work):
 
 .. download::
 
 `RefSeqSketches.msh.gz <http://gembox.cbcb.umd.edu/mash/RefSeqSketches.msh.gz>`_
 
-Sketch the reads (not provided here; 10x-100x coverage of a single bacterial genome
-with any sequencing technology should work), using :code:`-m 2` to improve results
+Concatenate paired ends (this could also be piped to :code:`mash` to save space by
+specifying :code:`-` for standard input, zipped or unzipped):
+
+.. code::
+
+ cat reads_1.fastq read_2.fastq > reads.fastq
+ 
+Sketch the reads, using :code:`-m 2` to improve results
 by ignoring single-copy k-mers, which are more likely to be erroneous:
 
 .. code::
