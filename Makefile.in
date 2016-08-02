@@ -53,7 +53,7 @@ src/mash/memcpyWrap.o : src/mash/memcpyWrap.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 src/mash/capnp/MinHash.capnp.c++ src/mash/capnp/MinHash.capnp.h : src/mash/capnp/MinHash.capnp
-	cd src/mash/capnp;export PATH=@capnp@/bin/:${PATH};capnp compile -oc++ MinHash.capnp
+	cd src/mash/capnp;export PATH=@capnp@/bin/:${PATH};capnp compile -I @capnp@/include -oc++ MinHash.capnp
 
 install : mash
 	mkdir -p @prefix@/bin/
