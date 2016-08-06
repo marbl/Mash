@@ -12,7 +12,7 @@
 #include <fcntl.h>
 #include <map>
 #include "kseq.h"
-#include "MurmurHash3.h"
+#include "murmur3.h"
 #include <assert.h>
 #include <queue>
 #include <deque>

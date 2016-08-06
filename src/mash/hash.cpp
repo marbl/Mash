@@ -5,7 +5,7 @@
 // See the LICENSE.txt file included with this software for license information.
 
 #include "hash.h"
-#include "MurmurHash3.h"
+#include "murmur3.h"
 
 hash_u getHash(const char * seq, int length, bool use64)
 {
