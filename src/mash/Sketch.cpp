@@ -183,7 +183,10 @@ int Sketch::initFromFiles(const vector<string> & files, const Parameters & param
 		
 			if ( parameters.concatenated )
 			{
-				fclose(inStream);
+				if ( files[i] != "-" )
+				{
+					fclose(inStream);
+				}
 			
 				threadPool.runWhenThreadAvailable(new SketchInput(files[i], 0, 0, "", "", parameters), sketchFile);
 			}
