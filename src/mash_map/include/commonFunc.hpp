@@ -11,10 +11,12 @@
 #include <deque>
 #include <cmath>
 
-//TODO Generalize this to GSL and Boost
-#include <boost/math/distributions/binomial.hpp>
-using namespace::boost::math;
-
+#ifdef USE_BOOST
+    #include <boost/math/distributions/binomial.hpp>
+    using namespace::boost::math;
+#else
+    #include <gsl/gsl_cdf.h>
+#endif
 
 //Own includes
 #include "map_parameters.hpp"
@@ -213,7 +215,6 @@ namespace skch
         nucIdentity = 100 * (1 + log(2.0 * jaccard / (1.0 + jaccard)) / kmerSize);
     }
 
-
     /**
      * @brief                             Compute upper bound on the identity (eq. to lower bound on mash distance)
      * @details                           Used to get a conservative identity estimate for filtering out poor L2 hits
@@ -235,8 +236,24 @@ namespace skch
 
       float mash_dist = 1.0 - identity/100;
 
-      //Inverse complement distribution function
+#ifdef USE_BOOST
       int x = quantile(complement(binomial(s, mashToJaccard(mash_dist)), q2));
+
+#else   //GSL
+
+      int x = s;
+			while ( x > 0 )
+      {
+        double cdf_complement = gsl_cdf_binomial_Q(x-1, mashToJaccard(mash_dist), s);
+
+				if ( cdf_complement > q2 )
+				{
+					break;
+				}
+				
+				x--;
+      }
+#endif
 
       float je = float(x) / s;
 
@@ -244,7 +261,6 @@ namespace skch
 
       upperBoundIdentity = 100 * (1-distance);
     }
-
 
     /**
      * @brief           Functor for comparing tuples by single index layer
