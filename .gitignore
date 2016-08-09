@@ -1,0 +1,24 @@
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Log files
+*.log
+*.status
+
+#Executables
+mash
+mashmap
+
+#Others
+Makefile
+configure
+*.cache
