@@ -36,17 +36,21 @@ OBJECTS=$(SOURCES:.cpp=.o) src/mash/capnp/MinHash.capnp.o
 
 OBJECTS_MAP=$(SOURCES_MAP:.cpp=.o)  
 
-all : mash  mashmap libmash.a
+all : mash  mashmap libmash.a libmashmap.a
 
 mash : libmash.a src/mash/memcpyWrap.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o mash src/mash/memcpyWrap.o libmash.a @capnp@/lib/libcapnp.a @capnp@/lib/libkj.a @mathlib@ -lstdc++ -lz -lm -lpthread
 
-mashmap : $(OBJECTS_MAP) 
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o mashmap @mathlib@ -lstdc++ -lz -lm -lpthread $(OBJECTS_MAP)
+mashmap : libmashmap.a
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o mashmap libmashmap.a @mathlib@ -lstdc++ -lz -lm -lpthread 
 
 libmash.a : $(OBJECTS)
 	ar -cr libmash.a $(OBJECTS)
 	ranlib libmash.a
+
+libmashmap.a : $(OBJECTS_MAP)
+	ar -cr libmashmap.a $(OBJECTS_MAP)
+	ranlib libmashmap.a
 
 .SUFFIXES :
 
@@ -62,7 +66,7 @@ src/mash/memcpyWrap.o : src/mash/memcpyWrap.c
 src/mash/capnp/MinHash.capnp.c++ src/mash/capnp/MinHash.capnp.h : src/mash/capnp/MinHash.capnp
 	cd src/mash/capnp;export PATH=@capnp@/bin/:${PATH};capnp compile -I @capnp@/include -oc++ MinHash.capnp
 
-install : mash
+install : mash mashmap
 	mkdir -p @prefix@/bin/
 	mkdir -p @prefix@/lib/
 	mkdir -p @prefix@/include/
@@ -71,19 +75,19 @@ install : mash
 	cp `pwd`/mash @prefix@/bin/
 	cp `pwd`/mashmap @prefix@/bin/
 	cp `pwd`/libmash.a @prefix@/lib/
-	cp `pwd`/src/mash/*.h @prefix@/include/mash/
+	cp `pwd`/libmashmap.a @prefix@/lib/
+	cp `pwd`/src/mash/*.h* @prefix@/include/mash/
+	cp `pwd`/src/common/*.h* @prefix@/include/mash/
+	cp `pwd`/src/mash_map/include/*.h* @prefix@/include/mash/
 	cp `pwd`/src/mash/capnp/MinHash.capnp.h @prefix@/include/mash/capnp/
 
 clean :
-	-rm mash
-	-rm mashmap
-	-rm libmash.a
-	-rm src/mash/*.o
-	-rm src/mash_map/*.o
-	-rm src/mash/capnp/*.o
-	-rm src/mash/capnp/*.c++
-	-rm src/mash/capnp/*.h
-
-cleanmap :
-	-rm mashmap
-	-rm src/mash_map/*.o
+	-rm -f mash
+	-rm -f mashmap
+	-rm -f libmash.a
+	-rm -f libmashmap.a
+	-rm -f src/mash/*.o
+	-rm -f src/mash_map/*.o
+	-rm -f src/mash/capnp/*.o
+	-rm -f src/mash/capnp/*.c++
+	-rm -f src/mash/capnp/*.h
