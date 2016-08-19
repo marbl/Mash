@@ -1,5 +1,5 @@
 /**
- * @file    parameters.hpp
+ * @file    map_parameters.hpp
  * @author  Chirag Jain <cjain7@gatech.edu>
  */
 
@@ -16,7 +16,7 @@ namespace skch
   typedef int offset_t;     //position within sequence
   typedef int seqno_t;      //sequence counter in file
 
-  //C++ timers
+  //C++ timer
   typedef std::chrono::high_resolution_clock Time;
 
   /**
@@ -28,7 +28,9 @@ namespace skch
     int kmerSize;                                     //kmer size for sketching
     int windowSize;                                   //window size for sketching 
     int minReadLength;                                //minimum read length which code maps
+    int alphabetSize;                                 //alphabet size
     float percentageIdentity;                         //user defined threshold for good similarity
+    double p_value;                                   //user defined threshold for p value
     std::vector<std::string> refSequences;            //reference sequence(s)
     std::vector<std::string> querySequences;          //query sequence(s)
     std::string outFileName;                          //output file name

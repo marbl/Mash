@@ -1,5 +1,5 @@
 /**
- * @file    localMash.cpp
+ * @file    mash_map.cpp
  * @ingroup src
  * @author  Chirag Jain <cjain7@gatech.edu>
  */

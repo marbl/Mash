@@ -1,5 +1,6 @@
 /**
- * @file    sketch.hpp
+ * @file    winSketch.hpp
+ * @brief   routines to index the reference 
  * @author  Chirag Jain <cjain7@gatech.edu>
  */
 
@@ -45,6 +46,7 @@ namespace skch
       const std::vector<std::string> &refFileNames;
       int kmerSize;
       int windowSize;
+      int alphabetSize;
 
       //Ignore top % most frequent minimizers while lookups
       const float percentageThreshold = 0.001;
@@ -96,6 +98,7 @@ namespace skch
 
             kmerSize = param.kmerSize; 
             windowSize = param.windowSize;
+            alphabetSize = param.alphabetSize;
 
             this->build();
             this->index();
@@ -117,7 +120,7 @@ namespace skch
         {
 
 #ifdef DEBUG
-        std::cout << "INFO, skch::Sketch::build, building sketch for " << fileName << std::endl;
+        std::cout << "INFO, skch::Sketch::build, building minimizer index for " << fileName << std::endl;
 #endif
 
           //Open the file using kseq
@@ -145,7 +148,7 @@ namespace skch
             }
             else
             {
-              CommonFunc::addMinimizers(this->minimizerIndex, seq, this->kmerSize, this->windowSize, seqCounter);
+              skch::CommonFunc::addMinimizers(this->minimizerIndex, seq, this->kmerSize, this->windowSize, seqCounter, this->alphabetSize);
             }
 
             seqCounter++;
@@ -156,7 +159,7 @@ namespace skch
           fclose(file);
         }
 
-          std::cout << "INFO, skch::Sketch::build, sketch size for reference (w="<< this->windowSize << ", k=" << this->kmerSize << ") = " << minimizerIndex.size() << std::endl;
+          std::cout << "INFO, skch::Sketch::build, minimizers picked from reference = " << minimizerIndex.size() << std::endl;
 
       }
 

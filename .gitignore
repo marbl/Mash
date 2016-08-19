@@ -19,6 +19,7 @@ mash
 mashmap
 
 #Others
+autoParam
 Makefile
 configure
 *.cache

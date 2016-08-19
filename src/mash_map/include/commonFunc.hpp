@@ -10,17 +10,10 @@
 #include <algorithm>
 #include <deque>
 #include <cmath>
-
-#ifdef USE_BOOST
-    #include <boost/math/distributions/binomial.hpp>
-    using namespace::boost::math;
-#else
-    #include <gsl/gsl_cdf.h>
-#endif
+#include <fstream>
 
 //Own includes
 #include "map_parameters.hpp"
-#include "winSketch.hpp"
 
 //External includes
 #include "murmur3.h"
@@ -30,7 +23,7 @@
 namespace skch
 {
   /**
-   * @class     skch::CommonFunc
+   * @namespace skch::CommonFunc
    * @brief     Implements frequently used common functions
    */
   namespace CommonFunc
@@ -96,7 +89,8 @@ namespace skch
      * @param[in]   seqCounter      current sequence number, used while saving the position of minimizer
      */
     template <typename T, typename KSEQ>
-      inline void addMinimizers(std::vector<T> &minimizerIndex, KSEQ *seq, int kmerSize, int windowSize, seqno_t seqCounter)
+      inline void addMinimizers(std::vector<T> &minimizerIndex, KSEQ *seq, int kmerSize, int windowSize, seqno_t seqCounter,
+          int alphabetSize)
       {
         //Double-ended queue (saves minimum at front end)
         std::deque< std::pair<hash_t, offset_t> > Q;
@@ -108,14 +102,21 @@ namespace skch
 
         //Compute reverse complement of seq
         char *seqRev = new char[len];
-        CommonFunc::reverseComplement(seq->seq.s, seqRev, len);
+
+        if(alphabetSize == 4) //not protein
+          CommonFunc::reverseComplement(seq->seq.s, seqRev, len);
 
 
         for(offset_t i = 0; i < len - kmerSize + 1; i++)
         {
           //Hash kmers
           hash_t hashFwd = CommonFunc::getHash(seq->seq.s + i, kmerSize); 
-          hash_t hashBwd = CommonFunc::getHash(seqRev + len - i - kmerSize, kmerSize);
+          hash_t hashBwd;
+
+          if(alphabetSize == 4)
+            hashBwd = CommonFunc::getHash(seqRev + len - i - kmerSize, kmerSize);
+          else  //proteins
+            hashBwd = std::numeric_limits<hash_t>::max();   //Pick a dummy high value so that it is ignored later
 
           //Consider non-symmetric kmers only
           if(hashBwd != hashFwd)
@@ -163,106 +164,13 @@ namespace skch
      * @brief       overloaded function for case where seq. counter does not matter
      */
     template <typename T, typename KSEQ>
-      inline void addMinimizers(std::vector<T> &minimizerIndex, KSEQ *seq, int kmerSize, int windowSize)
+      inline void addMinimizers(std::vector<T> &minimizerIndex, KSEQ *seq, int kmerSize, int windowSize,
+          int alphabetSize)
       {
-        addMinimizers(minimizerIndex, seq, kmerSize, windowSize, 0);
+        addMinimizers(minimizerIndex, seq, kmerSize, windowSize, 0, alphabetSize);
       }
 
-    /**
-     * @brief       Estimate minimum number of shared minimizers/kmers to achieve the desired identity
-     */
-    inline int estimateMinimumHits(int s, int kmerSize, int windowSize, float perc_identity)
-    {
-      //function to convert mash distance to jaccard similarity
-      auto mashToJaccard = [&](float mash_dist){
-        return 1.0 / ( 2.0 * exp(kmerSize * mash_dist) - 1.0);
-      }; 
-
-      //function to convert jaccard to min hits
-      //Atleast these many minimizers should match for jaccard identity
-      auto getMinimumSharedMinimizers = [&](float jaccard){
-        return floor (1.0 * s * jaccard); 
-      };
-
-      //Compute the estimate
-      float mash_dist = 1.0 - perc_identity/100.0;
-      float jaccardSimilarity = mashToJaccard(mash_dist);
-
-      return getMinimumSharedMinimizers(jaccardSimilarity);
-
-    }
-
-    /**
-     * @brief                     Compute mash nucleotide identity given k, s, w
-     * @param[in]   denom         sketch size
-     * @param[in]   common        matched sketches
-     * @param[in]   kmerSize      kmer size
-     * @param[out]  nucIdentity   mash nucleotide identity [0-100]
-     */
-    inline void computeMashNucIdentity(int denom, int common, int kmerSize, float &nucIdentity)
-    {
-      assert(denom > 0);
-
-      float jaccard = 1.0 * common / denom;
-
-      if ( common == denom )
-        nucIdentity = 100.0;
-
-      else if( common == 0 )
-        nucIdentity= 0.0;
-
-      else
-        nucIdentity = 100 * (1 + log(2.0 * jaccard / (1.0 + jaccard)) / kmerSize);
-    }
-
-    /**
-     * @brief                             Compute upper bound on the identity (eq. to lower bound on mash distance)
-     * @details                           Used to get a conservative identity estimate for filtering out poor L2 hits
-     * @param[in]   identity              mash identity [0-100]
-     * @param[in]   s                     sketch size
-     * @param[in]   kmerSize              kmer size
-     * @param[in]   prob                  probability that identity has an upper bound of upperBoundIdentity
-     *                                    Higher probability implies larger bound
-     * @param[out]  upperBoundIdentity    Upper bound [0 - 100]
-     */
-    inline void computeUpperBoundIdentity(float identity, int s, int kmerSize, float prob, float &upperBoundIdentity)
-    {
-      //function to convert mash distance to jaccard similarity
-      auto mashToJaccard = [&](float mash_dist){
-        return 1.0 / ( 2.0 * exp(kmerSize * mash_dist) - 1.0);
-      }; 
-
-      float q2 = (1.0 - prob)/2;
-
-      float mash_dist = 1.0 - identity/100;
-
-#ifdef USE_BOOST
-      int x = quantile(complement(binomial(s, mashToJaccard(mash_dist)), q2));
-
-#else   //GSL
-
-      int x = s;
-			while ( x > 0 )
-      {
-        double cdf_complement = gsl_cdf_binomial_Q(x-1, mashToJaccard(mash_dist), s);
-
-				if ( cdf_complement > q2 )
-				{
-					break;
-				}
-				
-				x--;
-      }
-#endif
-
-      float je = float(x) / s;
-
-      float distance =  (-1.0 / kmerSize) * log(2.0 * je / (1.0 + je)) ;
-
-      upperBoundIdentity = 100 * (1-distance);
-    }
-
-    /**
+   /**
      * @brief           Functor for comparing tuples by single index layer
      * @tparam layer    Tuple's index which is used for comparison
      * @tparam op       comparator, default as std::less
@@ -278,6 +186,26 @@ namespace skch
           }
       };
 
+    /**
+     * @brief                   computes the total size of reference in bytes
+     * @param[in] refSequences  vector of reference files
+     * @return                  total size
+     */
+    inline uint64_t getReferenceSize(const std::vector<std::string> &refSequences)
+    {
+      uint64_t count = 0;
+
+      for(auto &f : refSequences)
+      {
+        //Open the file as binary, and set the position to end
+        std::ifstream in(f, std::ifstream::ate | std::ifstream::binary);
+
+        //the position of the current character
+        count += (uint64_t)(in.tellg());
+      }
+
+      return count;
+    }
   }
 }
 

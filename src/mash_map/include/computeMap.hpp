@@ -1,5 +1,6 @@
 /**
- * @file    sketch.hpp
+ * @file    computeMap.hpp
+ * @brief   implments the sequence mapping logic
  * @author  Chirag Jain <cjain7@gatech.edu>
  */
 
@@ -16,6 +17,7 @@
 #include "map_parameters.hpp"
 #include "commonFunc.hpp"
 #include "winSketch.hpp"
+#include "map_stats.hpp"
 
 //External includes
 
@@ -24,6 +26,7 @@ namespace skch
 {
   /**
    * @class     skch::Map
+   * @brief     L1 and L2 mapping stages
    */
   class Map
   {
@@ -37,6 +40,9 @@ namespace skch
 
     //Threshold for identity
     float percentageIdentity;
+
+    //alphabet size
+    int alphabetSize;
 
     //reference sketch
     const skch::Sketch &refSketch;
@@ -71,6 +77,7 @@ namespace skch
       outputFile(param.outFileName),
       percentageIdentity(param.percentageIdentity), 
       minimumReadLength(param.minReadLength),
+      alphabetSize(param.alphabetSize),
       refSketch(refsketch) 
     {
       //Sketching parameters should match the reference for correct jaccard estimate
@@ -174,7 +181,7 @@ namespace skch
 
       ///1. Compute the minimizers
 
-      CommonFunc::addMinimizers(minimizerTableQuery, seq, this->kmerSize, this->windowSize);
+      CommonFunc::addMinimizers(minimizerTableQuery, seq, this->kmerSize, this->windowSize, alphabetSize);
 
 #ifdef DEBUG
       std::cout << "INFO, skch::Map:doL1Mapping, read id " << seqCounter << ", minimizer count = " << minimizerTableQuery.size() << "\n";
@@ -214,7 +221,7 @@ namespace skch
       std::cout << "INFO, skch::Map:doL1Mapping, read id " << seqCounter << ", Count of L1 hits in the reference = " << seedHitsL1.size() << "\n";
 #endif
 
-      int minimumHits = CommonFunc::estimateMinimumHits(s, this->kmerSize, this->windowSize, this->percentageIdentity);
+      int minimumHits = Stat::estimateMinimumHitsRelaxed(s, this->kmerSize, this->percentageIdentity);
 
 
       this->computeL1CandidateRegions(seedHitsL1, minimumHits, seq->seq.l, l1Mappings);
@@ -320,15 +327,18 @@ namespace skch
         mapLocus_t l2;
         computeL2MappedRegions(slidingWindowMinhashesCpy, s, seq->seq.l, candidateLocus, l2);
 
-        float nucIdentity;
-        float nucIdentityUpperBound;
+        //Compute mash distance using calculated jaccard
+        float mash_dist = Stat::j2md(1.0 * std::get<3>(l2)/s, this->kmerSize);
 
-        CommonFunc::computeMashNucIdentity(s, std::get<3>(l2), this->kmerSize, nucIdentity);
-        CommonFunc::computeUpperBoundIdentity(nucIdentity, s, this->kmerSize, 0.9, nucIdentityUpperBound);
+        //Compute lower bound to mash distance within 90% confidence interval
+        float mash_dist_lower_bound = Stat::md_lower_bound(mash_dist, s, this->kmerSize, 0.9);
+
+        float nucIdentity = 100 * (1 - mash_dist);
+        float nucIdentityUpperBound = 100 * (1 - mash_dist_lower_bound);
 
         /*
+         * Compute addtional statistics to filter out false mappings
          * 1. Unique Minimizers in the reference
-         * 2. Standard Deviation of the offset differences of matching minimizers
          */
         std::vector<float> mappingStatistics;
 
@@ -514,7 +524,7 @@ namespace skch
       }
 
     /**
-     * @brief                               compute additional statistics for L2 mapping result
+     * @brief                               compute additional statistics for mapping (post-L2)
      * @param[in]   slidingWindowMinhashes    
      * @param[in]   refSequenceId           begin iterator on reference index by L2 mapping
      * @param[in]   refEndItr               end iterator on reference index by L2 mapping 
@@ -563,39 +573,6 @@ namespace skch
 
           statValues.push_back(referenceDNAComplexity);
         }
-
-        ///2. Standard deviation of offset differences in the mapping
-        /*{
-          float stdDev;
-
-          std::vector<offset_t> data;
-
-          int uniqueHashes = 0;
-
-          for (auto it = slidingWindowMinhashes.cbegin(); it != slidingWindowMinhashes.cend(); ++it)
-          {
-            auto offsetValues = it->second;
-
-            //Matching minimizers
-            if(offsetValues.first != NA && offsetValues.second != NA) 
-            {
-              //Subtract L2 reference mapping begin pos from reference minimizer position
-              offset_t referenceOffsetNormalize = offsetValues.first - std::get<2>(*refStartItr);
-              data.push_back(referenceOffsetNormalize - offsetValues.second);
-            }
-
-            uniqueHashes++;
-            if(uniqueHashes == s)
-              break;
-          }
-
-          //Compute standard deviation
-          auto mean = std::accumulate(data.begin(), data.end(), 0.0f )/ data.size();
-          std::transform(data.begin(), data.end(), data.begin(),std::bind2nd(std::minus<float>(), mean ));
-          stdDev = sqrt (std::inner_product(data.begin(), data.end(), data.begin(), 0.0f)) / (data.size()-1);
-
-          statValues.push_back(stdDev);
-        }*/
       }
   };
 
