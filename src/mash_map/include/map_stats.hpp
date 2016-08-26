@@ -19,6 +19,7 @@
 #endif
 
 //Own includes
+#include "base_types.hpp"
 #include "map_parameters.hpp"
 
 //External includes

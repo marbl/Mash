@@ -15,6 +15,7 @@
 #include <zlib.h>  
 
 //Own includes
+#include "base_types.hpp"
 #include "map_parameters.hpp"
 #include "commonFunc.hpp"
 
@@ -57,11 +58,11 @@ namespace skch
 
       public:
 
-      typedef std::vector< std::tuple<hash_t, seqno_t, offset_t, wsize_t> > MI_Type;
+      typedef std::vector< MinimizerInfo > MI_Type;
       using MIIter_t = MI_Type::const_iterator;
 
       //Keep sequence length, name that appear in the sequence (for printing the mappings later)
-      std::vector< std::pair<std::string, offset_t> > metadata;
+      std::vector< ContigInfo > metadata;
 
       //Index for fast seed lookup
       /*
@@ -69,7 +70,7 @@ namespace skch
        * [minimizer #2] -> [pos1, pos2...]
        * ...
        */
-      using MI_Map_t = std::unordered_map< hash_t, std::vector<std::tuple<seqno_t, offset_t, wsize_t> > >;
+      using MI_Map_t = std::unordered_map< MinimizerMapKeyType, MinimizerMapValueType >;
       MI_Map_t minimizerPosLookupIndex;
 
       private:
@@ -131,7 +132,7 @@ namespace skch
           while ((len = kseq_read(seq)) >= 0) 
           {
             //Save the sequence name
-            metadata.emplace_back(seq->name.s, seq->seq.l);
+            metadata.push_back( ContigInfo{seq->name.s, (offset_t)seq->seq.l} );
 
             //Is the sequence too short?
             if(len < param.baseWindowSize || len < param.kmerSize)
@@ -184,13 +185,16 @@ namespace skch
             //Process needs to be done in chunks for each sequence
             //Because sliding windows should not overlap across 2 sequences
             auto currentSequenceRangeStart = it;
-            seqno_t currentSequenceId = std::get<1>(*currentSequenceRangeStart); 
+            seqno_t currentSequenceId = currentSequenceRangeStart->seqId; 
 
             auto currentSequenceRangeEnd = currentSequenceRangeStart;
 
+            //Find end of current sequence block
             while( currentSequenceRangeEnd != minimizerIndex.end() && 
-                std::get<1>(*currentSequenceRangeEnd) == currentSequenceId)
+                currentSequenceRangeEnd->seqId == currentSequenceId)
+            {
               currentSequenceRangeEnd++;
+            }
 
             /*
              * [currentSequenceRangeStart, currentSequenceRangeEnd) represents current 
@@ -198,17 +202,17 @@ namespace skch
              */
             for(auto it2 = currentSequenceRangeStart; it2 != currentSequenceRangeEnd; it2++)
             {
-              offset_t pos = std::get<2>(*it2);
-              hash_t hash_val = std::get<0>(*it2);
+              offset_t pos = it2->pos;
+              hash_t hash_val = it2->hash;
 
               //If front minimum is not in the current window, remove it
-              while(!Q.empty() && std::get<2>(*Q.front()) <=  pos - w)
+              while(!Q.empty() && Q.front()->pos <=  pos - w)
                 Q.pop_front();
 
               //  Minimizers less than equal to current minimizer 
               //  are not required.
               //  Remove them from Q (back)
-              while(!Q.empty() && std::get<0>(*Q.back()) >= hash_val) 
+              while(!Q.empty() && Q.back()->hash >= hash_val) 
                 Q.pop_back();
 
               //Push current minimizer into back of the queue
@@ -218,7 +222,7 @@ namespace skch
               {
                 //Pick the minimum minimizer
                 //Update its window size
-                std::get<3>(*Q.front()) = w;
+                Q.front()->win = w;
               }
             
             }
@@ -237,7 +241,7 @@ namespace skch
         {
           uint64_t countMinw = 0;
           for(auto &e : minimizerIndex)
-            if(std::get<3>(e) >= w)
+            if(e.win >= w)
               countMinw++;
           std::cout << "Count of minimizers associated with window size " << w << " = " << countMinw << std::endl; 
         }
@@ -253,8 +257,8 @@ namespace skch
         for(auto &e : minimizerIndex)
         {
           // [hash value -> sequence #, offset]
-          minimizerPosLookupIndex[std::get<0>(e)].emplace_back( 
-              std::get<1>(e), std::get<2>(e), std::get<3>(e));
+          minimizerPosLookupIndex[e.hash].push_back( 
+              MinimizerMetaData{e.seqId, e.pos, e.win});
         }
 
         std::cout << "INFO, skch::Sketch::index, unique minimizers = " << minimizerPosLookupIndex.size() << std::endl;
@@ -347,7 +351,7 @@ namespace skch
 
           //Parse through all the minimizers
           for(auto it = begin; it != end; it++)
-            allHashes.push_back(std::get<0>(*it));
+            allHashes.push_back(it->hash);
 
           //Compute the count of unique minimizers
           std::sort(allHashes.begin(), allHashes.end());
@@ -392,18 +396,17 @@ namespace skch
       struct compareMinimizersByPos
       {
         typedef std::pair<seqno_t, offset_t> P;
-        typedef std::tuple<hash_t, seqno_t, offset_t, wsize_t> T;
 
-        bool operator() (const T &tple, const P &val)
+        bool operator() (const MinimizerInfo &m, const P &val)
         {
-          P tplePosition(std::get<1>(tple), std::get<2>(tple));
-          return (tplePosition < val);
+          P minimizerPosition(m.seqId, m.pos);
+          return (minimizerPosition < val);
         }
 
-        bool operator() (const P &val, const T &tple)
+        bool operator() (const P &val, const MinimizerInfo &m)
         {
-          P tplePosition(std::get<1>(tple), std::get<2>(tple));
-          return (val < tplePosition);
+          P minimizerPosition(m.seqId, m.pos);
+          return (val < minimizerPosition);
         }
       } cmp;
 

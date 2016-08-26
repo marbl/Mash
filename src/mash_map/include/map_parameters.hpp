@@ -8,18 +8,12 @@
 
 #include <vector>
 
-//Own includes
+//Switch to enable timing of L1 and L2 stages for each read
+//Timings are reported in a file
+#define ENABLE_TIME_PROFILE_L1_L2 1
 
 namespace skch
 {
-  typedef uint32_t hash_t;  //hash type
-  typedef int offset_t;     //position within sequence
-  typedef int seqno_t;      //sequence counter in file
-  typedef int wsize_t;      //window size type 
-
-  //C++ timer
-  typedef std::chrono::high_resolution_clock Time;
-
   /**
    * @brief   configuration parameters for building sketch
    *          expected to be initialized using command line arguments

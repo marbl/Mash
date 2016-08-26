@@ -14,6 +14,7 @@
 #include <zlib.h>  
 
 //Own includes
+#include "base_types.hpp"
 #include "map_parameters.hpp"
 #include "commonFunc.hpp"
 #include "winSketch.hpp"
@@ -21,7 +22,6 @@
 
 //External includes
 
-#define TIME_PROFILE_L1_L2 1
 
 namespace skch
 {
@@ -87,7 +87,7 @@ namespace skch
 
       std::ofstream outstrm(param.outFileName);
 
-#ifdef TIME_PROFILE_L1_L2
+#if ENABLE_TIME_PROFILE_L1_L2
       std::ofstream outTimestrm(param.outFileName + ".time");
 #endif
 
@@ -124,7 +124,8 @@ namespace skch
           }
           else 
           {
-#ifdef TIME_PROFILE_L1_L2
+
+#if ENABLE_TIME_PROFILE_L1_L2
             auto t0 = skch::Time::now();
 #endif
 
@@ -141,7 +142,7 @@ namespace skch
             //Minimizers in the query
             MinVec_Type minimizerTableQuery;
 
-#ifdef TIME_PROFILE_L1_L2
+#if ENABLE_TIME_PROFILE_L1_L2
             auto t1 = skch::Time::now();
 #endif
 
@@ -150,7 +151,7 @@ namespace skch
             doL1Mapping(seq, seqCounter, minimizerTableQuery, optimalWindowSize,
                 l1Mappings);
 
-#ifdef TIME_PROFILE_L1_L2
+#if ENABLE_TIME_PROFILE_L1_L2
             std::chrono::duration<double> timeSpentL1 = skch::Time::now() - t1;
             t1 = skch::Time::now();
 #endif
@@ -162,7 +163,7 @@ namespace skch
             totalReadsPickedForMapping++;
             seqCounter++;
 
-#ifdef TIME_PROFILE_L1_L2
+#if ENABLE_TIME_PROFILE_L1_L2
             std::chrono::duration<double> timeSpentL2 = skch::Time::now() - t1;
             std::chrono::duration<double> timeSpentMappingRead = skch::Time::now() - t0;
             int countL1Candidates = l1Mappings.size();
@@ -204,7 +205,7 @@ namespace skch
         Vec &l1Mappings)
     {
       //Vector of positions of all the hits 
-      Sketch::MI_Map_t::mapped_type seedHitsL1;
+      std::vector<MinimizerMetaData> seedHitsL1;
 
       ///1. Compute the minimizers
 
@@ -216,10 +217,10 @@ namespace skch
 
       ///2. Find the hits in the reference, pick 's' unique minimizers as seeds, 
       
-      std::sort(minimizerTableQuery.begin(), minimizerTableQuery.end(), CommonFunc::TpleComp<0>());
+      std::sort(minimizerTableQuery.begin(), minimizerTableQuery.end(), MinimizerInfo::lessByHash);
 
       //note : unique preserves the original relative order of elements 
-      auto uniqEndIter = std::unique(minimizerTableQuery.begin(), minimizerTableQuery.end(), CommonFunc::TpleComp<0, std::equal_to>());
+      auto uniqEndIter = std::unique(minimizerTableQuery.begin(), minimizerTableQuery.end(), MinimizerInfo::equalityByHash);
 
       //This is the sketch size for estimating jaccard
       int s = std::distance(minimizerTableQuery.begin(), uniqEndIter);
@@ -229,7 +230,7 @@ namespace skch
       for(auto it = minimizerTableQuery.begin(); it != uniqEndIter; it++)
       {
         //Check if hash value exists in the reference lookup index
-        auto seedFind = refSketch.minimizerPosLookupIndex.find(std::get<0>(*it));
+        auto seedFind = refSketch.minimizerPosLookupIndex.find(it->hash);
 
         if(seedFind != refSketch.minimizerPosLookupIndex.end())
         {
@@ -246,8 +247,8 @@ namespace skch
 
       //Remove hits in the reference with window size < optimalWindowSize
       seedHitsL1.erase( std::remove_if( seedHitsL1.begin(), seedHitsL1.end(),
-            [&](decltype(seedHitsL1)::value_type &e){
-              return (std::get<2>(e) < optimalWindowSize); }),
+            [&](MinimizerMetaData &e){
+              return (e.win < optimalWindowSize); }),
             seedHitsL1.end()); 
 
 
@@ -294,11 +295,11 @@ namespace skch
           //[it .. it2] are 'minimumHits' consecutive hits 
           
           //Check if consecutive hits are close enough
-          if(std::get<0>(*it2) == std::get<0>(*it) && std::get<1>(*it2) - std::get<1>(*it) < len)
+          if(it2->seqId == it->seqId && it2->pos - it->pos < len)
           {
             //Save <1st pos --- 2nd pos>
-            candidateLocus_t candidate(std::get<0>(*it), 
-                std::max(0, std::get<1>(*it2) - len), std::get<1>(*it) + len);
+            candidateLocus_t candidate(it->seqId, 
+                std::max(0, it2->pos - len), it->pos + len);
 
             //Check if this candidate overlaps with last inserted one
             auto lst = l1Mappings.end(); lst--;
@@ -330,11 +331,11 @@ namespace skch
     {
       ///1. Compute minimum s unique hashes among minimizers 
       //Sort by minimizers' hash values
-      if(!std::is_sorted(minimizerTableQuery.begin(), minimizerTableQuery.end(), CommonFunc::TpleComp<0>()))
-          std::sort(minimizerTableQuery.begin(), minimizerTableQuery.end(), CommonFunc::TpleComp<0>());
+      if(!std::is_sorted(minimizerTableQuery.begin(), minimizerTableQuery.end(), MinimizerInfo::lessByHash))
+          std::sort(minimizerTableQuery.begin(), minimizerTableQuery.end(), MinimizerInfo::lessByHash);
 
       //compute unique minimizers, note that unique preserves the original relative order of unique elements  
-      auto uniqEndIter = std::unique(minimizerTableQuery.begin(), minimizerTableQuery.end(), CommonFunc::TpleComp<0, std::equal_to>());
+      auto uniqEndIter = std::unique(minimizerTableQuery.begin(), minimizerTableQuery.end(), MinimizerInfo::equalityByHash);
 
       //This is the sketch size for estimating jaccard
       int s = std::distance(minimizerTableQuery.begin(), uniqEndIter);
@@ -351,7 +352,7 @@ namespace skch
       slidingMapType slidingWindowMinhashes;
 
       for(auto it = minimizerTableQuery.begin(); it != uniqEndIter; it++)
-        slidingWindowMinhashes.emplace(std::get<0>(*it), std::make_pair(NA, std::get<2>(*it)));     //[hash value] -> (NA, offset in query)
+        slidingWindowMinhashes.emplace(it->hash, std::make_pair(NA, it->pos));     //[hash value] -> (NA, offset in query)
 
       bool mappingReported = false;
 
@@ -392,10 +393,10 @@ namespace skch
         {
           outstrm << seq->name.s << " " << seq->seq.l 
             << " 0 " << seq->seq.l - 1 << " +/- " 
-            << this->refSketch.metadata[std::get<0>(l2)].first 
-            << " " << this->refSketch.metadata[std::get<0>(l2)].second 
-            << " " << std::get<2>(*std::get<1>(l2)) << " " 
-            << std::get<2>(*std::get<1>(l2)) + seq->seq.l - 1
+            << this->refSketch.metadata[std::get<0>(l2)].name
+            << " " << this->refSketch.metadata[std::get<0>(l2)].len
+            << " " << std::get<1>(l2)->pos << " " 
+            << std::get<1>(l2)->pos + seq->seq.l - 1
             << " " << nucIdentity;
 
             //Print some statistics
@@ -478,8 +479,8 @@ namespace skch
 
         //Keep sliding till query crosses the candidate's end position
         //Check if u_iter offset is less than L1 candidate boundary, and reference sequence id should match
-        while(std::get<2>(*u_iter) < std::get<2>(candidateLocus) && 
-            std::get<1>(*u_iter) == std::get<0>(candidateLocus))
+        while(u_iter->pos < std::get<2>(candidateLocus) && 
+            u_iter->seqId == std::get<0>(candidateLocus))
         {
           assert(std::distance(l_iter , u_iter) > 0);
 
@@ -487,9 +488,9 @@ namespace skch
 
           for(auto it = u_prevIter; it != u_iter; it++)
           {
-            hash_t hashvalue = std::get<0>(*it);
-            offset_t offsetinReference = std::get<2>(*it);
-            wsize_t windowSize = std::get<3>(*it);
+            hash_t hashvalue = it->hash;
+            offset_t offsetinReference = it->pos;
+            wsize_t windowSize = it->win;
 
             //Minimizer in the reference only participates if it is sketched for window >= optimalWindowSize
             if(windowSize >= optimalWindowSize)
@@ -506,9 +507,9 @@ namespace skch
 
           for(auto it = l_prevIter; it != l_iter; it++)
           {
-            hash_t hashvalue = std::get<0>(*it);
-            offset_t offsetinReference = std::get<2>(*it);
-            wsize_t windowSize = std::get<3>(*it);
+            hash_t hashvalue = it->hash;
+            offset_t offsetinReference = it->pos;
+            wsize_t windowSize = it->win;
 
             //Minimizer in the reference only participates if it is sketched for window >= optimalWindowSize
             if(windowSize >= optimalWindowSize)
@@ -590,8 +591,8 @@ namespace skch
         //Push minimizers in the [refStartItr, refEndItr) range to the map
         for(auto it = refStartItr; it != refEndItr; it++)
         {
-          hash_t hashvalue = std::get<0>(*it);
-          offset_t offsetinReference = std::get<2>(*it);
+          hash_t hashvalue = it->hash;
+          offset_t offsetinReference = it->pos;
 
           //if hash doesn't exist in window
           if(slidingWindowMinhashes.find(hashvalue) == slidingWindowMinhashes.end())

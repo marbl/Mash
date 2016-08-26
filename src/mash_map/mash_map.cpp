@@ -10,6 +10,7 @@
 
 //Own includes
 #include "map_parameters.hpp"
+#include "base_types.hpp"
 #include "parseCmdArgs.hpp"
 #include "winSketch.hpp"
 #include "computeMap.hpp"

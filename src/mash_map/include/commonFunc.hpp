@@ -140,7 +140,7 @@ namespace skch
             //Ignore the minimizers from first few incomplete sliding windows
             if(i >= windowSize - 1)
             {
-              auto potentialMinimizer = std::make_tuple(Q.front().first, seqCounter, Q.front().second, windowSize);
+              auto potentialMinimizer = MinimizerInfo{Q.front().first, seqCounter, Q.front().second, windowSize};
 
               //We save the minimizer if we are seeing it for first time
               if(minimizerIndex.empty() || minimizerIndex.back() != potentialMinimizer)
