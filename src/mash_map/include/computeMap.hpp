@@ -21,6 +21,7 @@
 
 //External includes
 
+#define TIME_PROFILE_L1_L2 1
 
 namespace skch
 {
@@ -31,18 +32,9 @@ namespace skch
   class Map
   {
     //private members
-    const std::vector<std::string> &queryFiles;
-    const std::string &outputFile;
 
-    int kmerSize;
-    int windowSize;
-    int minimumReadLength;
-
-    //Threshold for identity
-    float percentageIdentity;
-
-    //alphabet size
-    int alphabetSize;
+    //algorithm parameters
+    const skch::Parameters &param;
 
     //reference sketch
     const skch::Sketch &refSketch;
@@ -65,29 +57,18 @@ namespace skch
 
     const int NA = -1;    //hash 'Not Available' marker
 
-    int stepDistance;
+    //Slide read within superwindow by these many minimizers
+    const int stepMinCount = 20;
 
     public:
 
     /**
      * @brief   constructor
      */
-    Map(const skch::Parameters &param, const skch::Sketch &refsketch) :
-      queryFiles(param.querySequences),
-      outputFile(param.outFileName),
-      percentageIdentity(param.percentageIdentity), 
-      minimumReadLength(param.minReadLength),
-      alphabetSize(param.alphabetSize),
+    Map(const skch::Parameters &p, const skch::Sketch &refsketch) :
+      param(p),
       refSketch(refsketch) 
     {
-      //Sketching parameters should match the reference for correct jaccard estimate
-      kmerSize = refsketch.getKmerSize();
-      windowSize = refsketch.getWindowSize();
-
-      //Keeping step sizes to be 10 times window size
-      //Example, 1000 step size for win size 100
-      this->stepDistance = windowSize * 10;
-
       this->mapQuery();
     }
 
@@ -104,9 +85,13 @@ namespace skch
       seqno_t totalReadsMapped = 0;
       seqno_t seqCounter = 0;
 
-      std::ofstream outstrm(this->outputFile);
+      std::ofstream outstrm(param.outFileName);
 
-      for(const auto &fileName : this->queryFiles)
+#ifdef TIME_PROFILE_L1_L2
+      std::ofstream outTimestrm(param.outFileName + ".time");
+#endif
+
+      for(const auto &fileName : param.querySequences)
       {
         //Open the file using kseq
         FILE *file = fopen(fileName.c_str(), "r");
@@ -123,8 +108,11 @@ namespace skch
 
         while ((len = kseq_read(seq)) >= 0) 
         {
+          //Get optimal window size depending upon the read length
+          int optimalWindowSize;
+          
           //Is the read too short?
-          if(len < this->windowSize || len < this->kmerSize || len < this->minimumReadLength)
+          if(len < param.baseWindowSize || len < param.kmerSize || len < param.minReadLength)
           {
             seqCounter++;
 
@@ -136,19 +124,57 @@ namespace skch
           }
           else 
           {
+#ifdef TIME_PROFILE_L1_L2
+            auto t0 = skch::Time::now();
+#endif
+
+            //Compute optimal window size for sketching this read
+            if(param.dynamicWin)
+              optimalWindowSize= Stat::recommendedWindowSizeForRead(param.p_value,
+                  param.kmerSize, param.alphabetSize,
+                  param.percentageIdentity,
+                  len, param.referenceSize,
+                  param.baseWindowSize, param.dynamicWinLevels);
+            else
+              optimalWindowSize = param.baseWindowSize;
+
             //Minimizers in the query
             MinVec_Type minimizerTableQuery;
 
+#ifdef TIME_PROFILE_L1_L2
+            auto t1 = skch::Time::now();
+#endif
+
             //L1 Mapping
             std::vector<candidateLocus_t> l1Mappings; 
-            doL1Mapping(seq, seqCounter, minimizerTableQuery, l1Mappings);
+            doL1Mapping(seq, seqCounter, minimizerTableQuery, optimalWindowSize,
+                l1Mappings);
+
+#ifdef TIME_PROFILE_L1_L2
+            std::chrono::duration<double> timeSpentL1 = skch::Time::now() - t1;
+            t1 = skch::Time::now();
+#endif
 
             //L2 Mapping
-            if ( doL2Mapping(seq, seqCounter, outstrm, minimizerTableQuery, l1Mappings) )
+            if ( doL2Mapping(seq, seqCounter, outstrm, minimizerTableQuery, optimalWindowSize, l1Mappings) )
               totalReadsMapped++;
 
             totalReadsPickedForMapping++;
             seqCounter++;
+
+#ifdef TIME_PROFILE_L1_L2
+            std::chrono::duration<double> timeSpentL2 = skch::Time::now() - t1;
+            std::chrono::duration<double> timeSpentMappingRead = skch::Time::now() - t0;
+            int countL1Candidates = l1Mappings.size();
+
+
+            outTimestrm << seq->name.s << " " << seq->seq.l 
+              << " " << countL1Candidates 
+              << " " << timeSpentL1.count() 
+              << " " << timeSpentL2.count()
+              << " " << timeSpentMappingRead.count()
+              << "\n";
+#endif
           }
         }
 
@@ -156,8 +182,6 @@ namespace skch
         kseq_destroy(seq);  
         gzclose(fp);  
       }
-
-      outstrm.close();
 
       std::cout << "INFO, skch::Map::mapQuery, [count of mapped reads, reads qualified for mapping, total input reads] = [" << totalReadsMapped << ", " << totalReadsPickedForMapping << ", " << seqCounter << "]" << std::endl;
 
@@ -170,18 +194,21 @@ namespace skch
      *              The resulting start and end target offsets on reference is (are) an 
      *              overestimate of the mapped region. Computing better bounds is left for
      *              the following L2 stage.
-     * @param[in]   seq         kseq fasta/q parser
+     * @param[in]   seq                   kseq fasta/q parser
+     * @param[in]   optimalWindowSize     window size to be used for this read  
      * @param[out]  l1Mappings  all the read mapping locations
      */
     template <typename KSEQ, typename Vec>
-    void doL1Mapping(KSEQ *seq, seqno_t seqCounter, MinVec_Type &minimizerTableQuery, Vec &l1Mappings)
+    void doL1Mapping(KSEQ *seq, seqno_t seqCounter, MinVec_Type &minimizerTableQuery, 
+        int optimalWindowSize,
+        Vec &l1Mappings)
     {
       //Vector of positions of all the hits 
-      std::vector< std::pair<seqno_t, offset_t> > seedHitsL1;
+      Sketch::MI_Map_t::mapped_type seedHitsL1;
 
       ///1. Compute the minimizers
 
-      CommonFunc::addMinimizers(minimizerTableQuery, seq, this->kmerSize, this->windowSize, alphabetSize);
+      CommonFunc::addMinimizers(minimizerTableQuery, seq, param.kmerSize, optimalWindowSize, param.alphabetSize);
 
 #ifdef DEBUG
       std::cout << "INFO, skch::Map:doL1Mapping, read id " << seqCounter << ", minimizer count = " << minimizerTableQuery.size() << "\n";
@@ -217,11 +244,18 @@ namespace skch
         }
       }
 
+      //Remove hits in the reference with window size < optimalWindowSize
+      seedHitsL1.erase( std::remove_if( seedHitsL1.begin(), seedHitsL1.end(),
+            [&](decltype(seedHitsL1)::value_type &e){
+              return (std::get<2>(e) < optimalWindowSize); }),
+            seedHitsL1.end()); 
+
+
 #ifdef DEBUG
       std::cout << "INFO, skch::Map:doL1Mapping, read id " << seqCounter << ", Count of L1 hits in the reference = " << seedHitsL1.size() << "\n";
 #endif
 
-      int minimumHits = Stat::estimateMinimumHitsRelaxed(s, this->kmerSize, this->percentageIdentity);
+      int minimumHits = Stat::estimateMinimumHitsRelaxed(s, param.kmerSize, param.percentageIdentity);
 
 
       this->computeL1CandidateRegions(seedHitsL1, minimumHits, seq->seq.l, l1Mappings);
@@ -260,10 +294,11 @@ namespace skch
           //[it .. it2] are 'minimumHits' consecutive hits 
           
           //Check if consecutive hits are close enough
-          if(it2->first == it->first && it2->second - it->second < len)
+          if(std::get<0>(*it2) == std::get<0>(*it) && std::get<1>(*it2) - std::get<1>(*it) < len)
           {
             //Save <1st pos --- 2nd pos>
-            candidateLocus_t candidate(it->first, std::max(0, it2->second - len), it->second + len);
+            candidateLocus_t candidate(std::get<0>(*it), 
+                std::max(0, std::get<1>(*it2) - len), std::get<1>(*it) + len);
 
             //Check if this candidate overlaps with last inserted one
             auto lst = l1Mappings.end(); lst--;
@@ -282,14 +317,16 @@ namespace skch
     }
 
     /**
-     * @brief                   Revise L1 candidate regions to more precise locations
-     * @param[in]   seq         kseq fasta/q parser
-     * @param[in]   l1Mappings  candidate regions for query sequence found at L1
-     * @return      T/F         True if atleast 1 mapping region is proposed
+     * @brief                             Revise L1 candidate regions to more precise locations
+     * @param[in]   seq                   kseq fasta/q parser
+     * @param[in]   l1Mappings            candidate regions for query sequence found at L1
+     * @param[in]   optimalWindowSize     window size to be used for this read  
+     * @return      T/F                   True if atleast 1 mapping region is proposed
+     *                                    Prints final mapping results to outstrm 
      */
     template <typename KSEQ, typename Vec>
     bool doL2Mapping(KSEQ *seq, seqno_t seqCounter, std::ofstream &outstrm, MinVec_Type &minimizerTableQuery, 
-                    Vec &l1Mappings)
+                    int optimalWindowSize, Vec &l1Mappings)
     {
       ///1. Compute minimum s unique hashes among minimizers 
       //Sort by minimizers' hash values
@@ -325,13 +362,13 @@ namespace skch
         slidingMapType slidingWindowMinhashesCpy = slidingWindowMinhashes;
 
         mapLocus_t l2;
-        computeL2MappedRegions(slidingWindowMinhashesCpy, s, seq->seq.l, candidateLocus, l2);
+        computeL2MappedRegions(slidingWindowMinhashesCpy, s, seq->seq.l, candidateLocus, optimalWindowSize, l2);
 
         //Compute mash distance using calculated jaccard
-        float mash_dist = Stat::j2md(1.0 * std::get<3>(l2)/s, this->kmerSize);
+        float mash_dist = Stat::j2md(1.0 * std::get<3>(l2)/s, param.kmerSize);
 
         //Compute lower bound to mash distance within 90% confidence interval
-        float mash_dist_lower_bound = Stat::md_lower_bound(mash_dist, s, this->kmerSize, 0.9);
+        float mash_dist_lower_bound = Stat::md_lower_bound(mash_dist, s, param.kmerSize, 0.9);
 
         float nucIdentity = 100 * (1 - mash_dist);
         float nucIdentityUpperBound = 100 * (1 - mash_dist_lower_bound);
@@ -347,17 +384,18 @@ namespace skch
             s, seq->seq.l,
             mappingStatistics); 
 
-        /*An alignment is reported if 
+        /*    An alignment is reported if 
          *    the nucleotide identity is >= the percentage identity threshold
          *    estimated complexity (uniqueness of minimizers) is above 75%
          */
-        if(nucIdentityUpperBound >= this->percentageIdentity && mappingStatistics[0] >= 0.75)
+        if(nucIdentityUpperBound >= param.percentageIdentity && mappingStatistics[0] >= 0.75)
         {
           outstrm << seq->name.s << " " << seq->seq.l 
             << " 0 " << seq->seq.l - 1 << " +/- " 
             << this->refSketch.metadata[std::get<0>(l2)].first 
             << " " << this->refSketch.metadata[std::get<0>(l2)].second 
-            << " " << std::get<2>(*std::get<1>(l2)) << " " << std::get<2>(*std::get<2>(l2))  
+            << " " << std::get<2>(*std::get<1>(l2)) << " " 
+            << std::get<2>(*std::get<1>(l2)) + seq->seq.l - 1
             << " " << nucIdentity;
 
             //Print some statistics
@@ -385,10 +423,13 @@ namespace skch
      * @param[in]   s                         count of hashes over which jaccard similarity is estimated
      * @param[in]   len                       length of query (read) sequence
      * @param[in]   candidateLocus            candidate region computed at L1 stage
+     * @param[in]   optimalWindowSize         window size to be used for this read  
      * @param[out]  l2Mappings                best read mapping location within the candidateLocus
      */
     template <typename MapT>
-      void computeL2MappedRegions(MapT &slidingWindowMinhashes, int s, offset_t len, candidateLocus_t &candidateLocus, mapLocus_t &l2Mapping)
+      void computeL2MappedRegions(MapT &slidingWindowMinhashes, int s, offset_t len, 
+          candidateLocus_t &candidateLocus, int optimalWindowSize,
+          mapLocus_t &l2Mapping)
       {
         //Sequence # in the reference
         seqno_t refSequenceId = std::get<0>(candidateLocus);
@@ -416,7 +457,7 @@ namespace skch
          * query is estimated
          *
          * After each window shift, we advance the range [l_iter, u_iter) forward
-         * depending on the 'stepDistance'
+         * depending on the 'stepMinCount'
          *
          * Therefore, each shift requires 
          *      1. deletion of [l_iter (previous), l_iter) elements from the window
@@ -448,12 +489,17 @@ namespace skch
           {
             hash_t hashvalue = std::get<0>(*it);
             offset_t offsetinReference = std::get<2>(*it);
+            wsize_t windowSize = std::get<3>(*it);
 
-            //if hash doesn't exist in window
-            if(slidingWindowMinhashes.find(hashvalue) == slidingWindowMinhashes.end())
-              slidingWindowMinhashes[hashvalue] = std::make_pair(offsetinReference, NA);   //add the hash to window
-            else
-              slidingWindowMinhashes[hashvalue].first = offsetinReference;                 //just revise the offset 
+            //Minimizer in the reference only participates if it is sketched for window >= optimalWindowSize
+            if(windowSize >= optimalWindowSize)
+            {
+              //if hash doesn't exist in window
+              if(slidingWindowMinhashes.find(hashvalue) == slidingWindowMinhashes.end())
+                slidingWindowMinhashes[hashvalue] = std::make_pair(offsetinReference, NA);   //add the hash to window
+              else
+                slidingWindowMinhashes[hashvalue].first = offsetinReference;                 //just revise the offset 
+            }
           }
 
           /// 2. Remove minimizers in the [l_prevIter, l_iter) range from the window 
@@ -462,21 +508,26 @@ namespace skch
           {
             hash_t hashvalue = std::get<0>(*it);
             offset_t offsetinReference = std::get<2>(*it);
+            wsize_t windowSize = std::get<3>(*it);
 
-            //hash must exist in the map, by our logic
-            assert(slidingWindowMinhashes.find(hashvalue) != slidingWindowMinhashes.end());
-
-            //only if hash and offset match
-            if(slidingWindowMinhashes[hashvalue].first == offsetinReference) 
+            //Minimizer in the reference only participates if it is sketched for window >= optimalWindowSize
+            if(windowSize >= optimalWindowSize)
             {
-              //if hash belongs to query, then update the reference offset to NA
-              if(slidingWindowMinhashes[hashvalue].second != NA)
-                slidingWindowMinhashes[hashvalue].first = NA;
-              else
+              //hash must exist in the map, by our logic
+              assert(slidingWindowMinhashes.find(hashvalue) != slidingWindowMinhashes.end());
+
+              //only if hash and offset match
+              if(slidingWindowMinhashes[hashvalue].first == offsetinReference) 
               {
-                //erase hash from map
-                auto delIter = slidingWindowMinhashes.find(hashvalue);
-                slidingWindowMinhashes.erase(delIter);
+                //if hash belongs to query, then update the reference offset to NA
+                if(slidingWindowMinhashes[hashvalue].second != NA)
+                  slidingWindowMinhashes[hashvalue].first = NA;
+                else
+                {
+                  //erase hash from map
+                  auto delIter = slidingWindowMinhashes.find(hashvalue);
+                  slidingWindowMinhashes.erase(delIter);
+                }
               }
             }
           }
@@ -509,13 +560,13 @@ namespace skch
 
           /// 4. Advance the iterator range
 
-          //Shift the window to right by stepDistance
+          //Shift the window to right by stepMinCount (set to 20)
 
           //Backup the previous iterator positions 
           l_prevIter = l_iter; u_prevIter = u_iter;
 
           //Compute the new iterator positions
-          if (!this->refSketch.advanceIter(l_iter, 20) || !this->refSketch.advanceIter(u_iter, 20))
+          if (!this->refSketch.advanceIter(l_iter, stepMinCount) || !this->refSketch.advanceIter(u_iter, stepMinCount))
             break;
         }
 
@@ -534,8 +585,7 @@ namespace skch
      */
     template <typename MapT, typename statVec_t>
       void computeMappingStatistics(MapT &slidingWindowMinhashes, MIIter_t refStartItr, MIIter_t refEndItr,
-          int s, offset_t len,
-          statVec_t &statValues)
+          int s, offset_t len, statVec_t &statValues)
       {
         //Push minimizers in the [refStartItr, refEndItr) range to the map
         for(auto it = refStartItr; it != refEndItr; it++)
@@ -567,7 +617,7 @@ namespace skch
           }
 
           float actualDensity = uniqueHashCount * 1.0 / len;
-          float expectedDensity = 2.0 / this->windowSize;
+          float expectedDensity = 2.0 / param.baseWindowSize;
 
           referenceDNAComplexity = actualDensity/expectedDensity;
 

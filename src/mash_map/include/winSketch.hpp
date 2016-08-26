@@ -42,11 +42,9 @@ namespace skch
     class Sketch
     {
       //private members
-
-      const std::vector<std::string> &refFileNames;
-      int kmerSize;
-      int windowSize;
-      int alphabetSize;
+    
+      //algorithm parameters
+      const skch::Parameters &param;
 
       //Ignore top % most frequent minimizers while lookups
       const float percentageThreshold = 0.001;
@@ -59,7 +57,7 @@ namespace skch
 
       public:
 
-      typedef std::vector< std::tuple<hash_t, seqno_t, offset_t> > MI_Type;
+      typedef std::vector< std::tuple<hash_t, seqno_t, offset_t, wsize_t> > MI_Type;
       using MIIter_t = MI_Type::const_iterator;
 
       //Keep sequence length, name that appear in the sequence (for printing the mappings later)
@@ -71,7 +69,8 @@ namespace skch
        * [minimizer #2] -> [pos1, pos2...]
        * ...
        */
-      std::unordered_map< hash_t, std::vector<std::pair<seqno_t, offset_t> > > minimizerPosLookupIndex;
+      using MI_Map_t = std::unordered_map< hash_t, std::vector<std::tuple<seqno_t, offset_t, wsize_t> > >;
+      MI_Map_t minimizerPosLookupIndex;
 
       private:
 
@@ -92,14 +91,9 @@ namespace skch
        * @brief   constructor
        *          also builds, indexes the minimizer table
        */
-      Sketch(const skch::Parameters &param) 
+      Sketch(const skch::Parameters &p) 
         :
-          refFileNames(param.refSequences) {
-
-            kmerSize = param.kmerSize; 
-            windowSize = param.windowSize;
-            alphabetSize = param.alphabetSize;
-
+          param(p) {
             this->build();
             this->index();
             this->computeFreqHist();
@@ -108,7 +102,9 @@ namespace skch
       private:
 
       /**
-       * @brief   build the sketch table
+       * @brief     build the sketch table
+       * @details   compute and save minimizers from the reference sequence(s)
+       *            assuming a fixed window size
        */
       void build()
       {
@@ -116,7 +112,7 @@ namespace skch
         //sequence counter while parsing file
         seqno_t seqCounter = 0;
 
-        for(const auto &fileName : this->refFileNames)
+        for(const auto &fileName : param.refSequences)
         {
 
 #ifdef DEBUG
@@ -138,7 +134,7 @@ namespace skch
             metadata.emplace_back(seq->name.s, seq->seq.l);
 
             //Is the sequence too short?
-            if(len < this->windowSize || len < this->kmerSize)
+            if(len < param.baseWindowSize || len < param.kmerSize)
             {
 #ifdef DEBUG
               std::cout << "WARNING, skch::Sketch::build, found an unusually short sequence relative to kmer and window size" << std::endl;
@@ -148,7 +144,7 @@ namespace skch
             }
             else
             {
-              skch::CommonFunc::addMinimizers(this->minimizerIndex, seq, this->kmerSize, this->windowSize, seqCounter, this->alphabetSize);
+              skch::CommonFunc::addMinimizers(this->minimizerIndex, seq, param.kmerSize, param.baseWindowSize, seqCounter, param.alphabetSize);
             }
 
             seqCounter++;
@@ -159,12 +155,97 @@ namespace skch
           fclose(file);
         }
 
-          std::cout << "INFO, skch::Sketch::build, minimizers picked from reference = " << minimizerIndex.size() << std::endl;
+        std::cout << "INFO, skch::Sketch::build, minimizers picked from reference = " << minimizerIndex.size() << std::endl;
+
+        if(param.dynamicWin)
+          reviseTableDynamicWindows();
 
       }
 
       /**
-       * @brief   build the indexes for fast lookups using minimizer table
+       * @brief   revise the sketch table
+       */
+      void reviseTableDynamicWindows()
+      {
+        //base window size 
+        int baseWindowSize = param.baseWindowSize;
+
+        //max level for window size
+        int maxWindowSize = param.baseWindowSize * pow(2, param.dynamicWinLevels - 1);
+
+        for(int w = 2 * baseWindowSize; w <= maxWindowSize; w *= 2)
+        {
+          // Double-ended queue (saves minimum minimizer in 'w' sized window
+          // at front end)
+          std::deque< MI_Type::iterator > Q;
+
+          for(auto it = this->minimizerIndex.begin(); it != minimizerIndex.end(); )
+          {
+            //Process needs to be done in chunks for each sequence
+            //Because sliding windows should not overlap across 2 sequences
+            auto currentSequenceRangeStart = it;
+            seqno_t currentSequenceId = std::get<1>(*currentSequenceRangeStart); 
+
+            auto currentSequenceRangeEnd = currentSequenceRangeStart;
+
+            while( currentSequenceRangeEnd != minimizerIndex.end() && 
+                std::get<1>(*currentSequenceRangeEnd) == currentSequenceId)
+              currentSequenceRangeEnd++;
+
+            /*
+             * [currentSequenceRangeStart, currentSequenceRangeEnd) represents current 
+             * sequence range in the minimizer index
+             */
+            for(auto it2 = currentSequenceRangeStart; it2 != currentSequenceRangeEnd; it2++)
+            {
+              offset_t pos = std::get<2>(*it2);
+              hash_t hash_val = std::get<0>(*it2);
+
+              //If front minimum is not in the current window, remove it
+              while(!Q.empty() && std::get<2>(*Q.front()) <=  pos - w)
+                Q.pop_front();
+
+              //  Minimizers less than equal to current minimizer 
+              //  are not required.
+              //  Remove them from Q (back)
+              while(!Q.empty() && std::get<0>(*Q.back()) >= hash_val) 
+                Q.pop_back();
+
+              //Push current minimizer into back of the queue
+              Q.emplace_back(it2); 
+
+              if(pos >= w - 1)
+              {
+                //Pick the minimum minimizer
+                //Update its window size
+                std::get<3>(*Q.front()) = w;
+              }
+            
+            }
+
+            Q.clear();
+
+            it = currentSequenceRangeEnd;
+            
+          }
+        }
+
+        std::cout << "INFO, skch::Sketch::reviseTableDynamicWindows, updated minimizers for dynamic windowing : w = [" << baseWindowSize <<  " ... " << maxWindowSize << "]" << std::endl;
+
+#ifdef DEBUG
+        for(int w = 1 * baseWindowSize; w <= maxWindowSize; w *= 2)
+        {
+          uint64_t countMinw = 0;
+          for(auto &e : minimizerIndex)
+            if(std::get<3>(e) >= w)
+              countMinw++;
+          std::cout << "Count of minimizers associated with window size " << w << " = " << countMinw << std::endl; 
+        }
+#endif
+      }
+
+      /**
+       * @brief   build the index for fast lookups using minimizer table
        */
       void index()
       {
@@ -173,7 +254,7 @@ namespace skch
         {
           // [hash value -> sequence #, offset]
           minimizerPosLookupIndex[std::get<0>(e)].emplace_back( 
-              std::get<1>(e), std::get<2>(e) );
+              std::get<1>(e), std::get<2>(e), std::get<3>(e));
         }
 
         std::cout << "INFO, skch::Sketch::index, unique minimizers = " << minimizerPosLookupIndex.size() << std::endl;
@@ -217,16 +298,6 @@ namespace skch
       }
 
       public:
-
-      int getKmerSize() const
-      {
-        return this->kmerSize;
-      }
-
-      int getWindowSize() const
-      {
-        return this->windowSize;
-      }
 
       int getFreqThreshold() const
       {
@@ -321,7 +392,7 @@ namespace skch
       struct compareMinimizersByPos
       {
         typedef std::pair<seqno_t, offset_t> P;
-        typedef std::tuple<hash_t, seqno_t, offset_t> T;
+        typedef std::tuple<hash_t, seqno_t, offset_t, wsize_t> T;
 
         bool operator() (const T &tple, const P &val)
         {

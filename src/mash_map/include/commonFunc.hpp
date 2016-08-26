@@ -130,7 +130,7 @@ namespace skch
 
             //Hashes less than equal to currentKmer are not required
             //Remove them from Q (back)
-            while(!Q.empty() && currentKmer <= Q.back().first) 
+            while(!Q.empty() && Q.back().first >= currentKmer) 
               Q.pop_back();
 
             //Push currentKmer into back of the queue
@@ -140,7 +140,7 @@ namespace skch
             //Ignore the minimizers from first few incomplete sliding windows
             if(i >= windowSize - 1)
             {
-              auto potentialMinimizer = std::make_tuple(Q.front().first, seqCounter, Q.front().second);
+              auto potentialMinimizer = std::make_tuple(Q.front().first, seqCounter, Q.front().second, windowSize);
 
               //We save the minimizer if we are seeing it for first time
               if(minimizerIndex.empty() || minimizerIndex.back() != potentialMinimizer)

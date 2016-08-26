@@ -64,6 +64,8 @@ P-value is not considered if a window value is provided. Lower window size impli
     cmd.defineOption("protein", "set alphabet type to proteins, default is nucleotides");
     cmd.defineOptionAlternative("protein","a");
 
+    cmd.defineOption("staticWin", "switch off dynamic windowing");
+
     cmd.defineOption("output", "output file name", ArgvParser::OptionRequired | ArgvParser::OptionRequiresValue);
     cmd.defineOptionAlternative("output","o");
   }
@@ -134,7 +136,12 @@ P-value is not considered if a window value is provided. Lower window size impli
     std::cout << "Reference = " << parameters.refSequences << std::endl;
     std::cout << "Query = " << parameters.querySequences << std::endl;
     std::cout << "Kmer size = " << parameters.kmerSize << std::endl;
-    std::cout << "Window size = " << parameters.windowSize << std::endl;
+
+    if(parameters.dynamicWin)
+      std::cout << "Window size = " << parameters.baseWindowSize << " (dynamic)" << std::endl;
+    else
+      std::cout << "Window size = " << parameters.baseWindowSize << " (static)" << std::endl;
+
     std::cout << "Read length >= " << parameters.minReadLength << std::endl;
     std::cout << "Alphabet = " << (parameters.alphabetSize == 4 ? "DNA" : "AA") << std::endl;
     std::cout << "P-value = " << parameters.p_value << std::endl;
@@ -194,7 +201,7 @@ P-value is not considered if a window value is provided. Lower window size impli
     }
 
     //Size of reference
-    uint64_t referenceSize = skch::CommonFunc::getReferenceSize(parameters.refSequences); 
+    parameters.referenceSize = skch::CommonFunc::getReferenceSize(parameters.refSequences); 
 
     str.clear();
 
@@ -226,6 +233,17 @@ P-value is not considered if a window value is provided. Lower window size impli
     }
     else
       parameters.alphabetSize = 4;
+
+
+    if(cmd.foundOption("staticWin"))
+    {
+      parameters.dynamicWin = false;
+    }
+    else
+    {
+      parameters.dynamicWin = true;
+      parameters.dynamicWinLevels = 6;
+    }
 
     //Parse algorithm parameters
     if(cmd.foundOption("kmer"))
@@ -276,22 +294,22 @@ P-value is not considered if a window value is provided. Lower window size impli
     if(cmd.foundOption("window"))
     {
       str << cmd.optionValue("window");
-      str >> parameters.windowSize;
+      str >> parameters.baseWindowSize;
       str.clear();
 
       //Re-estimate p value
-      int s = parameters.minReadLength * 2 / parameters.windowSize; 
+      int s = parameters.minReadLength * 2 / parameters.baseWindowSize; 
       parameters.p_value = skch::Stat::estimate_pvalue (s, parameters.kmerSize, parameters.alphabetSize, 
           parameters.percentageIdentity, 
-          parameters.minReadLength, referenceSize);
+          parameters.minReadLength, parameters.referenceSize);
     }
     else
     {
       //Compute optimal window size
-      parameters.windowSize = skch::Stat::recommendedWindowSize(parameters.p_value,
+      parameters.baseWindowSize = skch::Stat::recommendedWindowSize(parameters.p_value,
           parameters.kmerSize, parameters.alphabetSize,
           parameters.percentageIdentity,
-          parameters.minReadLength, referenceSize);
+          parameters.minReadLength, parameters.referenceSize);
     }
 
     str << cmd.optionValue("output");
