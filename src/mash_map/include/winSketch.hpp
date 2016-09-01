@@ -145,7 +145,9 @@ namespace skch
             }
             else
             {
-              skch::CommonFunc::addMinimizers(this->minimizerIndex, seq, param.kmerSize, param.baseWindowSize, seqCounter, param.alphabetSize);
+              wsize_t baseWindowLevel = 0;  //Perform winnowing with baseWindowSize
+
+              skch::CommonFunc::addMinimizers(this->minimizerIndex, seq, param.kmerSize, param.baseWindowSize, baseWindowLevel, param.alphabetSize, seqCounter);
             }
 
             seqCounter++;
@@ -158,7 +160,7 @@ namespace skch
 
         std::cout << "INFO, skch::Sketch::build, minimizers picked from reference = " << minimizerIndex.size() << std::endl;
 
-        if(param.dynamicWin)
+        if(param.staticWin == false)
           reviseTableDynamicWindows();
 
       }
@@ -168,15 +170,16 @@ namespace skch
        */
       void reviseTableDynamicWindows()
       {
-        //base window size 
         int baseWindowSize = param.baseWindowSize;
+        int maxWindowSize = pow(2, param.dynamicWinLevels - 1) * baseWindowSize;
 
-        //max level for window size
-        int maxWindowSize = param.baseWindowSize * pow(2, param.dynamicWinLevels - 1);
-
-        for(int w = 2 * baseWindowSize; w <= maxWindowSize; w *= 2)
+        //Revise for window sizes 2^0 * baseWindowSize ... 2^(dynamicWinLevels - 1) * baseWindowSize
+        for(int winLevel = 1; winLevel <= param.dynamicWinLevels - 1; winLevel++)
         {
-          // Double-ended queue (saves minimum minimizer in 'w' sized window
+          //Dynamic winnowing for window size 'win'
+          int w = pow(2, winLevel) * param.baseWindowSize;
+
+          // Double-ended queue (saves minimum minimizer in 'win' sized window
           // at front end)
           std::deque< MI_Type::iterator > Q;
 
@@ -221,8 +224,8 @@ namespace skch
               if(pos >= w - 1)
               {
                 //Pick the minimum minimizer
-                //Update its window size
-                Q.front()->win = w;
+                //Update its window level
+                Q.front()->w_lev = winLevel;
               }
             
             }
@@ -237,13 +240,13 @@ namespace skch
         std::cout << "INFO, skch::Sketch::reviseTableDynamicWindows, updated minimizers for dynamic windowing : w = [" << baseWindowSize <<  " ... " << maxWindowSize << "]" << std::endl;
 
 #ifdef DEBUG
-        for(int w = 1 * baseWindowSize; w <= maxWindowSize; w *= 2)
+        for(int winLevel = 1; winLevel <= param.dynamicWinLevels -1; winLevel++)
         {
           uint64_t countMinw = 0;
           for(auto &e : minimizerIndex)
-            if(e.win >= w)
+            if(e.w_lev >= winLevel)
               countMinw++;
-          std::cout << "Count of minimizers associated with window size " << w << " = " << countMinw << std::endl; 
+          std::cout << "Count of minimizers associated with window size " << winLevel * param.baseWindowSize << " = " << countMinw << std::endl; 
         }
 #endif
       }
@@ -258,7 +261,7 @@ namespace skch
         {
           // [hash value -> sequence #, offset]
           minimizerPosLookupIndex[e.hash].push_back( 
-              MinimizerMetaData{e.seqId, e.pos, e.win});
+              MinimizerMetaData{e.seqId, e.pos, e.w_lev, e.strand});
         }
 
         std::cout << "INFO, skch::Sketch::index, unique minimizers = " << minimizerPosLookupIndex.size() << std::endl;

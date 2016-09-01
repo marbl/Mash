@@ -11,10 +11,11 @@
 
 namespace skch
 {
-  typedef uint32_t hash_t;  //hash type
-  typedef int offset_t;     //position within sequence
-  typedef int seqno_t;      //sequence counter in file
-  typedef int wsize_t;      //window size type 
+  typedef uint32_t hash_t;    //hash type
+  typedef int offset_t;       //position within sequence
+  typedef int seqno_t;        //sequence counter in file
+  typedef uint16_t wsize_t;   //window size level type 
+  typedef int16_t strand_t;  //sequence strand 
 
   //C++ timer
   typedef std::chrono::high_resolution_clock Time;
@@ -22,24 +23,28 @@ namespace skch
   //Information about each minimizer
   struct MinimizerInfo
   {
-    hash_t hash;            //hash value
-    seqno_t seqId;          //sequence or contig id
-    offset_t pos;           //position within sequence
-    wsize_t win;            //associated window size
+    hash_t hash;                              //hash value
+    seqno_t seqId;                            //sequence or contig id
+    offset_t pos;                             //position within sequence
+    wsize_t w_lev;                            //associated window size level (0 to param.dynamicWinLevels - 1)
+    strand_t strand;                          //strand information
 
+
+    //Lexographical less than comparison
     bool operator <(const MinimizerInfo& x) {
-      return std::tie(hash, seqId, pos, win) 
-        < std::tie(x.hash, x.seqId, x.pos, x.win);
+      return std::tie(hash, seqId, pos, w_lev, strand) 
+        < std::tie(x.hash, x.seqId, x.pos, x.w_lev, x.strand);
     }
 
+    //Lexographical equality comparison
     bool operator ==(const MinimizerInfo& x) {
-      return std::tie(hash, seqId, pos, win) 
-        == std::tie(x.hash, x.seqId, x.pos, x.win);
+      return std::tie(hash, seqId, pos, w_lev, strand) 
+        == std::tie(x.hash, x.seqId, x.pos, x.w_lev, x.strand);
     }
 
     bool operator !=(const MinimizerInfo& x) {
-      return std::tie(hash, seqId, pos, win) 
-        != std::tie(x.hash, x.seqId, x.pos, x.win);
+      return std::tie(hash, seqId, pos, w_lev, strand) 
+        != std::tie(x.hash, x.seqId, x.pos, x.w_lev, x.strand);
     }
 
     static bool equalityByHash(const MinimizerInfo& x, const MinimizerInfo& y) {
@@ -58,11 +63,12 @@ namespace skch
   {
     seqno_t seqId;          //sequence or contig id
     offset_t pos;           //position within sequence
-    wsize_t win;            //associated window size
+    wsize_t w_lev;          //associated window size
+    strand_t strand;        //strand information
 
     bool operator <(const MinimizerMetaData& x) const {
-      return std::tie(seqId, pos, win) 
-        < std::tie(x.seqId, x.pos, x.win);
+      return std::tie(seqId, pos, w_lev, strand) 
+        < std::tie(x.seqId, x.pos, x.w_lev, x.strand);
     }
   };
 
@@ -75,6 +81,13 @@ namespace skch
     std::string name;       //Name of the sequence
     offset_t len;           //Length of the sequence
   };
+
+  //Label tags for strand information
+  enum strnd : strand_t
+  {
+    FWD = 1,  
+    REV = -1
+  };  
 }
 
 #endif

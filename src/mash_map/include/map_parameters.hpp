@@ -10,7 +10,7 @@
 
 //Switch to enable timing of L1 and L2 stages for each read
 //Timings are reported in a file
-#define ENABLE_TIME_PROFILE_L1_L2 1
+#define ENABLE_TIME_PROFILE_L1_L2 0
 
 namespace skch
 {
@@ -23,7 +23,7 @@ namespace skch
     int kmerSize;                                     //kmer size for sketching
 
     int baseWindowSize;                               //base window size used for sketching 
-    bool dynamicWin;                                  //switch for dynamic windowing
+    bool staticWin;                                   //switch for static winnowing
     int dynamicWinLevels;                             //no. of hierarchical levels for dynamic windowing
                                                       // including base level
 

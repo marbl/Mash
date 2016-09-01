@@ -267,17 +267,17 @@ namespace skch
      * @param[in] baseWindowSize    base window size 
      * @param[in] dynamicWinLevels  number of hierarchical dynamic window levels
      *                              including base level
-     * @return                      window size for sketching given read
+     * @return                      window size 'level' for sketching given read
      */
-    inline int recommendedWindowSizeForRead(double pValue_cutoff, 
+    inline wsize_t recommendedWindowLevelForRead(double pValue_cutoff, 
         int k, int alphabetSize,
         float identity, 
         int readLength, uint64_t lengthReference,
         int baseWindowSize, int dynamicWinLevels)
     {
-      int optimalWindowSize = baseWindowSize;
+      wsize_t optimalWindowSizeLevel = 0; //Base level
 
-      for(int i = 1; i < dynamicWinLevels; i++)
+      for(wsize_t i = 1; i < dynamicWinLevels; i++)
       {
         //window size for this level 
         int w = baseWindowSize * pow(2, i);
@@ -291,7 +291,7 @@ namespace skch
         //Check if pvalue is <= cutoff
         if(pVal <= pValue_cutoff)
         {
-          optimalWindowSize = w;
+          optimalWindowSizeLevel = i;
         }
         else
         {
@@ -300,7 +300,7 @@ namespace skch
 
       }
 
-      return optimalWindowSize;
+      return optimalWindowSizeLevel;
     }
   }
 }

@@ -89,11 +89,13 @@ namespace skch
      * @param[in]   seqCounter      current sequence number, used while saving the position of minimizer
      */
     template <typename T, typename KSEQ>
-      inline void addMinimizers(std::vector<T> &minimizerIndex, KSEQ *seq, int kmerSize, int windowSize, seqno_t seqCounter,
-          int alphabetSize)
+      inline void addMinimizers(std::vector<T> &minimizerIndex, KSEQ *seq, int kmerSize, 
+          int baseWindowSize, wsize_t windowSizeLevel, 
+          int alphabetSize,
+          seqno_t seqCounter)
       {
         //Double-ended queue (saves minimum at front end)
-        std::deque< std::pair<hash_t, offset_t> > Q;
+        std::deque< MinimizerInfo > Q;
 
         makeUpperCase(seq);
 
@@ -105,6 +107,8 @@ namespace skch
 
         if(alphabetSize == 4) //not protein
           CommonFunc::reverseComplement(seq->seq.s, seqRev, len);
+
+        int windowSize = pow(2, windowSizeLevel) * baseWindowSize;
 
 
         for(offset_t i = 0; i < len - kmerSize + 1; i++)
@@ -124,28 +128,29 @@ namespace skch
             //Take minimum value of kmer and its reverse complement
             hash_t currentKmer = std::min(hashFwd, hashBwd);
 
+            //Check the strand of this minimizer hash value
+            auto currentStrand = hashFwd < hashBwd ? strnd::FWD : strnd::REV;
+
             //If front minimum is not in the current window, remove it
-            while(!Q.empty() && Q.front().second <=  i - windowSize)
+            while(!Q.empty() && Q.front().pos <=  i - windowSize)
               Q.pop_front();
 
             //Hashes less than equal to currentKmer are not required
             //Remove them from Q (back)
-            while(!Q.empty() && Q.back().first >= currentKmer) 
+            while(!Q.empty() && Q.back().hash >= currentKmer) 
               Q.pop_back();
 
             //Push currentKmer into back of the queue
-            Q.emplace_back(currentKmer, i); 
+            Q.push_back( MinimizerInfo{currentKmer, seqCounter, i, windowSizeLevel, currentStrand} ); 
 
             //Select the minimizer from Q and put into index
             //Ignore the minimizers from first few incomplete sliding windows
             if(i >= windowSize - 1)
             {
-              auto potentialMinimizer = MinimizerInfo{Q.front().first, seqCounter, Q.front().second, windowSize};
-
               //We save the minimizer if we are seeing it for first time
-              if(minimizerIndex.empty() || minimizerIndex.back() != potentialMinimizer)
+              if(minimizerIndex.empty() || minimizerIndex.back() != Q.front())
               {
-                minimizerIndex.push_back(potentialMinimizer);
+                minimizerIndex.push_back(Q.front());
               }
             }
           }
@@ -164,10 +169,11 @@ namespace skch
      * @brief       overloaded function for case where seq. counter does not matter
      */
     template <typename T, typename KSEQ>
-      inline void addMinimizers(std::vector<T> &minimizerIndex, KSEQ *seq, int kmerSize, int windowSize,
+      inline void addMinimizers(std::vector<T> &minimizerIndex, KSEQ *seq, int kmerSize,
+          int baseWindowSize, wsize_t windowSizeLevel, 
           int alphabetSize)
       {
-        addMinimizers(minimizerIndex, seq, kmerSize, windowSize, 0, alphabetSize);
+        addMinimizers(minimizerIndex, seq, kmerSize, baseWindowSize, windowSizeLevel, alphabetSize, 0);
       }
 
    /**

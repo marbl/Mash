@@ -64,8 +64,6 @@ P-value is not considered if a window value is provided. Lower window size impli
     cmd.defineOption("protein", "set alphabet type to proteins, default is nucleotides");
     cmd.defineOptionAlternative("protein","a");
 
-    cmd.defineOption("staticWin", "switch off dynamic windowing");
-
     cmd.defineOption("output", "output file name", ArgvParser::OptionRequired | ArgvParser::OptionRequiresValue);
     cmd.defineOptionAlternative("output","o");
   }
@@ -137,10 +135,10 @@ P-value is not considered if a window value is provided. Lower window size impli
     std::cout << "Query = " << parameters.querySequences << std::endl;
     std::cout << "Kmer size = " << parameters.kmerSize << std::endl;
 
-    if(parameters.dynamicWin)
-      std::cout << "Window size = " << parameters.baseWindowSize << " (dynamic)" << std::endl;
+    if(parameters.staticWin)
+      std::cout << "Window size = " << parameters.baseWindowSize << " (single)" << std::endl;
     else
-      std::cout << "Window size = " << parameters.baseWindowSize << " (static)" << std::endl;
+      std::cout << "Window size = " << parameters.baseWindowSize << " (multilevel)" << std::endl;
 
     std::cout << "Read length >= " << parameters.minReadLength << std::endl;
     std::cout << "Alphabet = " << (parameters.alphabetSize == 4 ? "DNA" : "AA") << std::endl;
@@ -235,14 +233,10 @@ P-value is not considered if a window value is provided. Lower window size impli
       parameters.alphabetSize = 4;
 
 
-    if(cmd.foundOption("staticWin"))
+    //Unexposed parameters
     {
-      parameters.dynamicWin = false;
-    }
-    else
-    {
-      parameters.dynamicWin = true;
-      parameters.dynamicWinLevels = 6;
+      parameters.staticWin = false;
+      parameters.dynamicWinLevels = 5;
     }
 
     //Parse algorithm parameters

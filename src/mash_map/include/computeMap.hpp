@@ -48,14 +48,14 @@ namespace skch
     typedef Sketch::MIIter_t MIIter_t;
 
     //(seq. id, begin iterator over minimizerIndex, end iterator over minimizerIndex, 
-    //  equal minhash count) for L2
+    //  equal minhash count, mapping strand) for L2
     //  [begin iterator, end iterator) represents the mapped region on reference
-    typedef std::tuple<seqno_t, MIIter_t, MIIter_t, int> mapLocus_t;
+    typedef std::tuple<seqno_t, MIIter_t, MIIter_t, int, strand_t> mapLocus_t;
 
     //Make the default constructor private, non-accessible
     Map();
 
-    const int NA = -1;    //hash 'Not Available' marker
+    const offset_t NA = std::numeric_limits<offset_t>::max();    //hash 'Not Available' marker
 
     //Slide read within superwindow by these many minimizers
     const int stepMinCount = 20;
@@ -108,8 +108,8 @@ namespace skch
 
         while ((len = kseq_read(seq)) >= 0) 
         {
-          //Get optimal window size depending upon the read length
-          int optimalWindowSize;
+          //Get optimal window size level depending upon the read length
+          wsize_t optimalWindowSizeLevel;
           
           //Is the read too short?
           if(len < param.baseWindowSize || len < param.kmerSize || len < param.minReadLength)
@@ -130,14 +130,14 @@ namespace skch
 #endif
 
             //Compute optimal window size for sketching this read
-            if(param.dynamicWin)
-              optimalWindowSize= Stat::recommendedWindowSizeForRead(param.p_value,
+            if(param.staticWin)
+              optimalWindowSizeLevel = 0;
+            else
+              optimalWindowSizeLevel = Stat::recommendedWindowLevelForRead(param.p_value,
                   param.kmerSize, param.alphabetSize,
                   param.percentageIdentity,
                   len, param.referenceSize,
                   param.baseWindowSize, param.dynamicWinLevels);
-            else
-              optimalWindowSize = param.baseWindowSize;
 
             //Minimizers in the query
             MinVec_Type minimizerTableQuery;
@@ -148,7 +148,7 @@ namespace skch
 
             //L1 Mapping
             std::vector<candidateLocus_t> l1Mappings; 
-            doL1Mapping(seq, seqCounter, minimizerTableQuery, optimalWindowSize,
+            doL1Mapping(seq, seqCounter, minimizerTableQuery, optimalWindowSizeLevel,
                 l1Mappings);
 
 #if ENABLE_TIME_PROFILE_L1_L2
@@ -157,7 +157,7 @@ namespace skch
 #endif
 
             //L2 Mapping
-            if ( doL2Mapping(seq, seqCounter, outstrm, minimizerTableQuery, optimalWindowSize, l1Mappings) )
+            if ( doL2Mapping(seq, seqCounter, outstrm, minimizerTableQuery, optimalWindowSizeLevel, l1Mappings) )
               totalReadsMapped++;
 
             totalReadsPickedForMapping++;
@@ -195,13 +195,13 @@ namespace skch
      *              The resulting start and end target offsets on reference is (are) an 
      *              overestimate of the mapped region. Computing better bounds is left for
      *              the following L2 stage.
-     * @param[in]   seq                   kseq fasta/q parser
-     * @param[in]   optimalWindowSize     window size to be used for this read  
-     * @param[out]  l1Mappings  all the read mapping locations
+     * @param[in]   seq                       kseq fasta/q parser
+     * @param[in]   optimalWindowSizeLevel    window size level to be used for this read  
+     * @param[out]  l1Mappings                all the read mapping locations
      */
     template <typename KSEQ, typename Vec>
     void doL1Mapping(KSEQ *seq, seqno_t seqCounter, MinVec_Type &minimizerTableQuery, 
-        int optimalWindowSize,
+        wsize_t optimalWindowSizeLevel,
         Vec &l1Mappings)
     {
       //Vector of positions of all the hits 
@@ -209,7 +209,7 @@ namespace skch
 
       ///1. Compute the minimizers
 
-      CommonFunc::addMinimizers(minimizerTableQuery, seq, param.kmerSize, optimalWindowSize, param.alphabetSize);
+      CommonFunc::addMinimizers(minimizerTableQuery, seq, param.kmerSize, param.baseWindowSize, optimalWindowSizeLevel, param.alphabetSize);
 
 #ifdef DEBUG
       std::cout << "INFO, skch::Map:doL1Mapping, read id " << seqCounter << ", minimizer count = " << minimizerTableQuery.size() << "\n";
@@ -245,10 +245,10 @@ namespace skch
         }
       }
 
-      //Remove hits in the reference with window size < optimalWindowSize
+      //Remove hits in the reference with window size level < optimalWindowSizeLevel
       seedHitsL1.erase( std::remove_if( seedHitsL1.begin(), seedHitsL1.end(),
             [&](MinimizerMetaData &e){
-              return (e.win < optimalWindowSize); }),
+              return (e.w_lev < optimalWindowSizeLevel); }),
             seedHitsL1.end()); 
 
 
@@ -269,7 +269,7 @@ namespace skch
 
 #ifdef DEBUG
       for(auto &e : l1Mappings)
-        std::cout << "INFO, skch::Map:doL1Mapping, read id " << seqCounter << ", L1 candidate : [" << this->refSketch.metadata[std::get<0>(e)].first << " " << this->refSketch.metadata[std::get<0>(e)].second << " " << std::get<1>(e) << " " << std::get<2>(e) << "]\n";
+        std::cout << "INFO, skch::Map:doL1Mapping, read id " << seqCounter << ", L1 candidate : [" << this->refSketch.metadata[std::get<0>(e)].name << " " << this->refSketch.metadata[std::get<0>(e)].len << " " << std::get<1>(e) << " " << std::get<2>(e) << "]\n";
 #endif
 
     }
@@ -318,16 +318,16 @@ namespace skch
     }
 
     /**
-     * @brief                             Revise L1 candidate regions to more precise locations
-     * @param[in]   seq                   kseq fasta/q parser
-     * @param[in]   l1Mappings            candidate regions for query sequence found at L1
-     * @param[in]   optimalWindowSize     window size to be used for this read  
-     * @return      T/F                   True if atleast 1 mapping region is proposed
-     *                                    Prints final mapping results to outstrm 
+     * @brief                                 Revise L1 candidate regions to more precise locations
+     * @param[in]   seq                       kseq fasta/q parser
+     * @param[in]   l1Mappings                candidate regions for query sequence found at L1
+     * @param[in]   optimalWindowSizeLevel    window size level to be used for this read  
+     * @return      T/F                       True if atleast 1 mapping region is proposed
+     *                                        Prints final mapping results to outstrm 
      */
     template <typename KSEQ, typename Vec>
     bool doL2Mapping(KSEQ *seq, seqno_t seqCounter, std::ofstream &outstrm, MinVec_Type &minimizerTableQuery, 
-                    int optimalWindowSize, Vec &l1Mappings)
+                    wsize_t optimalWindowSizeLevel, Vec &l1Mappings)
     {
       ///1. Compute minimum s unique hashes among minimizers 
       //Sort by minimizers' hash values
@@ -344,6 +344,8 @@ namespace skch
        * Type of container used for walking read over the reference superwindow
        * We choose a std map : 
        *    [hash value -> (location in the reference superwindow, offset in query)]
+       *    offset is multiplied by strand type (+1,-1) to embed this information
+       *
        * map preserves the sorted order of hashes, so computing jaccard similarity 
        * is a linear walk, each time for the sliding window
        */
@@ -352,7 +354,7 @@ namespace skch
       slidingMapType slidingWindowMinhashes;
 
       for(auto it = minimizerTableQuery.begin(); it != uniqEndIter; it++)
-        slidingWindowMinhashes.emplace(it->hash, std::make_pair(NA, it->pos));     //[hash value] -> (NA, offset in query)
+        slidingWindowMinhashes.emplace(it->hash, std::make_pair(NA, (it->pos)*(it->strand)));     //[hash value] -> (NA, offset in query)
 
       bool mappingReported = false;
 
@@ -363,7 +365,7 @@ namespace skch
         slidingMapType slidingWindowMinhashesCpy = slidingWindowMinhashes;
 
         mapLocus_t l2;
-        computeL2MappedRegions(slidingWindowMinhashesCpy, s, seq->seq.l, candidateLocus, optimalWindowSize, l2);
+        computeL2MappedRegions(slidingWindowMinhashesCpy, s, seq->seq.l, candidateLocus, optimalWindowSizeLevel, l2);
 
         //Compute mash distance using calculated jaccard
         float mash_dist = Stat::j2md(1.0 * std::get<3>(l2)/s, param.kmerSize);
@@ -391,8 +393,10 @@ namespace skch
          */
         if(nucIdentityUpperBound >= param.percentageIdentity && mappingStatistics[0] >= 0.75)
         {
+          std::string strand = std::get<4>(l2) == strnd::FWD ? " + " : " - ";
+
           outstrm << seq->name.s << " " << seq->seq.l 
-            << " 0 " << seq->seq.l - 1 << " +/- " 
+            << " 0 " << seq->seq.l - 1 << strand 
             << this->refSketch.metadata[std::get<0>(l2)].name
             << " " << this->refSketch.metadata[std::get<0>(l2)].len
             << " " << std::get<1>(l2)->pos << " " 
@@ -424,12 +428,12 @@ namespace skch
      * @param[in]   s                         count of hashes over which jaccard similarity is estimated
      * @param[in]   len                       length of query (read) sequence
      * @param[in]   candidateLocus            candidate region computed at L1 stage
-     * @param[in]   optimalWindowSize         window size to be used for this read  
+     * @param[in]   optimalWindowSizeLevel    window size level to be used for this read  
      * @param[out]  l2Mappings                best read mapping location within the candidateLocus
      */
     template <typename MapT>
       void computeL2MappedRegions(MapT &slidingWindowMinhashes, int s, offset_t len, 
-          candidateLocus_t &candidateLocus, int optimalWindowSize,
+          candidateLocus_t &candidateLocus, wsize_t optimalWindowSizeLevel,
           mapLocus_t &l2Mapping)
       {
         //Sequence # in the reference
@@ -472,6 +476,7 @@ namespace skch
         //Save the best mapping locations here
         MIIter_t bestStartIter = l_iter, bestEndIter = u_iter;
         int maxSharedMinimizers = 0;
+        strand_t bestMatchStrandType;
 
         //Previous range is null at the beginning
         auto l_prevIter = l_iter;
@@ -490,16 +495,17 @@ namespace skch
           {
             hash_t hashvalue = it->hash;
             offset_t offsetinReference = it->pos;
-            wsize_t windowSize = it->win;
+            wsize_t windowSizeLevel = it->w_lev;
+            strand_t strandType = it->strand;
 
-            //Minimizer in the reference only participates if it is sketched for window >= optimalWindowSize
-            if(windowSize >= optimalWindowSize)
+            //Minimizer in the reference only participates if it is sketched for window >= optimalWindowSizeLevel
+            if(windowSizeLevel >= optimalWindowSizeLevel)
             {
               //if hash doesn't exist in window
               if(slidingWindowMinhashes.find(hashvalue) == slidingWindowMinhashes.end())
-                slidingWindowMinhashes[hashvalue] = std::make_pair(offsetinReference, NA);   //add the hash to window
+                slidingWindowMinhashes[hashvalue] = std::make_pair(offsetinReference * strandType, NA);   //add the hash to window
               else
-                slidingWindowMinhashes[hashvalue].first = offsetinReference;                 //just revise the offset 
+                slidingWindowMinhashes[hashvalue].first = offsetinReference * strandType;                 //just revise the offset 
             }
           }
 
@@ -509,16 +515,17 @@ namespace skch
           {
             hash_t hashvalue = it->hash;
             offset_t offsetinReference = it->pos;
-            wsize_t windowSize = it->win;
+            wsize_t windowLevel = it->w_lev;
+            strand_t strandType = it->strand;
 
-            //Minimizer in the reference only participates if it is sketched for window >= optimalWindowSize
-            if(windowSize >= optimalWindowSize)
+            //Minimizer in the reference only participates if it is sketched for window >= optimalWindowSizeLevel
+            if(windowLevel >= optimalWindowSizeLevel)
             {
               //hash must exist in the map, by our logic
               assert(slidingWindowMinhashes.find(hashvalue) != slidingWindowMinhashes.end());
 
               //only if hash and offset match
-              if(slidingWindowMinhashes[hashvalue].first == offsetinReference) 
+              if(slidingWindowMinhashes[hashvalue].first == offsetinReference * strandType) 
               {
                 //if hash belongs to query, then update the reference offset to NA
                 if(slidingWindowMinhashes[hashvalue].second != NA)
@@ -537,14 +544,21 @@ namespace skch
 
           /// 3. Compute jaccard similarity now
 
-          int uniqueHashes = 0, currentSharedMinimizers = 0;
+          int uniqueHashes = 0, currentSharedMinimizers = 0, strandVotes = 0;
 
           for (auto it = slidingWindowMinhashes.cbegin(); it != slidingWindowMinhashes.cend(); ++it)
           {
             auto offsetValues = it->second;
 
             if(offsetValues.first != NA && offsetValues.second != NA)
+            {
               currentSharedMinimizers += 1;
+
+              if( (offsetValues.first ^ offsetValues.second) >= 0)
+                strandVotes += 1;   //Both strand types match
+              else
+                strandVotes -= 1;   //Both strand types mis-match
+            }
 
             uniqueHashes++;
             if(uniqueHashes == s)
@@ -557,6 +571,11 @@ namespace skch
             bestStartIter = l_iter;
             bestEndIter = u_iter;
             maxSharedMinimizers = currentSharedMinimizers;
+
+            if(strandVotes > 0)
+              bestMatchStrandType = strnd::FWD;
+            else
+              bestMatchStrandType = strnd::REV;
           }
 
           /// 4. Advance the iterator range
@@ -572,7 +591,7 @@ namespace skch
         }
 
         //Save the result
-        l2Mapping = std::make_tuple(refSequenceId, bestStartIter, bestEndIter, maxSharedMinimizers);
+        l2Mapping = std::make_tuple(refSequenceId, bestStartIter, bestEndIter, maxSharedMinimizers, bestMatchStrandType);
       }
 
     /**
