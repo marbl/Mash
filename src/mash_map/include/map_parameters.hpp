@@ -21,7 +21,6 @@ namespace skch
   struct Parameters
   {
     int kmerSize;                                     //kmer size for sketching
-
     int baseWindowSize;                               //base window size used for sketching 
     bool staticWin;                                   //switch for static winnowing
     int dynamicWinLevels;                             //no. of hierarchical levels for dynamic windowing
@@ -35,6 +34,7 @@ namespace skch
     std::vector<std::string> refSequences;            //reference sequence(s)
     std::vector<std::string> querySequences;          //query sequence(s)
     std::string outFileName;                          //output file name
+    bool reportAll;                                   //Report all alignments if this is true
   };
 }
 

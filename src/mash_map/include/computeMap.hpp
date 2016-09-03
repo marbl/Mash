@@ -22,7 +22,6 @@
 
 //External includes
 
-
 namespace skch
 {
   /**
@@ -47,7 +46,7 @@ namespace skch
 
     typedef Sketch::MIIter_t MIIter_t;
 
-    //(seq. id, begin iterator over minimizerIndex, end iterator over minimizerIndex, 
+    //  (seq. id, begin iterator over minimizerIndex, end iterator over minimizerIndex, 
     //  equal minhash count, mapping strand) for L2
     //  [begin iterator, end iterator) represents the mapped region on reference
     typedef std::tuple<seqno_t, MIIter_t, MIIter_t, int, strand_t> mapLocus_t;
@@ -58,7 +57,7 @@ namespace skch
     const offset_t NA = std::numeric_limits<offset_t>::max();    //hash 'Not Available' marker
 
     //Slide read within superwindow by these many minimizers
-    const int stepMinCount = 20;
+    int stepMinCount;
 
     public:
 
@@ -86,10 +85,6 @@ namespace skch
       seqno_t seqCounter = 0;
 
       std::ofstream outstrm(param.outFileName);
-
-#if ENABLE_TIME_PROFILE_L1_L2
-      std::ofstream outTimestrm(param.outFileName + ".time");
-#endif
 
       for(const auto &fileName : param.querySequences)
       {
@@ -124,58 +119,19 @@ namespace skch
           }
           else 
           {
+            QueryMetaData <decltype(seq), MinVec_Type> Q;
 
-#if ENABLE_TIME_PROFILE_L1_L2
-            auto t0 = skch::Time::now();
-#endif
+            Q.seq = seq;
+            Q.seqCounter = seqCounter;
+            Q.len = len; 
 
-            //Compute optimal window size for sketching this read
-            if(param.staticWin)
-              optimalWindowSizeLevel = 0;
-            else
-              optimalWindowSizeLevel = Stat::recommendedWindowLevelForRead(param.p_value,
-                  param.kmerSize, param.alphabetSize,
-                  param.percentageIdentity,
-                  len, param.referenceSize,
-                  param.baseWindowSize, param.dynamicWinLevels);
-
-            //Minimizers in the query
-            MinVec_Type minimizerTableQuery;
-
-#if ENABLE_TIME_PROFILE_L1_L2
-            auto t1 = skch::Time::now();
-#endif
-
-            //L1 Mapping
-            std::vector<candidateLocus_t> l1Mappings; 
-            doL1Mapping(seq, seqCounter, minimizerTableQuery, optimalWindowSizeLevel,
-                l1Mappings);
-
-#if ENABLE_TIME_PROFILE_L1_L2
-            std::chrono::duration<double> timeSpentL1 = skch::Time::now() - t1;
-            t1 = skch::Time::now();
-#endif
-
-            //L2 Mapping
-            if ( doL2Mapping(seq, seqCounter, outstrm, minimizerTableQuery, optimalWindowSizeLevel, l1Mappings) )
+            //Map this sequence
+            bool mappingReported = mapSingleQuerySeq(Q, outstrm);
+            if(mappingReported)
               totalReadsMapped++;
 
-            totalReadsPickedForMapping++;
             seqCounter++;
-
-#if ENABLE_TIME_PROFILE_L1_L2
-            std::chrono::duration<double> timeSpentL2 = skch::Time::now() - t1;
-            std::chrono::duration<double> timeSpentMappingRead = skch::Time::now() - t0;
-            int countL1Candidates = l1Mappings.size();
-
-
-            outTimestrm << seq->name.s << " " << seq->seq.l 
-              << " " << countL1Candidates 
-              << " " << timeSpentL1.count() 
-              << " " << timeSpentL2.count()
-              << " " << timeSpentMappingRead.count()
-              << "\n";
-#endif
+            totalReadsPickedForMapping++;
           }
         }
 
@@ -189,52 +145,108 @@ namespace skch
     }
 
     /**
+     * @brief               map the parsed query sequence (L1 and L2 mapping)
+     * @param[in] Q         metadata about query sequence
+     * @param[in] outstrm   outstream stream where mappings will be reported
+     */
+    template<typename Q_Info>
+      inline bool mapSingleQuerySeq(Q_Info &Q, std::ofstream &outstrm)
+      {
+#if ENABLE_TIME_PROFILE_L1_L2
+        auto t0 = skch::Time::now();
+#endif
+
+        //Compute optimal window size for sketching this read
+        if(param.staticWin)
+          Q.optimalWindowSizeLevel = 0;
+        else
+          Q.optimalWindowSizeLevel = Stat::recommendedWindowLevelForRead(param.p_value,
+              param.kmerSize, param.alphabetSize,
+              param.percentageIdentity,
+              Q.len, param.referenceSize,
+              param.baseWindowSize, param.dynamicWinLevels);
+
+#if ENABLE_TIME_PROFILE_L1_L2
+        auto t1 = skch::Time::now();
+#endif
+        //L1 Mapping
+        std::vector<candidateLocus_t> l1Mappings; 
+        doL1Mapping(Q, l1Mappings);
+
+#if ENABLE_TIME_PROFILE_L1_L2
+        std::chrono::duration<double> timeSpentL1 = skch::Time::now() - t1;
+        t1 = skch::Time::now();
+#endif
+
+        //L2 Mapping
+        std::vector<MappingResult> l2Mappings;
+        bool mappingReported = doL2Mapping(Q, l1Mappings, l2Mappings);
+
+        //Write mapping results to file
+        reportL2Mappings(Q, l2Mappings, outstrm);
+
+#if ENABLE_TIME_PROFILE_L1_L2
+        {
+          std::chrono::duration<double> timeSpentL2 = skch::Time::now() - t1;
+          std::chrono::duration<double> timeSpentMappingRead = skch::Time::now() - t0;
+          int countL1Candidates = l1Mappings.size();
+
+          std::cerr << Q.seq->name.s << " " << Q.len
+            << " " << countL1Candidates 
+            << " " << timeSpentL1.count() 
+            << " " << timeSpentL2.count()
+            << " " << timeSpentMappingRead.count()
+            << "\n";
+        }
+#endif
+
+        return mappingReported;
+      }
+
+    /**
      * @brief       Find candidate regions for a read using level 1 (seed-hits) mapping
      * @details     The count of hits that should occur within a region on the reference is 
      *              determined by the threshold similarity
      *              The resulting start and end target offsets on reference is (are) an 
      *              overestimate of the mapped region. Computing better bounds is left for
      *              the following L2 stage.
-     * @param[in]   seq                       kseq fasta/q parser
-     * @param[in]   optimalWindowSizeLevel    window size level to be used for this read  
+     * @param[in]   Q                         query sequence details 
      * @param[out]  l1Mappings                all the read mapping locations
      */
-    template <typename KSEQ, typename Vec>
-    void doL1Mapping(KSEQ *seq, seqno_t seqCounter, MinVec_Type &minimizerTableQuery, 
-        wsize_t optimalWindowSizeLevel,
-        Vec &l1Mappings)
-    {
-      //Vector of positions of all the hits 
-      std::vector<MinimizerMetaData> seedHitsL1;
+    template <typename Q_Info, typename Vec>
+      void doL1Mapping(Q_Info &Q, Vec &l1Mappings)
+      {
+        //Vector of positions of all the hits 
+        std::vector<MinimizerMetaData> seedHitsL1;
 
-      ///1. Compute the minimizers
+        ///1. Compute the minimizers
 
-      CommonFunc::addMinimizers(minimizerTableQuery, seq, param.kmerSize, param.baseWindowSize, optimalWindowSizeLevel, param.alphabetSize);
+        CommonFunc::addMinimizers(Q.minimizerTableQuery, Q.seq, param.kmerSize, param.baseWindowSize, Q.optimalWindowSizeLevel, param.alphabetSize);
 
 #ifdef DEBUG
-      std::cout << "INFO, skch::Map:doL1Mapping, read id " << seqCounter << ", minimizer count = " << minimizerTableQuery.size() << "\n";
+        std::cout << "INFO, skch::Map:doL1Mapping, read id " << Q.seqCounter << ", minimizer count = " << Q.minimizerTableQuery.size() << "\n";
 #endif
 
-      ///2. Find the hits in the reference, pick 's' unique minimizers as seeds, 
-      
-      std::sort(minimizerTableQuery.begin(), minimizerTableQuery.end(), MinimizerInfo::lessByHash);
+        ///2. Find the hits in the reference, pick 's' unique minimizers as seeds, 
 
-      //note : unique preserves the original relative order of elements 
-      auto uniqEndIter = std::unique(minimizerTableQuery.begin(), minimizerTableQuery.end(), MinimizerInfo::equalityByHash);
+        std::sort(Q.minimizerTableQuery.begin(), Q.minimizerTableQuery.end(), MinimizerInfo::lessByHash);
 
-      //This is the sketch size for estimating jaccard
-      int s = std::distance(minimizerTableQuery.begin(), uniqEndIter);
+        //note : unique preserves the original relative order of elements 
+        auto uniqEndIter = std::unique(Q.minimizerTableQuery.begin(), Q.minimizerTableQuery.end(), MinimizerInfo::equalityByHash);
 
-      int totalMinimizersPicked = 0;
+        //This is the sketch size for estimating jaccard
+        Q.sketchSize = std::distance(Q.minimizerTableQuery.begin(), uniqEndIter);
 
-      for(auto it = minimizerTableQuery.begin(); it != uniqEndIter; it++)
-      {
-        //Check if hash value exists in the reference lookup index
-        auto seedFind = refSketch.minimizerPosLookupIndex.find(it->hash);
+        int totalMinimizersPicked = 0;
 
-        if(seedFind != refSketch.minimizerPosLookupIndex.end())
+        for(auto it = Q.minimizerTableQuery.begin(); it != uniqEndIter; it++)
         {
-          auto hitPositionList = seedFind->second;
+          //Check if hash value exists in the reference lookup index
+          auto seedFind = refSketch.minimizerPosLookupIndex.find(it->hash);
+
+          if(seedFind != refSketch.minimizerPosLookupIndex.end())
+          {
+            auto hitPositionList = seedFind->second;
 
           //Save the positions (Ignore high frequency hits)
           if(hitPositionList.size() < refSketch.getFreqThreshold())
@@ -248,38 +260,31 @@ namespace skch
       //Remove hits in the reference with window size level < optimalWindowSizeLevel
       seedHitsL1.erase( std::remove_if( seedHitsL1.begin(), seedHitsL1.end(),
             [&](MinimizerMetaData &e){
-              return (e.w_lev < optimalWindowSizeLevel); }),
+              return (e.w_lev < Q.optimalWindowSizeLevel); }),
             seedHitsL1.end()); 
 
+      int minimumHits = Stat::estimateMinimumHitsRelaxed(Q.sketchSize, param.kmerSize, param.percentageIdentity);
+
+      this->computeL1CandidateRegions(Q, seedHitsL1, minimumHits, l1Mappings);
 
 #ifdef DEBUG
-      std::cout << "INFO, skch::Map:doL1Mapping, read id " << seqCounter << ", Count of L1 hits in the reference = " << seedHitsL1.size() << "\n";
-#endif
+      std::cout << "INFO, skch::Map:doL1Mapping, read id " << Q.seqCounter << ", Count of L1 hits in the reference = " << seedHitsL1.size() << ", minimum hits required for a candidate = " << minimumHits << ", Count of L1 candidate regions = " << l1Mappings.size() << "\n";
 
-      int minimumHits = Stat::estimateMinimumHitsRelaxed(s, param.kmerSize, param.percentageIdentity);
-
-
-      this->computeL1CandidateRegions(seedHitsL1, minimumHits, seq->seq.l, l1Mappings);
-
-#ifdef DEBUG
-      std::cout << "INFO, skch::Map:doL1Mapping, read id " << seqCounter << ", minimum hits required for a candidate = " << minimumHits << "\n";
-      std::cout << "INFO, skch::Map:doL1Mapping, read id " << seqCounter << ", Count of L1 candidate regions = " << l1Mappings.size() << "\n";
-#endif
-
-
-#ifdef DEBUG
       for(auto &e : l1Mappings)
-        std::cout << "INFO, skch::Map:doL1Mapping, read id " << seqCounter << ", L1 candidate : [" << this->refSketch.metadata[std::get<0>(e)].name << " " << this->refSketch.metadata[std::get<0>(e)].len << " " << std::get<1>(e) << " " << std::get<2>(e) << "]\n";
+        std::cout << "INFO, skch::Map:doL1Mapping, read id " << Q.seqCounter << ", L1 candidate : [" << this->refSketch.metadata[std::get<0>(e)].name << " " << this->refSketch.metadata[std::get<0>(e)].len << " " << std::get<1>(e) << " " << std::get<2>(e) << "]\n";
 #endif
 
     }
 
     /**
-     * @brief       Helper function to doL1Mapping()
-     * @param[out]  l1Mappings  all the read mapping locations
+     * @brief                     Helper function to doL1Mapping()
+     * @param[in]   Q             query
+     * @param[in]   seedHitsL1    minimizer hits in the reference
+     * @param[in]   minimumHits   estimated minimum hits required for significant match
+     * @param[out]  l1Mappings    all the read mapping locations
      */
-    template <typename Vec1, typename Vec2>
-    void computeL1CandidateRegions(Vec1 &seedHitsL1, int minimumHits, offset_t len, Vec2 &l1Mappings)
+    template <typename Q_Info, typename Vec1, typename Vec2>
+    void computeL1CandidateRegions(Q_Info &Q, Vec1 &seedHitsL1, int minimumHits, Vec2 &l1Mappings)
     {
       if(minimumHits < 1)
         minimumHits = 1;
@@ -295,11 +300,11 @@ namespace skch
           //[it .. it2] are 'minimumHits' consecutive hits 
           
           //Check if consecutive hits are close enough
-          if(it2->seqId == it->seqId && it2->pos - it->pos < len)
+          if(it2->seqId == it->seqId && it2->pos - it->pos < Q.len)
           {
             //Save <1st pos --- 2nd pos>
             candidateLocus_t candidate(it->seqId, 
-                std::max(0, it2->pos - len), it->pos + len);
+                std::max(0, it2->pos - Q.len), it->pos + Q.len);
 
             //Check if this candidate overlaps with last inserted one
             auto lst = l1Mappings.end(); lst--;
@@ -319,26 +324,16 @@ namespace skch
 
     /**
      * @brief                                 Revise L1 candidate regions to more precise locations
-     * @param[in]   seq                       kseq fasta/q parser
+     * @param[in]   Q                         query sequence information
      * @param[in]   l1Mappings                candidate regions for query sequence found at L1
-     * @param[in]   optimalWindowSizeLevel    window size level to be used for this read  
-     * @return      T/F                       True if atleast 1 mapping region is proposed
-     *                                        Prints final mapping results to outstrm 
+     * @param[out]  l2Mappings                Mapping results in the L2 stage
+     * @return      T/F                       true if atleast 1 mapping region is proposed
      */
-    template <typename KSEQ, typename Vec>
-    bool doL2Mapping(KSEQ *seq, seqno_t seqCounter, std::ofstream &outstrm, MinVec_Type &minimizerTableQuery, 
-                    wsize_t optimalWindowSizeLevel, Vec &l1Mappings)
+    template <typename Q_Info, typename VecIn, typename VecOut>
+    bool doL2Mapping(Q_Info &Q, VecIn &l1Mappings, VecOut &l2Mappings)
     {
-      ///1. Compute minimum s unique hashes among minimizers 
-      //Sort by minimizers' hash values
-      if(!std::is_sorted(minimizerTableQuery.begin(), minimizerTableQuery.end(), MinimizerInfo::lessByHash))
-          std::sort(minimizerTableQuery.begin(), minimizerTableQuery.end(), MinimizerInfo::lessByHash);
-
-      //compute unique minimizers, note that unique preserves the original relative order of unique elements  
-      auto uniqEndIter = std::unique(minimizerTableQuery.begin(), minimizerTableQuery.end(), MinimizerInfo::equalityByHash);
-
-      //This is the sketch size for estimating jaccard
-      int s = std::distance(minimizerTableQuery.begin(), uniqEndIter);
+      //Range of sketch in query
+      auto uniqEndIter = std::next(Q.minimizerTableQuery.begin(), Q.sketchSize);
 
       /*
        * Type of container used for walking read over the reference superwindow
@@ -349,11 +344,16 @@ namespace skch
        * map preserves the sorted order of hashes, so computing jaccard similarity 
        * is a linear walk, each time for the sliding window
        */
+
+      //Step size
+      //TODO: Implement efficient sliding while considering all read sized windows
+      stepMinCount = getStepMinCount();
+
       typedef std::map< hash_t, std::pair<offset_t, offset_t> > slidingMapType;
 
       slidingMapType slidingWindowMinhashes;
 
-      for(auto it = minimizerTableQuery.begin(); it != uniqEndIter; it++)
+      for(auto it = Q.minimizerTableQuery.begin(); it != uniqEndIter; it++)
         slidingWindowMinhashes.emplace(it->hash, std::make_pair(NA, (it->pos)*(it->strand)));     //[hash value] -> (NA, offset in query)
 
       bool mappingReported = false;
@@ -365,13 +365,13 @@ namespace skch
         slidingMapType slidingWindowMinhashesCpy = slidingWindowMinhashes;
 
         mapLocus_t l2;
-        computeL2MappedRegions(slidingWindowMinhashesCpy, s, seq->seq.l, candidateLocus, optimalWindowSizeLevel, l2);
+        computeL2MappedRegions(Q, slidingWindowMinhashesCpy, candidateLocus, l2);
 
         //Compute mash distance using calculated jaccard
-        float mash_dist = Stat::j2md(1.0 * std::get<3>(l2)/s, param.kmerSize);
+        float mash_dist = Stat::j2md(1.0 * std::get<3>(l2)/Q.sketchSize, param.kmerSize);
 
         //Compute lower bound to mash distance within 90% confidence interval
-        float mash_dist_lower_bound = Stat::md_lower_bound(mash_dist, s, param.kmerSize, 0.9);
+        float mash_dist_lower_bound = Stat::md_lower_bound(mash_dist, Q.sketchSize, param.kmerSize, 0.9);
 
         float nucIdentity = 100 * (1 - mash_dist);
         float nucIdentityUpperBound = 100 * (1 - mash_dist_lower_bound);
@@ -383,8 +383,8 @@ namespace skch
         std::vector<float> mappingStatistics;
 
         slidingWindowMinhashesCpy = slidingWindowMinhashes;
-        computeMappingStatistics(slidingWindowMinhashesCpy, std::get<1>(l2),std::get<2>(l2), 
-            s, seq->seq.l,
+        computeMappingStatistics(Q, slidingWindowMinhashesCpy, 
+            std::get<1>(l2),std::get<2>(l2), 
             mappingStatistics); 
 
         /*    An alignment is reported if 
@@ -393,48 +393,40 @@ namespace skch
          */
         if(nucIdentityUpperBound >= param.percentageIdentity && mappingStatistics[0] >= 0.75)
         {
-          std::string strand = std::get<4>(l2) == strnd::FWD ? " + " : " - ";
+          MappingResult res;
 
-          outstrm << seq->name.s << " " << seq->seq.l 
-            << " 0 " << seq->seq.l - 1 << strand 
-            << this->refSketch.metadata[std::get<0>(l2)].name
-            << " " << this->refSketch.metadata[std::get<0>(l2)].len
-            << " " << std::get<1>(l2)->pos << " " 
-            << std::get<1>(l2)->pos + seq->seq.l - 1
-            << " " << nucIdentity;
+          //Save the output
+          {
+            res.refStartPos = std::get<1>(l2)->pos ;
+            res.refEndPos = std::get<1>(l2)->pos + Q.len - 1;
+            res.refSeqId = std::get<0>(l2);
+            res.nucIdentity = nucIdentity;
+            res.nucIdentityUpperBound = nucIdentityUpperBound;
+            res.conservedSketches = std::get<3>(l2);
+            res.strand = std::get<4>(l2);
+            res.mappedRegionComplexity = mappingStatistics[0];
 
-            //Print some statistics
-            //minhash matching count, minhash s value
-            outstrm << " " << std::get<3>(l2) << " " << s << " " << nucIdentityUpperBound;
-
-            //statistics vector
-            for(auto &e : mappingStatistics)
-              outstrm << " " << e;
-          
-          outstrm << "\n";
+            l2Mappings.push_back(res);
+          }
 
           mappingReported = true;
         }
-
       }
-
 
       return mappingReported;
     }
 
     /**
      * @brief       Helper function to doL2Mapping()
-     * @param[in]   slidingWindowMinhashes    container for computing min s hashes along the sliding window of size len
-     * @param[in]   s                         count of hashes over which jaccard similarity is estimated
-     * @param[in]   len                       length of query (read) sequence
+     * @param[in]   Q                         query sequence information
+     * @param[in]   slidingWindowMinhashes    container for computing min s hashes along the sliding read 
      * @param[in]   candidateLocus            candidate region computed at L1 stage
-     * @param[in]   optimalWindowSizeLevel    window size level to be used for this read  
-     * @param[out]  l2Mappings                best read mapping location within the candidateLocus
+     * @param[out]  l2Mapping                 best read mapping location inside the given candidateLocus
      */
-    template <typename MapT>
-      void computeL2MappedRegions(MapT &slidingWindowMinhashes, int s, offset_t len, 
-          candidateLocus_t &candidateLocus, wsize_t optimalWindowSizeLevel,
-          mapLocus_t &l2Mapping)
+    template <typename Q_Info, typename MapT>
+      void computeL2MappedRegions(Q_Info &Q,
+          MapT &slidingWindowMinhashes, 
+          candidateLocus_t &candidateLocus, mapLocus_t &l2Mapping)
       {
         //Sequence # in the reference
         seqno_t refSequenceId = std::get<0>(candidateLocus);
@@ -442,17 +434,16 @@ namespace skch
         //Start of the candidate offset in the reference sequence
         offset_t currentStart = std::get<1>(candidateLocus);
 
-
         /*
          * [currentStart, currentStart + len - 1] will be the first reference 
          * superwindow against which we compute the jaccard similarity of query
          */
 
         auto startPosition = std::make_pair(refSequenceId, currentStart);
-        auto lastPosition = std::make_pair(refSequenceId, currentStart + len - 1);
+        auto lastPosition = std::make_pair(refSequenceId, currentStart + Q.len - 1);
 
 #ifdef DEBUG
-        if(currentStart + len - 1 > std::get<2>(candidateLocus))
+        if(currentStart + Q.len - 1 > std::get<2>(candidateLocus))
           std::cout << "WARNING, skch::Map::computeL2MappedRegions, candidate region shorter than read length" << std::endl;
 #endif
 
@@ -499,7 +490,7 @@ namespace skch
             strand_t strandType = it->strand;
 
             //Minimizer in the reference only participates if it is sketched for window >= optimalWindowSizeLevel
-            if(windowSizeLevel >= optimalWindowSizeLevel)
+            if(windowSizeLevel >= Q.optimalWindowSizeLevel)
             {
               //if hash doesn't exist in window
               if(slidingWindowMinhashes.find(hashvalue) == slidingWindowMinhashes.end())
@@ -519,7 +510,7 @@ namespace skch
             strand_t strandType = it->strand;
 
             //Minimizer in the reference only participates if it is sketched for window >= optimalWindowSizeLevel
-            if(windowLevel >= optimalWindowSizeLevel)
+            if(windowLevel >= Q.optimalWindowSizeLevel)
             {
               //hash must exist in the map, by our logic
               assert(slidingWindowMinhashes.find(hashvalue) != slidingWindowMinhashes.end());
@@ -540,7 +531,7 @@ namespace skch
             }
           }
 
-          assert(slidingWindowMinhashes.size() >= s);
+          assert(slidingWindowMinhashes.size() >= Q.sketchSize);
 
           /// 3. Compute jaccard similarity now
 
@@ -561,7 +552,7 @@ namespace skch
             }
 
             uniqueHashes++;
-            if(uniqueHashes == s)
+            if(uniqueHashes == Q.sketchSize)
               break;
           }
 
@@ -595,17 +586,65 @@ namespace skch
       }
 
     /**
+     * @brief                     Report the final L2 mappings to output stream
+     * @param[in]   Q             query sequence information
+     * @param[in]   l2Mappings    mapping results
+     * @param[in]   outstrm       file output stream object
+     */
+    template <typename Q_Info>
+    void reportL2Mappings(Q_Info &Q,
+        std::vector<MappingResult> &l2Mappings, std::ofstream &outstrm)
+    {
+      float bestNucIdentity = 0;
+
+      //Scan through the mappings to check best identity mapping
+      for(auto &e : l2Mappings)
+      {
+        if(e.nucIdentity > bestNucIdentity)
+          bestNucIdentity = e.nucIdentity;
+      }
+
+      //Print the results
+      for(auto &e : l2Mappings)
+      {
+        //Report top 1% mappings (unless reportAll flag is true, in which case we report all)
+        if(param.reportAll == true || e.nucIdentity >= bestNucIdentity - 1.0)
+        {
+          std::string strand = e.strand == strnd::FWD ? "+" : "-";
+
+          outstrm << Q.seq->name.s << " " << Q.len 
+            << " 0 " << Q.len - 1 
+            << " " << strand 
+            << " " << this->refSketch.metadata[e.refSeqId].name
+            << " " << this->refSketch.metadata[e.refSeqId].len
+            << " " << e.refStartPos 
+            << " " << e.refEndPos
+            << " " << e.nucIdentity;
+
+          //Print some additional statistics
+          outstrm << " " << e.conservedSketches 
+            << " " << Q.sketchSize 
+            << " " << e.nucIdentityUpperBound
+            << " " << e.mappedRegionComplexity;
+
+          outstrm << "\n";
+        }
+      }
+    }
+
+    /**
      * @brief                               compute additional statistics for mapping (post-L2)
+     * @param[in]   Q                       query sequence information
      * @param[in]   slidingWindowMinhashes    
      * @param[in]   refSequenceId           begin iterator on reference index by L2 mapping
      * @param[in]   refEndItr               end iterator on reference index by L2 mapping 
-     * @param[in]   len                     length of query sequence
-     * @param[in]   s
      * @param[out]  statValues     
      */
-    template <typename MapT, typename statVec_t>
-      void computeMappingStatistics(MapT &slidingWindowMinhashes, MIIter_t refStartItr, MIIter_t refEndItr,
-          int s, offset_t len, statVec_t &statValues)
+    template <typename Q_Info, typename MapT, typename statVec_t>
+      void computeMappingStatistics(Q_Info &Q, 
+          MapT &slidingWindowMinhashes, 
+          MIIter_t refStartItr, MIIter_t refEndItr,
+          statVec_t &statValues)
       {
         //Push minimizers in the [refStartItr, refEndItr) range to the map
         for(auto it = refStartItr; it != refEndItr; it++)
@@ -620,7 +659,7 @@ namespace skch
             slidingWindowMinhashes[hashvalue].first = offsetinReference;                 //just revise the offset 
         }
 
-        ///1. Unique Minimizers in the referece (complexity)
+        ///1. Unique Minimizers in the reference (complexity)
         {
           //Indicator of complexity in the mapped region
           //range (0 - 1.x], lower value means lower complexity in the region
@@ -636,7 +675,7 @@ namespace skch
               uniqueHashCount += 1;
           }
 
-          float actualDensity = uniqueHashCount * 1.0 / len;
+          float actualDensity = uniqueHashCount * 1.0 / Q.len;
           float expectedDensity = 2.0 / param.baseWindowSize;
 
           referenceDNAComplexity = actualDensity/expectedDensity;
@@ -644,6 +683,21 @@ namespace skch
           statValues.push_back(referenceDNAComplexity);
         }
       }
+
+    /**
+     * @brief   sliding step size during L2 stage
+     * @detail  Ideally we should evaluate all sliding windows by step 1, 
+     *          which is theoretically feasible using STL map. But due to 
+     *          multiple corner cases, we resort to do sliding the read by 
+     *          more than 1 step.
+     * @return  count of minimizers to jump while sliding 
+     */
+    inline int getStepMinCount()
+    {
+      float sketchDensity = 2.0/param.baseWindowSize;
+      float percentReadSkip = 0.2;      //Jump 20% minimum read size
+      return (param.minReadLength * percentReadSkip) * sketchDensity;
+    }
   };
 
 }

@@ -15,7 +15,7 @@ namespace skch
   typedef int offset_t;       //position within sequence
   typedef int seqno_t;        //sequence counter in file
   typedef uint16_t wsize_t;   //window size level type 
-  typedef int16_t strand_t;  //sequence strand 
+  typedef int16_t strand_t;   //sequence strand 
 
   //C++ timer
   typedef std::chrono::high_resolution_clock Time;
@@ -28,7 +28,6 @@ namespace skch
     offset_t pos;                             //position within sequence
     wsize_t w_lev;                            //associated window size level (0 to param.dynamicWinLevels - 1)
     strand_t strand;                          //strand information
-
 
     //Lexographical less than comparison
     bool operator <(const MinimizerInfo& x) {
@@ -88,6 +87,31 @@ namespace skch
     FWD = 1,  
     REV = -1
   };  
+
+  //Information about query sequence during L1/L2 mapping
+  template <typename KSEQ, typename MinimizerVec>
+    struct QueryMetaData
+    {
+      KSEQ seq;                           //query sequence object pointer (kseq library) 
+      seqno_t seqCounter;                 //query sequence counter
+      offset_t len;                       //length of this query sequence
+      wsize_t optimalWindowSizeLevel;     //optimal window size to winnow this read
+      int sketchSize;                     //sketch size
+      MinimizerVec minimizerTableQuery;   //Vector of minimizers in the query 
+    };
+
+  //Final mapping result
+  struct MappingResult
+  {
+    offset_t refStartPos;
+    offset_t refEndPos;
+    seqno_t refSeqId;
+    float nucIdentity;
+    float nucIdentityUpperBound;
+    int conservedSketches;
+    strand_t strand;
+    float mappedRegionComplexity;
+  };
 }
 
 #endif

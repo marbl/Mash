@@ -38,7 +38,7 @@ namespace skch
    *                Algorithm described here:
    *                https://people.cs.uct.ac.za/~ksmith/articles/sliding_window_minimum.html
    *
-   *            2.  Index hashes into appropriate formats to enable fast search at L1 mapping stage
+   *            2.  Index hashes into appropriate format to enable fast search at L1 mapping stage
    */
     class Sketch
     {
@@ -259,7 +259,7 @@ namespace skch
         //Parse all the minimizers and push into the map
         for(auto &e : minimizerIndex)
         {
-          // [hash value -> sequence #, offset]
+          // [hash value -> info about minimizer]
           minimizerPosLookupIndex[e.hash].push_back( 
               MinimizerMetaData{e.seqId, e.pos, e.w_lev, e.strand});
         }

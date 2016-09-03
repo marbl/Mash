@@ -64,6 +64,8 @@ P-value is not considered if a window value is provided. Lower window size impli
     cmd.defineOption("protein", "set alphabet type to proteins, default is nucleotides");
     cmd.defineOptionAlternative("protein","a");
 
+    cmd.defineOption("all", "report all the mapping locations for a read, default is to consider few best ones");
+
     cmd.defineOption("output", "output file name", ArgvParser::OptionRequired | ArgvParser::OptionRequiresValue);
     cmd.defineOptionAlternative("output","o");
   }
@@ -231,6 +233,13 @@ P-value is not considered if a window value is provided. Lower window size impli
     }
     else
       parameters.alphabetSize = 4;
+
+    if(cmd.foundOption("all"))
+    {
+      parameters.reportAll = true;
+    }
+    else
+      parameters.reportAll = false;
 
 
     //Unexposed parameters
