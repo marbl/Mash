@@ -7,6 +7,7 @@
 #include <iostream>
 #include <ctime>
 #include <chrono>
+#include <functional>
 
 //Own includes
 #include "map_parameters.hpp"
