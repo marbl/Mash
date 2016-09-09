@@ -107,6 +107,7 @@ namespace skch
     offset_t refStartPos;             //start position of the mapping on reference
     offset_t refEndPos;               //end pos
     seqno_t refSeqId;                 //internal sequence id of the reference contig
+    seqno_t querySeqId;               //internal sequence id of the query sequence
     float nucIdentity;                //calculated identity
     float nucIdentityUpperBound;      //upper bound on identity (90% C.I.)
     int sketchSize;                   //sketch size

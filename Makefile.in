@@ -1,4 +1,4 @@
-CXXFLAGS += -O3 -DNDEBUG -std=c++11 -Isrc -Isrc/common -Isrc/mash_map/include -I@capnp@/include -I @mathinc@
+CXXFLAGS += -O3 -DNDEBUG -std=c++11 -Isrc -Isrc/common -Isrc/map/include -Isrc/cgi/include -I@capnp@/include -I @mathinc@
 CPPFLAGS += @amcppflags@
 
 UNAME_S=$(shell uname -s)
@@ -30,11 +30,13 @@ SOURCES=\
 	src/mash/sketchParameterSetup.cpp \
 
 SOURCES_MAP=\
-	src/mash_map/mash_map.cpp
+	src/map/mash_map.cpp
+SOURCES_CGI=\
+	src/cgi/core_genome_identity.cpp
 
 OBJECTS=$(SOURCES:.cpp=.o) src/mash/capnp/MinHash.capnp.o
-
 OBJECTS_MAP=$(SOURCES_MAP:.cpp=.o)  
+OBJECTS_CGI=$(SOURCES_CGI:.cpp=.o)  
 
 all : mash  mashmap libmash.a libmashmap.a
 
@@ -43,6 +45,10 @@ mash : libmash.a src/mash/memcpyWrap.o
 
 mashmap : libmashmap.a
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o mashmap libmashmap.a @mathlib@ -lstdc++ -lz -lm -lpthread 
+
+mashcgi : $(OBJECTS_CGI) 
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o mashcgi @mathlib@ -lstdc++ -lz -lm -lpthread $(OBJECTS_CGI) 
+
 
 libmash.a : $(OBJECTS)
 	ar -cr libmash.a $(OBJECTS)
@@ -74,20 +80,24 @@ install : mash mashmap
 	mkdir -p @prefix@/include/mash/capnp
 	cp `pwd`/mash @prefix@/bin/
 	cp `pwd`/mashmap @prefix@/bin/
+	cp `pwd`/mashcgi @prefix@/bin/
 	cp `pwd`/libmash.a @prefix@/lib/
 	cp `pwd`/libmashmap.a @prefix@/lib/
 	cp `pwd`/src/mash/*.h* @prefix@/include/mash/
 	cp `pwd`/src/common/*.h* @prefix@/include/mash/
-	cp `pwd`/src/mash_map/include/*.h* @prefix@/include/mash/
+	cp `pwd`/src/map/include/*.h* @prefix@/include/mash/
+	cp `pwd`/src/cgi/include/*.h* @prefix@/include/mash/
 	cp `pwd`/src/mash/capnp/MinHash.capnp.h @prefix@/include/mash/capnp/
 
 clean :
 	-rm -f mash
 	-rm -f mashmap
+	-rm -f mashcgi
 	-rm -f libmash.a
 	-rm -f libmashmap.a
 	-rm -f src/mash/*.o
-	-rm -f src/mash_map/*.o
+	-rm -f src/map/*.o
+	-rm -f src/cgi/*.o
 	-rm -f src/mash/capnp/*.o
 	-rm -f src/mash/capnp/*.c++
 	-rm -f src/mash/capnp/*.h

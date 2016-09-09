@@ -17,6 +17,7 @@
 #Executables
 mash
 mashmap
+mashcgi
 
 #Others
 autoParam

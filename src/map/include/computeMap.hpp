@@ -409,6 +409,7 @@ namespace skch
                 res.refStartPos = std::get<1>(l2)->pos ;
                 res.refEndPos = std::get<1>(l2)->pos + Q.len - 1;
                 res.refSeqId = std::get<0>(l2);
+                res.querySeqId = Q.seqCounter;
                 res.nucIdentity = nucIdentity;
                 res.nucIdentityUpperBound = nucIdentityUpperBound;
                 res.sketchSize = Q.sketchSize;
