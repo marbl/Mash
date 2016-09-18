@@ -94,6 +94,7 @@ namespace cgi
       outstrm << refSketch.metadata[e.refSeqId].name
         << " " << e.identity 
         << " " << e.countSeq
+        << " " << refSketch.metadata[e.refSeqId].len
         << "\n";
     }
   }

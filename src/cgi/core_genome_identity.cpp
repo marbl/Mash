@@ -36,10 +36,11 @@ int main(int argc, char** argv)
   //Redirect mapping output to null fs, using file name for CGI output
   std::string fileName = parameters.outFileName;
   parameters.outFileName = "/dev/null";
+  parameters.reportAll = true;
 
   //No need for dynamic winnowing
   parameters.staticWin = true;
-  std::cout << "INFO, main, parameters revised, winnowing is static" << std::endl;
+  std::cout << "INFO, main, parameters revised, winnowing is static, reportAll = true" << std::endl;
 
   auto t0 = skch::Time::now();
 
