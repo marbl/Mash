@@ -212,7 +212,7 @@ int CommandInfo::writeJson(const Sketch & sketch) const
 	cout << "	\"preserveCase\" : " << (sketch.getPreserveCase() ? "true" : "false") << ',' << endl;
 	cout << "	\"canonical\" : " << (sketch.getNoncanonical() ? "false" : "true") << ',' << endl;
 	cout << "	\"sketchSize\" : " << sketch.getMinHashesPerWindow() << ',' << endl;
-	cout << "	\"hashType\" : \"" << HASH << "\"" << endl;
+	cout << "	\"hashType\" : \"" << HASH << "\"," << endl;
 	cout << "	\"hashBits\" : " << (use64 ? 64 : 32) << ',' << endl;
 	cout << "	\"hashSeed\" : " << seed << ',' << endl;
 	cout << " 	\"sketches\" :" << endl;
