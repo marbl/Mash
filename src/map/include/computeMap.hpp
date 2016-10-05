@@ -476,6 +476,8 @@ namespace skch
           auto l_iter = iterRange.first;
           auto u_iter = iterRange.second;
 
+          assert(std::distance(l_iter, u_iter) > 0);
+
           //Save the best mapping locations here
           MIIter_t bestStartIter = l_iter, bestEndIter = u_iter;
           int maxSharedMinimizers = 0;
@@ -488,7 +490,7 @@ namespace skch
           //Keep sliding till query crosses the candidate's end position
           //Check if u_iter offset is less than L1 candidate boundary, and reference sequence id should match
           while(u_iter->pos < std::get<2>(candidateLocus) && 
-              u_iter->seqId == std::get<0>(candidateLocus))
+              std::prev(u_iter)->seqId == std::get<0>(candidateLocus))
           {
             assert(std::distance(l_iter , u_iter) > 0);
 
