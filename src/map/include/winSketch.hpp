@@ -64,6 +64,15 @@ namespace skch
       //Keep sequence length, name that appear in the sequence (for printing the mappings later)
       std::vector< ContigInfo > metadata;
 
+      /*
+       * Keep the information of what sequences come from what file#
+       * Example [a, b, c] implies 
+       *  file 0 contains 0 .. a-1 sequences
+       *  file 1 contains a .. b-1 
+       *  file 2 contains b .. c-1
+       */
+      std::vector< int > sequencesByFileInfo;
+
       //Index for fast seed lookup
       /*
        * [minimizer #1] -> [pos1, pos2, pos3 ...]
@@ -152,6 +161,8 @@ namespace skch
 
             seqCounter++;
           }
+
+          sequencesByFileInfo.push_back(seqCounter);
 
           kseq_destroy(seq);  
           gzclose(fp); //close the file handler 

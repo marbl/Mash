@@ -35,7 +35,7 @@ int main(int argc, char** argv)
 
   //Redirect mapping output to null fs, using file name for CGI output
   std::string fileName = parameters.outFileName;
-  parameters.outFileName = "/dev/null";
+  parameters.outFileName = parameters.outFileName + ".map";
   parameters.reportAll = true;
 
   //No need for dynamic winnowing
@@ -64,7 +64,7 @@ int main(int argc, char** argv)
 
   t0 = skch::Time::now();
 
-  cgi::computeCGI(mapResults, referSketch, fileName);
+  cgi::computeCGI(parameters, mapResults, referSketch, fileName);
 
   std::chrono::duration<double> timeCGI = skch::Time::now() - t0;
   std::cout << "INFO, skch::main, Time spent post mapping : " << timeCGI.count() << " sec" << std::endl;
