@@ -294,18 +294,29 @@ namespace skch
 
         //2. Compute frequency threshold to ignore most frequent minimizers
 
-        int64_t totalCountMinimizers = this->minimizerIndex.size();
-        int64_t minimizerToIgnore = totalCountMinimizers * percentageThreshold / 100;
+        int64_t totalUniqueMinimizers = this->minimizerPosLookupIndex.size();
+        int64_t minimizerToIgnore = totalUniqueMinimizers * percentageThreshold / 100;
 
         int64_t sum = 0;
 
+        //Iterate from highest frequent minimizers
         for(auto it = this->minimizerFreqHistogram.rbegin(); it != this->minimizerFreqHistogram.rend(); it++)
         {
-          sum += it->second;
-          if(sum <= minimizerToIgnore)
+          sum += it->second; //add frequency
+          if(sum < minimizerToIgnore)
+          {
             this->freqThreshold = it->first;
-          else
+            //continue
+          }
+          else if(sum == minimizerToIgnore)
+          {
+            this->freqThreshold = it->first;
             break;
+          }
+          else
+          {
+            break;
+          }
         }
 
         if(this->freqThreshold != std::numeric_limits<int>::max())
