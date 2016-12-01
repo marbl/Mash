@@ -79,7 +79,7 @@ by ignoring single-copy k-mers, which are more likely to be erroneous:
 
 .. code::
 
-  mash sketch -m 2 reads.fastq
+  mash sketch -m 2 -k 16 -s 400 reads.fastq
 
 Run :code:`mash dist` with the RefSeq archive as the reference and the read
 sketch as the query:
