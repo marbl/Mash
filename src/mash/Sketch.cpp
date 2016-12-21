@@ -1105,18 +1105,17 @@ void setMinHashesForReference(Sketch::Reference & reference, const MinHashHeap &
 
 Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 {
-	FILE * inStream = 0;
+	gzFile fp;
 	
 	if ( input->fileName == "-" )
 	{
-		inStream = stdin;
+		fp = gzdopen(fileno(stdin), "r");
 	}
 	else
 	{
-		inStream = fopen(input->fileName.c_str(), "r");
+		fp = gzopen(input->fileName.c_str(), "r");
 	}
 	
-	gzFile fp = gzdopen(fileno(inStream), "r");
 	kseq_t *seq = kseq_init(fp);
 	
 	const Sketch::Parameters & parameters = input->parameters;
@@ -1224,7 +1223,6 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 	
 	kseq_destroy(seq);
 	gzclose(fp);
-	fclose(inStream);
 	
 	return output;
 }
