@@ -1,0 +1,69 @@
+{
+	"$schema" : "http://json-schema.org/schema#",
+	"type" : "object",
+	"additionalProperties" : false,
+	"required" :
+	[
+		"kmer",
+		"alphabet",
+		"preserveCase",
+		"canonical",
+		"sketchSize",
+		"hashType",
+		"hashBits",
+		"hashSeed"
+	],
+	"properties" :
+	{
+		"kmer" : {"type" : "number"},
+		"alphabet" : {"type" : "string"},
+		"preserveCase" : {"type" : "boolean"},
+		"canonical" : {"type" : "boolean"},
+		"sketchSize" : {"type" : "number"},
+		"hashType" :
+		{
+			"type" : "string",
+			"enum" :
+			[
+				"MurmurHash3_x64_128"
+			]
+		},
+		"hashBits" : {"type" : "number"},
+		"hashSeed" : {"type" : "number"},
+		"sketches" :
+		{
+			"type" : "array",
+			"items" :
+			{
+				"type" : "object",
+				"additionalProperties" : false,
+				"required" :
+				[
+					"name",
+					"hashes"
+				],
+				"properties" :
+				{
+					"name" : {"type" : "string"},
+					"length" : {"type" : "number"},
+					"comment" : {"type" : "string"},
+					"hashes" :
+					{
+						"type" : "array",
+						"uniqueItems" : true,
+						"items" :
+						{
+							"type" : "string",
+							"pattern" : "^[0-9]+$"
+						}
+					},
+					"kmers" :
+					{
+						"type" : "array",
+						"items" : {"type" : "string"}
+					}
+				}
+			}
+		}
+	}
+}
