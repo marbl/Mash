@@ -23,6 +23,11 @@
 
 using namespace::std;
 
+bool CommandPairwise::PairwiseOutput::pairOutputLessThan(const PairOutput & a, const PairOutput & b)
+{
+	return a.index < b.index;
+}
+
 CommandPairwise::CommandPairwise()
 : Command()
 {
@@ -32,12 +37,16 @@ CommandPairwise::CommandPairwise()
 	argumentString = "<fasta>";
 	
 	useOption("help");
+	useOption("threads");
+    addOption("kmer", Option(Option::Integer, "k", "Sketch", "K-mer size. Hashes will be based on strings of this many amino acids.", "7", 1, 32));
+    addOption("sketchSize", Option(Option::Integer, "s", "Sketch", "Sketch size. Each sketch will have at most this many non-redundant min-hashes.", "400"));
+    addOption("case", Option(Option::Boolean, "Z", "Sketch", "Preserve case in k-mers and alphabet (case is ignored by default). Sequence letters whose case is not in the current alphabet will be skipped when sketching.", ""));
 //	addOption("list", Option(Option::Boolean, "l", "Input", "List input. Each query file contains a list of sequence files, one per line. The reference file is not affected.", ""));
 	addOption("table", Option(Option::Boolean, "t", "Output", "Table output (will not report p-values, but fields will be blank if they do not meet the p-value threshold).", ""));
 	//addOption("log", Option(Option::Boolean, "L", "Output", "Log scale distances and divide by k-mer size to provide a better analog to phylogenetic distance. The special case of zero shared min-hashes will result in a distance of 1.", ""));
 	addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
 	addOption("distance", Option(Option::Number, "d", "Output", "Maximum distance to report.", "1.0", 0., 1.));
-	useSketchOptions();
+	//useSketchOptions();
 }
 
 int CommandPairwise::run() const
@@ -56,11 +65,13 @@ int CommandPairwise::run() const
 	
 	Sketch::Parameters parameters;
 	
-	if ( sketchParameterSetup(parameters, *(Command *)this) )
-	{
-		return 1;
-	}
-	
+    parameters.kmerSize = getOption("kmer").getArgumentAsNumber();
+    parameters.minHashesPerWindow = getOption("sketchSize").getArgumentAsNumber();
+    parameters.parallelism = getOption("threads").getArgumentAsNumber();
+    parameters.preserveCase = getOption("case").active;
+	parameters.noncanonical = true;
+	parameters.concatenated = false;
+	setAlphabetFromString(parameters, alphabetProtein);
 	Sketch sketchRef;
 	
 	uint64_t lengthMax;
@@ -108,12 +119,6 @@ int CommandPairwise::run() const
 	refArgVector.push_back(fileReference);
 	
 	//cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
-	
-	parameters.noncanonical = true;
-	setAlphabetFromString(parameters, alphabetProtein);
-//	parameters.kmerSize = 5;
-//	parameters.minHashesPerWindow = 10;
-	parameters.concatenated = false;
 	
 	sketchRef.initFromFiles(refArgVector, parameters);
 	
@@ -207,7 +212,7 @@ int CommandPairwise::run() const
 	
 	if ( warningCount > 0 && ! parameters.reads )
 	{
-		warnKmerSize(parameters, *this, lengthMax, lengthMaxName, randomChance, kMin, warningCount);
+		//warnKmerSize(parameters, *this, lengthMax, lengthMaxName, randomChance, kMin, warningCount);
 	}
 	
 	//delete [] hashTable;
@@ -319,6 +324,8 @@ CommandPairwise::PairwiseOutput * search(CommandPairwise::PairwiseInput * input)
 		}
 	}
 	
+	//sort(output->pairs.begin(), output->pairs.end(), CommandPairwise::PairwiseOutput::pairOutputLessThan);
+	
 	return output;
 }
 
@@ -389,7 +396,7 @@ bool compareSketches(CommandPairwise::PairwiseOutput::PairOutput * output, const
 		distance = -log(2 * jaccard / (1. + jaccard)) / kmerSize;
 	}
 	
-	if ( distance > maxDistance )
+	if ( distance > maxDistance || distance == 1 )
 	{
 		return false;
 	}
