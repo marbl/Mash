@@ -66,6 +66,8 @@ public:
             double pValue;
         };
         
+        static bool pairOutputLessThan(const PairOutput & a, const PairOutput & b);
+        
         const Sketch & sketch;
         
         uint64_t index;
