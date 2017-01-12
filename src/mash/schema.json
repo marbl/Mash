@@ -1,10 +1,13 @@
 {
+	// 'meta-schema' describing this JSON as a schema
+	//
 	"$schema" : "http://json-schema.org/schema#",
+	
 	"type" : "object",
-	"additionalProperties" : false,
 	"required" :
 	[
-		"kmer",
+		"schema",
+		"kmerSize",
 		"alphabet",
 		"preserveCase",
 		"canonical",
@@ -15,28 +18,55 @@
 	],
 	"properties" :
 	{
-		"kmer" : {"type" : "number"},
+		// URI of the appropriate version of this schema
+		//
+		"schema" : {"type" : "string"},
+		
+		// the number of characters in each overlapping 'shingle'
+		//
+		"kmerSize" : {"type" : "number"},
+		
+		// all letters a k-mer can have (others will be skipped) (see also
+		// 'preserveCase')
+		//
 		"alphabet" : {"type" : "string"},
+		
+		// if true, letters in a k-mer must match the case of letters in
+		// 'alphabet'
+		//
 		"preserveCase" : {"type" : "boolean"},
+		
+		// if true, use alphabetical minima of k-mers and their reverse
+		// complements (only makes sense for nucleotide alphabet)
+		//
 		"canonical" : {"type" : "boolean"},
+		
+		// the (maximum) number of min-hashes each sketch can have (there can be
+		// if a sequence does not have enough valid k-mers)
+		//
 		"sketchSize" : {"type" : "number"},
-		"hashType" :
-		{
-			"type" : "string",
-			"enum" :
-			[
-				"MurmurHash3_x64_128"
-			]
-		},
+		
+		// the hashing function used to hash each k-mer
+		//
+		"hashType" : {"type" : "string"},
+		
+		// the number of (least significant) bits taken from the result of the
+		// hash function
+		//
 		"hashBits" : {"type" : "number"},
-		"hashSeed" : {"type" : "number"},
+		
+		// the seed of the hash function, if applicable
+		//
+		"hashSeed" : {"type" : ["number", "null"]},
+		
+		// a collection of sketches that share the above sketching parameters
+		//
 		"sketches" :
 		{
 			"type" : "array",
 			"items" :
 			{
 				"type" : "object",
-				"additionalProperties" : false,
 				"required" :
 				[
 					"name",
@@ -44,9 +74,45 @@
 				],
 				"properties" :
 				{
+					// a sequence identifier, expected to be unique in the
+					// collection
+					//
 					"name" : {"type" : "string"},
-					"length" : {"type" : "number"},
+					
+					// the length of the source sequence that was sketched,
+					// which could be a sum of for concatenated sequences or an
+					// estimate from k-mer content of reads
+					//
+					"seqLength" : {"type" : "number"},
+					
+					// an additional description of the source sequence not
+					// captured by 'name' (e.g. after whitesapce in a fasta tag)
+					//
 					"comment" : {"type" : "string"},
+					
+					// the number of k-mers from the source sequence that
+					// conformed to the letters in 'alphabet' and was thus
+					// considered for min-hashing (including repeated k-mers)
+					//
+					"numValidKmers" : {"type" : "number"},
+					
+					"filters" :
+					{
+						"type" : "object",
+						"properties" :
+						{
+							// the minimum number of times a k-mer must appear
+							// in the source sequence to be considered for min-
+							// hashing (for filtering out erroneous k-mers in
+							// read sets)
+							//
+							"minCopies" : {"type" : "number"},
+						}
+					},
+					
+					// the min-hashes of this sketch, represented as unsigned
+					// integers but quoted as strings to avoid overflow
+					//
 					"hashes" :
 					{
 						"type" : "array",
@@ -57,10 +123,25 @@
 							"pattern" : "^[0-9]+$"
 						}
 					},
+					
+					// the k-mers that correspond to the hashes in 'hashes' (in
+					// the same order), used mainly for confirming the hash
+					// function and not necessarily valid for Jaccard estimates
+					// due to potential hash collisions
+					//
 					"kmers" :
 					{
 						"type" : "array",
 						"items" : {"type" : "string"}
+					},
+					
+					// the number of times each hash in 'hash' was derived from
+					// k-mers in the source sequence (in the same order)
+					//
+					"counts" :
+					{
+						"type" : "array",
+						"items" : {"type" : "number"}
 					}
 				}
 			}
