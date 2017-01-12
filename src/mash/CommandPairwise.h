@@ -13,7 +13,8 @@
 #include <vector>
 #include <unordered_map>
 
-typedef std::unordered_map<uint32_t, std::list<uint64_t> > HashTable;
+//typedef std::list<uint64_t> * HashTable;
+typedef std::unordered_map< uint64_t, std::list<uint64_t> > HashTable;
 
 class CommandPairwise : public Command
 {
@@ -84,7 +85,7 @@ private:
     void writeOutput(PairwiseOutput * output, bool table) const;
 };
 
-uint64_t fillHashTable(const Sketch & sketch, HashTable & hashTable);
+uint64_t fillHashTable(const Sketch & sketch, HashTable & hashTable, uint64_t hashTableSize, uint64_t start, uint64_t end);
 CommandPairwise::PairwiseOutput * search(CommandPairwise::PairwiseInput * input);
 bool compareSketches(CommandPairwise::PairwiseOutput::PairOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue);
 

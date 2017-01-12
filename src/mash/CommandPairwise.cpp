@@ -38,7 +38,7 @@ CommandPairwise::CommandPairwise()
 	
 	useOption("help");
 	useOption("threads");
-    addOption("kmer", Option(Option::Integer, "k", "Sketch", "K-mer size. Hashes will be based on strings of this many amino acids.", "7", 1, 32));
+    addOption("kmer", Option(Option::Integer, "k", "Sketch", "K-mer size. Hashes will be based on strings of this many amino acids.", "9", 1, 32));
     addOption("sketchSize", Option(Option::Integer, "s", "Sketch", "Sketch size. Each sketch will have at most this many non-redundant min-hashes.", "400"));
     addOption("case", Option(Option::Boolean, "Z", "Sketch", "Preserve case in k-mers and alphabet (case is ignored by default). Sequence letters whose case is not in the current alphabet will be skipped when sketching.", ""));
 //	addOption("list", Option(Option::Boolean, "l", "Input", "List input. Each query file contains a list of sequence files, one per line. The reference file is not affected.", ""));
@@ -174,30 +174,52 @@ int CommandPairwise::run() const
 	
 	sketch.initFromFiles(queryFiles, parameters);
 	
-	HashTable hashTable;
-	uint64_t hashTableSize = fillHashTable(sketch, hashTable);
+	uint64_t hashTableSize = 1 << 25;
+	int rounds = sketch.getReferenceCount() * parameters.minHashesPerWindow / hashTableSize / 2;
 	
-	for ( uint64_t i = 1; i < sketch.getReferenceCount(); i++ )
+	if ( rounds == 0 )
 	{
-		threadPool.runWhenThreadAvailable(new PairwiseInput(sketch, i, parameters, distanceMax, pValueMax, hashTable, hashTableSize));
+		rounds = 1;
+	}
+	
+	uint64_t roundSize = sketch.getReferenceCount() / rounds;
+	
+	for ( int i = 0; i < rounds; i++ )
+	{
+		uint64_t start = i * roundSize;
+		uint64_t end = (i + 1) * roundSize;
 		
-		while ( threadPool.outputAvailable() )
+		cerr << "Round " << i + 1 << " of " << rounds << " (" << start << " - " << end - 1 << ")" << endl;
+		if ( end > sketch.getReferenceCount() )
+		{
+			end = sketch.getReferenceCount();
+		}
+		
+		HashTable hashTable;
+		fillHashTable(sketch, hashTable, hashTableSize, start, end);
+		
+		for ( uint64_t j = 1; j < end; j++ )
+		{
+			threadPool.runWhenThreadAvailable(new PairwiseInput(sketch, j, parameters, distanceMax, pValueMax, hashTable, hashTableSize));
+			
+			while ( threadPool.outputAvailable() )
+			{
+				writeOutput(threadPool.popOutputWhenAvailable(), table);
+			}
+		}
+		
+		while ( threadPool.running() )
 		{
 			writeOutput(threadPool.popOutputWhenAvailable(), table);
 		}
+		
+		if ( warningCount > 0 && ! parameters.reads )
+		{
+			//warnKmerSize(parameters, *this, lengthMax, lengthMaxName, randomChance, kMin, warningCount);
+		}
+		
+		//delete [] hashTable;
 	}
-	
-	while ( threadPool.running() )
-	{
-		writeOutput(threadPool.popOutputWhenAvailable(), table);
-	}
-	
-	if ( warningCount > 0 && ! parameters.reads )
-	{
-		//warnKmerSize(parameters, *this, lengthMax, lengthMaxName, randomChance, kMin, warningCount);
-	}
-	
-	//delete [] hashTable;
 	
 	return 0;
 }
@@ -241,23 +263,67 @@ void CommandPairwise::writeOutput(PairwiseOutput * output, bool table) const
 	delete output;
 }
 
-uint64_t fillHashTable(const Sketch & sketch, HashTable & hashTable)
+uint64_t fillHashTable(const Sketch & sketch, HashTable & hashTable, uint64_t hashTableSize, uint64_t start, uint64_t end)
 {
-	uint64_t hashTableSize = sketch.getKmerSpace();
+	//uint64_t hashTableSize = sketch.getKmerSpace();
 	//hashTable = new list<uint64_t>[hashTableSize];
 	
-	cerr << "Creating hash table..." << endl;
-	for ( int i = 0; i < sketch.getReferenceCount(); i++ )
+	cerr << "  Creating hash table..." << endl;
+	for ( int i = start; i < end; i++ )
 	{
 //		cerr << "i: " << i << endl;
+		bool use64 = sketch.getUse64();
 		const HashList & hashesSorted = sketch.getReference(i).hashesSorted;
 		
 		for ( uint64_t j = 0; j < hashesSorted.size(); j++ )
 		{
 //			cerr << "hash: " << 1 << endl;
-			hashTable[hashesSorted.at(j).hash32].push_back(i);
+			//hashTable[(use64 ? hashesSorted.at(j).hash64 : hashesSorted.at(j).hash32) & (hashTableSize - 1)].push_back(i);
+			hashTable[(use64 ? hashesSorted.at(j).hash64 : hashesSorted.at(j).hash32)].push_back(i);
 		}
 	}
+	cerr << "done." << endl;
+	
+	double mean = 0;
+	double dev = 0;
+	uint64_t empty = 0;
+	
+	uint64_t min;
+	uint64_t max = 0;
+	
+	for ( uint64_t i = 0; i < hashTableSize; i++ )
+	{
+		int size = hashTable[i].size();
+		mean += size;
+		
+		if ( i == 0 || size < min )
+		{
+			min = size;
+		}
+		
+		if ( size > max )
+		{
+			max = size;
+		}
+		
+		if ( size == 0 )
+		{
+			empty++;
+		}
+	}
+	
+	mean /= hashTableSize;
+	
+	//for ( uint64_t i = 0; i < hashTableSize; i++ )
+	for ( HashTable::const_iterator i = hashTable.begin(); i != hashTable.end(); i++ )
+	{
+		//dev += pow(hashTable[i].size() - mean, 2);
+		dev += pow(i->second.size() - mean, 2);
+	}
+	
+	dev = sqrt(dev / hashTableSize);
+	
+	cerr << "  Hash table mean: " << mean << "\tstddev: " << dev << "\tmin: " << min << "\tmax: " << max << "\tempty: " << int(100 * empty / hashTableSize ) << "%" << endl;
 	
 	return hashTableSize;
 }
@@ -269,6 +335,7 @@ CommandPairwise::PairwiseOutput * search(CommandPairwise::PairwiseInput * input)
 	CommandPairwise::PairwiseOutput * output = new CommandPairwise::PairwiseOutput(input->sketch, input->index);
 	
 	uint64_t sketchSize = sketch.getMinHashesPerWindow();
+	bool use64 = sketch.getUse64();
 	
 	const HashTable & hashTable = input->hashTable;
 	uint64_t hashTableSize = input->hashTableSize;
@@ -279,16 +346,23 @@ CommandPairwise::PairwiseOutput * search(CommandPairwise::PairwiseInput * input)
 	
 	for ( uint64_t i = 0; i < hashesSortedRef.size(); i++ )
 	{
-		//cout << "hash: " << (hashesSortedRef.at(i).hash32 % hashTableSize) << endl;
-		const list<uint64_t> & indeces = hashTable.at(hashesSortedRef.at(i).hash32);
+		uint64_t row = (use64 ? hashesSortedRef.at(i).hash64 : hashesSortedRef.at(i).hash32);
+		//uint64_t row = (use64 ? hashesSortedRef.at(i).hash64 : hashesSortedRef.at(i).hash32) & (hashTableSize - 1);
 		
-		for ( list<uint64_t>::const_iterator j = indeces.begin(); j != indeces.end(); j++ )
+		if ( hashTable.count(row) )
 		{
-			uint64_t index = *j;
-			//cout << "  index: " << index << endl;
-			if ( index < input->index )
+			//cout << "hash: " << (use64 ? hashesSortedRef.at(i).hash64 : hashesSortedRef.at(i).hash32) << '\t' << row << endl;
+			//const list<uint64_t> & indeces = hashTable[row];
+			const list<uint64_t> & indeces = hashTable.at(row);
+		
+			for ( list<uint64_t>::const_iterator j = indeces.begin(); j != indeces.end(); j++ )
 			{
-				targets.insert(index);
+				uint64_t index = *j;
+				//cout << "  index: " << index << endl;
+				if ( index < input->index )
+				{
+					targets.insert(index);
+				}
 			}
 		}
 	}
