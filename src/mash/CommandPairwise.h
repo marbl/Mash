@@ -85,8 +85,8 @@ private:
     void writeOutput(PairwiseOutput * output, bool table) const;
 };
 
-uint64_t fillHashTable(const Sketch & sketch, HashTable & hashTable, uint64_t hashTableSize, uint64_t start, uint64_t end);
+void fillHashTable(const Sketch & sketch, HashTable & hashTable, uint64_t start, uint64_t end);
 CommandPairwise::PairwiseOutput * search(CommandPairwise::PairwiseInput * input);
-bool compareSketches(CommandPairwise::PairwiseOutput::PairOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue);
+bool compareSketches(CommandPairwise::PairwiseOutput::PairOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t common, uint64_t denom, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue);
 
 #endif
