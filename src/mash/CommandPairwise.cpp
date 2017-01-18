@@ -177,7 +177,7 @@ int CommandPairwise::run() const
 	uint64_t hashTableSize = 1 << 25;
 	int rounds = sketch.getReferenceCount() * parameters.minHashesPerWindow / hashTableSize / 2;
 	
-	if ( rounds == 0 )
+	if ( true || rounds == 0 )
 	{
 		rounds = 1;
 	}
@@ -196,7 +196,7 @@ int CommandPairwise::run() const
 		}
 		
 		HashTable hashTable;
-		fillHashTable(sketch, hashTable, hashTableSize, start, end);
+		fillHashTable(sketch, hashTable, start, end);
 		
 		for ( uint64_t j = 1; j < end; j++ )
 		{
@@ -263,177 +263,82 @@ void CommandPairwise::writeOutput(PairwiseOutput * output, bool table) const
 	delete output;
 }
 
-uint64_t fillHashTable(const Sketch & sketch, HashTable & hashTable, uint64_t hashTableSize, uint64_t start, uint64_t end)
+void fillHashTable(const Sketch & sketch, HashTable & hashTable, uint64_t start, uint64_t end)
 {
-	//uint64_t hashTableSize = sketch.getKmerSpace();
-	//hashTable = new list<uint64_t>[hashTableSize];
-	
-	cerr << "  Creating hash table..." << endl;
+	cerr << "  Creating hash table...";
 	for ( int i = start; i < end; i++ )
 	{
-//		cerr << "i: " << i << endl;
 		bool use64 = sketch.getUse64();
 		const HashList & hashesSorted = sketch.getReference(i).hashesSorted;
 		
 		for ( uint64_t j = 0; j < hashesSorted.size(); j++ )
 		{
-//			cerr << "hash: " << 1 << endl;
-			//hashTable[(use64 ? hashesSorted.at(j).hash64 : hashesSorted.at(j).hash32) & (hashTableSize - 1)].push_back(i);
 			hashTable[(use64 ? hashesSorted.at(j).hash64 : hashesSorted.at(j).hash32)].push_back(i);
 		}
 	}
 	cerr << "done." << endl;
-	
-	double mean = 0;
-	double dev = 0;
-	uint64_t empty = 0;
-	
-	uint64_t min;
-	uint64_t max = 0;
-	
-	for ( uint64_t i = 0; i < hashTableSize; i++ )
-	{
-		int size = hashTable[i].size();
-		mean += size;
-		
-		if ( i == 0 || size < min )
-		{
-			min = size;
-		}
-		
-		if ( size > max )
-		{
-			max = size;
-		}
-		
-		if ( size == 0 )
-		{
-			empty++;
-		}
-	}
-	
-	mean /= hashTableSize;
-	
-	//for ( uint64_t i = 0; i < hashTableSize; i++ )
-	for ( HashTable::const_iterator i = hashTable.begin(); i != hashTable.end(); i++ )
-	{
-		//dev += pow(hashTable[i].size() - mean, 2);
-		dev += pow(i->second.size() - mean, 2);
-	}
-	
-	dev = sqrt(dev / hashTableSize);
-	
-	cerr << "  Hash table mean: " << mean << "\tstddev: " << dev << "\tmin: " << min << "\tmax: " << max << "\tempty: " << int(100 * empty / hashTableSize ) << "%" << endl;
-	
-	return hashTableSize;
 }
 
 CommandPairwise::PairwiseOutput * search(CommandPairwise::PairwiseInput * input)
 {
 	const Sketch & sketch = input->sketch;
+	uint64_t indexIn = input->index;
 	
 	CommandPairwise::PairwiseOutput * output = new CommandPairwise::PairwiseOutput(input->sketch, input->index);
+	
+	uint32_t * shared = new uint32_t[input->index];
+	
+	memset(shared, 0, sizeof(uint32_t) * input->index);
 	
 	uint64_t sketchSize = sketch.getMinHashesPerWindow();
 	bool use64 = sketch.getUse64();
 	
 	const HashTable & hashTable = input->hashTable;
-	uint64_t hashTableSize = input->hashTableSize;
 	
 	const HashList & hashesSortedRef = sketch.getReference(input->index).hashesSorted;
-	
-	set<uint64_t> targets;
 	
 	for ( uint64_t i = 0; i < hashesSortedRef.size(); i++ )
 	{
 		uint64_t row = (use64 ? hashesSortedRef.at(i).hash64 : hashesSortedRef.at(i).hash32);
-		//uint64_t row = (use64 ? hashesSortedRef.at(i).hash64 : hashesSortedRef.at(i).hash32) & (hashTableSize - 1);
 		
 		if ( hashTable.count(row) )
 		{
-			//cout << "hash: " << (use64 ? hashesSortedRef.at(i).hash64 : hashesSortedRef.at(i).hash32) << '\t' << row << endl;
-			//const list<uint64_t> & indeces = hashTable[row];
 			const list<uint64_t> & indeces = hashTable.at(row);
 		
 			for ( list<uint64_t>::const_iterator j = indeces.begin(); j != indeces.end(); j++ )
 			{
 				uint64_t index = *j;
-				//cout << "  index: " << index << endl;
-				if ( index < input->index )
+				
+				if ( index < indexIn )
 				{
-					targets.insert(index);
+					shared[index]++;
 				}
 			}
 		}
 	}
 	
-	for ( set<uint64_t>::const_iterator i = targets.begin(); i != targets.end(); i++ )
+	for ( uint64_t i = 0; i < input->index; i++ )
 	{
 		CommandPairwise::PairwiseOutput::PairOutput pair;
 		
-//		cerr << "comparing " << input->index << " to " << *i << endl;
-		if ( compareSketches(&pair, sketch.getReference(input->index), sketch.getReference(*i), sketchSize, sketch.getKmerSize(), sketch.getKmerSpace(), input->maxDistance, input->maxPValue) )
+		if ( shared[i] && compareSketches(&pair, sketch.getReference(input->index), sketch.getReference(i), shared[i], sketch.getReference(input->index).hashesSorted.size() + sketch.getReference(i).hashesSorted.size() - shared[i], sketchSize, sketch.getKmerSize(), sketch.getKmerSpace(), input->maxDistance, input->maxPValue) )
 		{
 			//cerr << "hit!" << endl;
-			pair.index = *i;
+			pair.index = i;
 			output->pairs.push_back(pair);
 		}
 	}
 	
 	//sort(output->pairs.begin(), output->pairs.end(), CommandPairwise::PairwiseOutput::pairOutputLessThan);
+	delete [] shared;
 	
 	return output;
 }
 
-bool compareSketches(CommandPairwise::PairwiseOutput::PairOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue)
+bool compareSketches(CommandPairwise::PairwiseOutput::PairOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t common, uint64_t denom, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue)
 {
-	uint64_t i = 0;
-	uint64_t j = 0;
-	uint64_t common = 0;
-	uint64_t denom = 0;
 	const HashList & hashesSortedRef = refRef.hashesSorted;
 	const HashList & hashesSortedQry = refQry.hashesSorted;
-	
-	while ( denom < sketchSize && i < hashesSortedRef.size() && j < hashesSortedQry.size() )
-	{
-		//cerr << hashesSortedRef.at(i).hash32 << '\t' << hashesSortedQry.at(j).hash32 << endl;
-		if ( hashLessThan(hashesSortedRef.at(i), hashesSortedQry.at(j), hashesSortedRef.get64()) )
-		{
-			i++;
-		}
-		else if ( hashLessThan(hashesSortedQry.at(j), hashesSortedRef.at(i), hashesSortedRef.get64()) )
-		{
-			j++;
-		}
-		else
-		{
-			i++;
-			j++;
-			common++;
-		}
-		
-		denom++;
-	}
-	
-	if ( denom < sketchSize )
-	{
-		// complete the union operation if possible
-		
-		if ( i < hashesSortedRef.size() )
-		{
-			denom += hashesSortedRef.size() - i;
-		}
-		
-		if ( j < hashesSortedQry.size() )
-		{
-			denom += hashesSortedQry.size() - j;
-		}
-		
-		if ( denom > sketchSize )
-		{
-			denom = sketchSize;
-		}
-	}
 	
 	double distance;
 	double jaccard = double(common) / denom;
