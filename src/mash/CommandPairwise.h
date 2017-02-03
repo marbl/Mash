@@ -14,7 +14,36 @@
 #include <unordered_map>
 
 //typedef std::list<uint64_t> * HashTable;
-typedef std::unordered_map< uint64_t, std::list<uint64_t> > HashTable;
+
+struct HashEntry
+{
+	HashEntry(uint64_t indexSeqNew, uint64_t indexHashNew) :
+		indexSeq(indexSeqNew), indexHash(indexHashNew) {};
+	
+	uint64_t indexSeq;
+	uint64_t indexHash;
+};
+
+struct Comparison
+{
+	Comparison()
+	{
+		shared = 0;
+		skipped = 0;
+		lastSharedIndexQry = 0;
+		lastSharedIndexRef = 0;
+	}
+	
+	uint64_t shared;
+	uint64_t skipped;
+	
+	// 1-indexed for easier math
+	//
+	uint64_t lastSharedIndexQry;
+	uint64_t lastSharedIndexRef;
+};
+
+typedef std::unordered_map< uint64_t, std::list<HashEntry> > HashTable;
 
 class CommandPairwise : public Command
 {

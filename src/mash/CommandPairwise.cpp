@@ -273,7 +273,7 @@ void fillHashTable(const Sketch & sketch, HashTable & hashTable, uint64_t start,
 		
 		for ( uint64_t j = 0; j < hashesSorted.size(); j++ )
 		{
-			hashTable[(use64 ? hashesSorted.at(j).hash64 : hashesSorted.at(j).hash32)].push_back(i);
+			hashTable[(use64 ? hashesSorted.at(j).hash64 : hashesSorted.at(j).hash32)].push_back(HashEntry(i, j));
 		}
 	}
 	cerr << "done." << endl;
@@ -286,9 +286,7 @@ CommandPairwise::PairwiseOutput * search(CommandPairwise::PairwiseInput * input)
 	
 	CommandPairwise::PairwiseOutput * output = new CommandPairwise::PairwiseOutput(input->sketch, input->index);
 	
-	uint32_t * shared = new uint32_t[input->index];
-	
-	memset(shared, 0, sizeof(uint32_t) * input->index);
+	Comparison * comps = new Comparison[input->index];
 	
 	uint64_t sketchSize = sketch.getMinHashesPerWindow();
 	bool use64 = sketch.getUse64();
@@ -303,15 +301,36 @@ CommandPairwise::PairwiseOutput * search(CommandPairwise::PairwiseInput * input)
 		
 		if ( hashTable.count(row) )
 		{
-			const list<uint64_t> & indeces = hashTable.at(row);
-		
-			for ( list<uint64_t>::const_iterator j = indeces.begin(); j != indeces.end(); j++ )
+			const list<HashEntry> & indeces = hashTable.at(row);
+			
+			for ( list<HashEntry>::const_iterator j = indeces.begin(); j != indeces.end(); j++ )
 			{
-				uint64_t index = *j;
+				uint64_t index = j->indexSeq;
 				
-				if ( index < indexIn )
+				if
+				(
+					index < indexIn && // lower-triangular matrix
+					comps[index].shared + comps[index].skipped < input->parameters.minHashesPerWindow
+				)
 				{
-					shared[index]++;
+					Comparison & comp = comps[index];
+					
+					uint64_t skippedNew =
+						comp.skipped +
+						i - comps[index].lastSharedIndexQry + // skipped in query
+						j->indexHash - comp.lastSharedIndexRef; // skipped in ref
+					
+					if ( comp.shared + skippedNew < input->parameters.minHashesPerWindow )
+					{
+						comp.shared++;
+						comp.skipped = skippedNew;
+						comp.lastSharedIndexQry = i + 1;
+						comp.lastSharedIndexRef = j->indexHash + 1;
+					}
+					else // fill out the union to size S with skipped hashes
+					{
+						comp.skipped += input->parameters.minHashesPerWindow - comp.skipped - comp.shared;
+					}
 				}
 			}
 		}
@@ -321,7 +340,7 @@ CommandPairwise::PairwiseOutput * search(CommandPairwise::PairwiseInput * input)
 	{
 		CommandPairwise::PairwiseOutput::PairOutput pair;
 		
-		if ( shared[i] && compareSketches(&pair, sketch.getReference(input->index), sketch.getReference(i), shared[i], sketch.getReference(input->index).hashesSorted.size() + sketch.getReference(i).hashesSorted.size() - shared[i], sketchSize, sketch.getKmerSize(), sketch.getKmerSpace(), input->maxDistance, input->maxPValue) )
+		if ( comps[i].shared && compareSketches(&pair, sketch.getReference(input->index), sketch.getReference(i), comps[i].shared, comps[i].shared + comps[i].skipped, sketchSize, sketch.getKmerSize(), sketch.getKmerSpace(), input->maxDistance, input->maxPValue) )
 		{
 			//cerr << "hit!" << endl;
 			pair.index = i;
@@ -330,7 +349,7 @@ CommandPairwise::PairwiseOutput * search(CommandPairwise::PairwiseInput * input)
 	}
 	
 	//sort(output->pairs.begin(), output->pairs.end(), CommandPairwise::PairwiseOutput::pairOutputLessThan);
-	delete [] shared;
+	delete [] comps;
 	
 	return output;
 }
