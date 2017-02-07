@@ -93,3 +93,15 @@ Sort the results to see the top hits and their p-values:
 .. code ::
 
   sort -gk3 distances.tab | head
+
+Building a custom RefSeq database
+---------------------------------
+
+To create the RefSeq Mash database, genomes were downloaded from NCBI
+(:code:`ftp.ncbi.nlm.nih.gov/refseq/release/complete`, fasta sequence and
+GenBank annotations for :code:`genomic`), and the
+`refseqCollate <https://github.com/ondovb/refseqCollate/releases>`_ utility was
+used to collate contigs/chromosomes into individual fasta files per genome.
+Groups of these files were sketched in parallel and then pasted together with
+:code:`mash paste`. This process could be repeated for more current or custom
+databases.
