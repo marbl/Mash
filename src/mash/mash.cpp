@@ -9,9 +9,9 @@
 #include "CommandSketch.h"
 #include "CommandFind.h"
 #include "CommandDistance.h"
+#include "CommandGenes.h"
 #include "CommandContain.h"
 #include "CommandInfo.h"
-#include "CommandPairwise.h"
 #include "CommandPaste.h"
 
 using namespace::std;
@@ -23,7 +23,7 @@ int main(int argc, const char ** argv)
     commandList.addCommand(new CommandSketch());
     //commandList.addCommand(new CommandFind());
     commandList.addCommand(new CommandDistance());
-    commandList.addCommand(new CommandPairwise());
+    commandList.addCommand(new CommandGenes());
 #ifdef COMMAND_WITHIN
     commandList.addCommand(new CommandContain());
 #endif

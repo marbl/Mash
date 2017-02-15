@@ -4,8 +4,8 @@
 //
 // See the LICENSE.txt file included with this software for license information.
 
-#ifndef INCLUDED_CommandPairwise
-#define INCLUDED_CommandPairwise
+#ifndef INCLUDED_CommandGenes
+#define INCLUDED_CommandGenes
 
 #include "Command.h"
 #include "Sketch.h"
@@ -45,7 +45,7 @@ struct Comparison
 
 typedef std::unordered_map< uint64_t, std::list<HashEntry> > HashTable;
 
-class CommandPairwise : public Command
+class CommandGenes : public Command
 {
 public:
     
@@ -105,7 +105,7 @@ public:
         std::vector<PairOutput> pairs;
     };
     
-    CommandPairwise();
+    CommandGenes();
     
     int run() const; // override
     
@@ -115,7 +115,7 @@ private:
 };
 
 void fillHashTable(const Sketch & sketch, HashTable & hashTable, uint64_t start, uint64_t end);
-CommandPairwise::PairwiseOutput * search(CommandPairwise::PairwiseInput * input);
-bool compareSketches(CommandPairwise::PairwiseOutput::PairOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t common, uint64_t denom, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue);
+CommandGenes::PairwiseOutput * search(CommandGenes::PairwiseInput * input);
+bool compareSketches(CommandGenes::PairwiseOutput::PairOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t common, uint64_t denom, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue);
 
 #endif
