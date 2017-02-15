@@ -4,7 +4,7 @@
 //
 // See the LICENSE.txt file included with this software for license information.
 
-#include "CommandPairwise.h"
+#include "CommandGenes.h"
 #include "CommandDistance.h" // for pvalue
 #include "Sketch.h"
 #include <iostream>
@@ -23,15 +23,15 @@
 
 using namespace::std;
 
-bool CommandPairwise::PairwiseOutput::pairOutputLessThan(const PairOutput & a, const PairOutput & b)
+bool CommandGenes::PairwiseOutput::pairOutputLessThan(const PairOutput & a, const PairOutput & b)
 {
 	return a.index < b.index;
 }
 
-CommandPairwise::CommandPairwise()
+CommandGenes::CommandGenes()
 : Command()
 {
-	name = "pairwise";
+	name = "x";
 	summary = "Estimate the pairwise distance of protein sequences.";
 	description = "Estimate the pairwise distance of protein sequences. Input can be fasta or a Mash sketch file (.msh). The output fields are [seq-ID-1, seq-ID-2, distance, p-value, shared-hashes].";
 	argumentString = "<fasta>";
@@ -49,7 +49,7 @@ CommandPairwise::CommandPairwise()
 	//useSketchOptions();
 }
 
-int CommandPairwise::run() const
+int CommandGenes::run() const
 {
 	if ( arguments.size() != 1 || options.at("help").active )
 	{
@@ -224,7 +224,7 @@ int CommandPairwise::run() const
 	return 0;
 }
 
-void CommandPairwise::writeOutput(PairwiseOutput * output, bool table) const
+void CommandGenes::writeOutput(PairwiseOutput * output, bool table) const
 {
 	uint64_t i = output->index;
 	uint64_t j = 0;
@@ -279,12 +279,12 @@ void fillHashTable(const Sketch & sketch, HashTable & hashTable, uint64_t start,
 	cerr << "done." << endl;
 }
 
-CommandPairwise::PairwiseOutput * search(CommandPairwise::PairwiseInput * input)
+CommandGenes::PairwiseOutput * search(CommandGenes::PairwiseInput * input)
 {
 	const Sketch & sketch = input->sketch;
 	uint64_t indexIn = input->index;
 	
-	CommandPairwise::PairwiseOutput * output = new CommandPairwise::PairwiseOutput(input->sketch, input->index);
+	CommandGenes::PairwiseOutput * output = new CommandGenes::PairwiseOutput(input->sketch, input->index);
 	
 	Comparison * comps = new Comparison[input->index];
 	
@@ -338,7 +338,7 @@ CommandPairwise::PairwiseOutput * search(CommandPairwise::PairwiseInput * input)
 	
 	for ( uint64_t i = 0; i < input->index; i++ )
 	{
-		CommandPairwise::PairwiseOutput::PairOutput pair;
+		CommandGenes::PairwiseOutput::PairOutput pair;
 		
 		if ( comps[i].shared && compareSketches(&pair, sketch.getReference(input->index), sketch.getReference(i), comps[i].shared, comps[i].shared + comps[i].skipped, sketchSize, sketch.getKmerSize(), sketch.getKmerSpace(), input->maxDistance, input->maxPValue) )
 		{
@@ -348,13 +348,13 @@ CommandPairwise::PairwiseOutput * search(CommandPairwise::PairwiseInput * input)
 		}
 	}
 	
-	//sort(output->pairs.begin(), output->pairs.end(), CommandPairwise::PairwiseOutput::pairOutputLessThan);
+	//sort(output->pairs.begin(), output->pairs.end(), CommandGenes::PairwiseOutput::pairOutputLessThan);
 	delete [] comps;
 	
 	return output;
 }
 
-bool compareSketches(CommandPairwise::PairwiseOutput::PairOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t common, uint64_t denom, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue)
+bool compareSketches(CommandGenes::PairwiseOutput::PairOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t common, uint64_t denom, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue)
 {
 	const HashList & hashesSortedRef = refRef.hashesSorted;
 	const HashList & hashesSortedQry = refQry.hashesSorted;
