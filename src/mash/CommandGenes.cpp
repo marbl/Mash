@@ -7,6 +7,7 @@
 #include "CommandGenes.h"
 #include "CommandDistance.h" // for pvalue
 #include "Sketch.h"
+#include "kseq.h"
 #include <iostream>
 #include <zlib.h>
 #include "ThreadPool.h"
@@ -21,12 +22,10 @@
 	#include <gsl/gsl_cdf.h>
 #endif
 
-using namespace::std;
+#define SET_BINARY_MODE(file)
+KSEQ_INIT(gzFile, gzread)
 
-bool CommandGenes::PairwiseOutput::pairOutputLessThan(const PairOutput & a, const PairOutput & b)
-{
-	return a.index < b.index;
-}
+using namespace::std;
 
 CommandGenes::CommandGenes()
 : Command()
@@ -38,7 +37,9 @@ CommandGenes::CommandGenes()
 	
 	useOption("help");
 	useOption("threads");
-    addOption("kmer", Option(Option::Integer, "k", "Sketch", "K-mer size. Hashes will be based on strings of this many amino acids.", "9", 1, 32));
+	useOption("minCov");
+	useOption("targetCov");
+    addOption("kmer", Option(Option::Integer, "k", "Sketch", "K-mer size. Hashes will be based on strings of this many amino acids.", "9", 1, 14));
     addOption("sketchSize", Option(Option::Integer, "s", "Sketch", "Sketch size. Each sketch will have at most this many non-redundant min-hashes.", "400"));
     addOption("case", Option(Option::Boolean, "Z", "Sketch", "Preserve case in k-mers and alphabet (case is ignored by default). Sequence letters whose case is not in the current alphabet will be skipped when sketching.", ""));
 //	addOption("list", Option(Option::Boolean, "l", "Input", "List input. Each query file contains a list of sequence files, one per line. The reference file is not affected.", ""));
@@ -51,7 +52,7 @@ CommandGenes::CommandGenes()
 
 int CommandGenes::run() const
 {
-	if ( arguments.size() != 1 || options.at("help").active )
+	if ( arguments.size() < 2 || options.at("help").active )
 	{
 		print();
 		return 0;
@@ -62,303 +63,250 @@ int CommandGenes::run() const
 	//bool log = options.at("log").active;
 	double pValueMax = options.at("pvalue").getArgumentAsNumber();
 	double distanceMax = options.at("distance").getArgumentAsNumber();
+	int amerSize = getOption("kmer").getArgumentAsNumber();
 	
+	// for estimating saturation in nucleotide space
+	//
 	Sketch::Parameters parameters;
-	
-    parameters.kmerSize = getOption("kmer").getArgumentAsNumber();
-    parameters.minHashesPerWindow = getOption("sketchSize").getArgumentAsNumber();
-    parameters.parallelism = getOption("threads").getArgumentAsNumber();
-    parameters.preserveCase = getOption("case").active;
-	parameters.noncanonical = true;
+	//
+	parameters.kmerSize = amerSize * 3;
+	parameters.minHashesPerWindow = getOption("sketchSize").getArgumentAsNumber();
+	parameters.parallelism = 1;
+	parameters.preserveCase = getOption("case").active;
+	parameters.noncanonical = false;
 	parameters.concatenated = false;
-	setAlphabetFromString(parameters, alphabetProtein);
-	Sketch sketchRef;
+    parameters.minCov = getOption("minCov").getArgumentAsNumber();
+    parameters.targetCov = getOption("targetCov").getArgumentAsNumber();
+	setAlphabetFromString(parameters, alphabetNucleotide);
 	
-	uint64_t lengthMax;
-	double randomChance;
-	int kMin;
-	string lengthMaxName;
-	int warningCount = 0;
+	uint64_t amerSpace = pow(20, amerSize);
+    parameters.use64 = amerSpace > pow(2, 32);
 	
 	const string & fileReference = arguments[0];
 	
-	bool isSketch = hasSuffix(fileReference, suffixSketch);
-	
-	if ( isSketch )
-	{
-		if ( options.at("kmer").active )
-		{
-			cerr << "ERROR: The option -" << options.at("kmer").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
-			return 1;
-		}
-	}
-	else
-	{
-		cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...";
-	}
-	
-	vector<string> refArgVector;
-	refArgVector.push_back(fileReference);
-	
 	//cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
 	
-	sketchRef.initFromFiles(refArgVector, parameters);
+	HashTable hashTable;
+	unordered_map<string, uint32_t> amerCounts;
+	vector<CommandGenes::Reference> references;
 	
-	double lengthThreshold = (parameters.warning * sketchRef.getKmerSpace()) / (1. - parameters.warning);
+	gzFile fp = gzopen(arguments[0].c_str(), "r");
+	kseq_t * kseq = kseq_init(fp);
 	
-	if ( isSketch )
+	cerr << "Filling table from " << arguments[0] << endl;
+	
+	int l;
+	
+	while ((l = kseq_read(kseq)) >= 0)
 	{
-		if ( options.at("sketchSize").active )
+		if ( l < amerSize )
 		{
-			if ( parameters.reads && parameters.minHashesPerWindow != sketchRef.getMinHashesPerWindow() )
+			continue;
+		}
+		
+		for ( int i = 0; i < l - amerSize + 1; i++ )
+		{
+			string amer(kseq->seq.s + i, amerSize);
+			hashTable[amer].insert(references.size());
+			amerCounts[amer] = 0;
+		}
+		
+		references.push_back(Reference(l - amerSize + 1, kseq->name.s, kseq->comment.s));
+	}
+	
+	kseq_destroy(kseq);
+	gzclose(fp);
+	
+	uint64_t * shared = new uint64_t[references.size()];
+	
+	memset(shared, 0, sizeof(uint64_t) * references.size());
+	
+	MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.reads ? parameters.minCov : 1, parameters.memoryBound);
+	
+	int queryCount = arguments.size() - 1;
+	cerr << "Translating from " << queryCount << " inputs..." << endl;
+	
+	// open all query files for round robin
+	//
+	gzFile fps[queryCount];
+	list<kseq_t *> kseqs;
+	//
+	for ( int f = 1; f < arguments.size(); f++ )
+	{
+		if ( arguments[f] == "-" )
+		{
+			if ( f > 1 )
 			{
-				cerr << "ERROR: The sketch size must match the reference when using a bloom filter (leave this option out to inherit from the reference sketch)." << endl;
-				return 1;
+				cerr << "ERROR: '-' for stdin must be first query" << endl;
+				exit(1);
+			}
+			
+			fps[f - 1] = gzdopen(fileno(stdin), "r");
+		}
+		else
+		{
+			fps[f - 1] = gzopen(arguments[f].c_str(), "r");
+		}
+		
+		kseqs.push_back(kseq_init(fps[f - 1]));
+	}
+	
+	// perform round-robin, closing files as they end
+	//
+	uint64_t count = 0;
+	list<kseq_t *>::iterator it = kseqs.begin();
+	//
+	while ( kseqs.begin() != kseqs.end() )
+	{
+		l = kseq_read(*it);
+		
+		if ( l < -1 ) // error
+		{
+			break;
+		}
+		
+		if ( l == -1 ) // eof
+		{
+			kseq_destroy(*it);
+			it = kseqs.erase(it);
+			continue;
+		}
+		
+		if ( l < amerSize ) // too short
+		{
+			continue;
+		}
+		
+		count++;
+		
+		char * seq = (*it)->seq.s;
+		
+		it++;
+		
+		if ( it == kseqs.end() )
+		{
+			it = kseqs.begin();
+		}
+		
+		// uppercase
+		//
+		for ( uint64_t i = 0; i < l; i++ )
+		{
+			if ( ! parameters.preserveCase && seq[i] > 96 && seq[i] < 123 )
+			{
+				seq[i] -= 32;
 			}
 		}
 		
-		parameters.minHashesPerWindow = sketchRef.getMinHashesPerWindow();
-		parameters.kmerSize = sketchRef.getKmerSize();
-		parameters.noncanonical = sketchRef.getNoncanonical();
-		parameters.preserveCase = sketchRef.getPreserveCase();
+		char * seqRev = new char[l];
 		
-		string alphabet;
-		sketchRef.getAlphabetAsString(alphabet);
-		setAlphabetFromString(parameters, alphabet.c_str());
-	}
-	else
-	{
-		for ( uint64_t i = 0; i < sketchRef.getReferenceCount(); i++ )
+		reverseComplement(seq, seqRev, l);
+		
+		for ( int i = 0; i < 6; i++ )
 		{
-			uint64_t length = sketchRef.getReference(i).length;
-		
-			if ( length > lengthThreshold )
+			int frame = i % 3;
+			bool rev = i > 2;
+			
+			int lenTrans = (l - frame) / 3;
+			
+			char * seqTrans = new char[lenTrans];
+			
+			translate(rev ? seqRev : seq, seqTrans, lenTrans);
+			
+			string strTrans(seqTrans, lenTrans);
+			//cout << strTrans << endl;
+			
+			int64_t lastGood = -1;
+			
+			for ( int j = 0; j < lenTrans - amerSize + 1; j++ )
 			{
-				if ( warningCount == 0 || length > lengthMax )
+				while ( lastGood < j + amerSize && lastGood < lenTrans )
 				{
-					lengthMax = length;
-					lengthMaxName = sketchRef.getReference(i).name;
-					randomChance = sketchRef.getRandomKmerChance(i);
-					kMin = sketchRef.getMinKmerSize(i);
+					lastGood++;
+					
+					if ( seqTrans[lastGood + 1] == 0 )
+					{
+						j = lastGood + 1;
+					}
 				}
-			
-				warningCount++;
+				
+				if ( j > lenTrans - amerSize )
+				{
+					break;
+				}
+				
+				string amer(seqTrans + j, amerSize);
+				
+				//cout << amer << endl;
+				
+				if ( hashTable.count(amer) == 1 )
+				{
+					amerCounts[amer]++;
+					
+					if ( amerCounts.at(amer) == parameters.minCov )
+					{
+						const unordered_set<uint64_t> & indeces = hashTable.at(amer);
+				
+						for ( unordered_set<uint64_t>::const_iterator k = indeces.begin(); k != indeces.end(); k++ )
+						{
+							shared[*k]++;
+						}
+					}
+				}
 			}
-		}
-	
-		cerr << "done.\n";
-	}
-	
-	if ( table )
-	{
-		cout << "#query";
-		
-		for ( int i = 0; i < sketchRef.getReferenceCount(); i++ )
-		{
-			cout << '\t' << sketchRef.getReference(i).name;
-		}
-		
-		cout << endl;
-	}
-	
-	ThreadPool<PairwiseInput, PairwiseOutput> threadPool(search, threads);
-	
-	vector<string> queryFiles;
-	
-	for ( int i = 0; i < arguments.size(); i++ )
-	{
-		queryFiles.push_back(arguments[i]);
-	}
-	
-	Sketch sketch;
-	
-	sketch.initFromFiles(queryFiles, parameters);
-	
-	uint64_t hashTableSize = 1 << 25;
-	int rounds = sketch.getReferenceCount() * parameters.minHashesPerWindow / hashTableSize / 2;
-	
-	if ( true || rounds == 0 )
-	{
-		rounds = 1;
-	}
-	
-	uint64_t roundSize = sketch.getReferenceCount() / rounds;
-	
-	for ( int i = 0; i < rounds; i++ )
-	{
-		uint64_t start = i * roundSize;
-		uint64_t end = (i + 1) * roundSize;
-		
-		cerr << "Round " << i + 1 << " of " << rounds << " (" << start << " - " << end - 1 << ")" << endl;
-		if ( end > sketch.getReferenceCount() )
-		{
-			end = sketch.getReferenceCount();
-		}
-		
-		HashTable hashTable;
-		fillHashTable(sketch, hashTable, start, end);
-		
-		for ( uint64_t j = 1; j < end; j++ )
-		{
-			threadPool.runWhenThreadAvailable(new PairwiseInput(sketch, j, parameters, distanceMax, pValueMax, hashTable, hashTableSize));
 			
-			while ( threadPool.outputAvailable() )
-			{
-				writeOutput(threadPool.popOutputWhenAvailable(), table);
-			}
+			delete [] seqTrans;
 		}
 		
-		while ( threadPool.running() )
+		delete [] seqRev;
+		
+		addMinHashes(minHashHeap, seq, l, parameters);
+		
+		if ( parameters.targetCov > 0 && minHashHeap.estimateMultiplicity() >= parameters.targetCov )
 		{
-			writeOutput(threadPool.popOutputWhenAvailable(), table);
+			l = -1; // success code
+			break;
 		}
-		
-		if ( warningCount > 0 && ! parameters.reads )
-		{
-			//warnKmerSize(parameters, *this, lengthMax, lengthMaxName, randomChance, kMin, warningCount);
-		}
-		
-		//delete [] hashTable;
 	}
+	
+	for ( int i = 0; i < queryCount; i++ )
+	{
+		gzclose(fps[i]);
+	}
+	
+	if (  l != -1 )
+	{
+		cerr << "\nERROR: reading inputs" << endl;
+		exit(1);
+	}
+	
+	if ( count == 0 )
+	{
+		cerr << "\nERROR: Did not find sequence records in inputs" << endl;
+		
+		exit(1);
+	}
+	
+	cerr << "Reads required for " << parameters.targetCov << "x coverage: " << count << endl;
+	cerr << "Estimated genome size: " << minHashHeap.estimateSetSize() << endl;
+	
+	for ( int i = 0; i < references.size(); i++ )
+	{
+		if ( shared[i] != 0 )
+		{
+			double identity = estimateIdentity(shared[i], references[i].amerCount, amerSize, amerSpace);
+			
+			cout << references[i].name << '\t' << identity << endl;
+		}
+	}
+	
+	delete [] shared;
 	
 	return 0;
 }
 
-void CommandGenes::writeOutput(PairwiseOutput * output, bool table) const
+double estimateIdentity(uint64_t common, uint64_t denom, int kmerSize, double kmerSpace)
 {
-	uint64_t i = output->index;
-	uint64_t j = 0;
-	
-	if ( table )
-	{
-		cout << output->sketch.getReference(output->index).name << '\t';
-	}
-	
-	for ( uint64_t p = 0; p < output->pairs.size(); p++ )
-	{
-		const PairwiseOutput::PairOutput * pair = &output->pairs.at(p);
-		
-		//cerr << "index: " << pair->index << endl;
-		if ( table )
-		{
-			while ( j < pair->index )
-			{
-				cout << '\t';
-				j++;
-			}
-			
-			cout << '\t' << pair->distance;
-		}
-		else
-		{
-			cout << output->sketch.getReference(i).name << '\t' << output->sketch.getReference(pair->index).name << '\t' << pair->distance << '\t' << pair->pValue << '\t' << pair->numer << '/' << pair->denom << endl;
-		}
-	}
-	
-	if ( table )
-	{
-		cout << endl;
-	}
-	
-	delete output;
-}
-
-void fillHashTable(const Sketch & sketch, HashTable & hashTable, uint64_t start, uint64_t end)
-{
-	cerr << "  Creating hash table...";
-	for ( int i = start; i < end; i++ )
-	{
-		bool use64 = sketch.getUse64();
-		const HashList & hashesSorted = sketch.getReference(i).hashesSorted;
-		
-		for ( uint64_t j = 0; j < hashesSorted.size(); j++ )
-		{
-			hashTable[(use64 ? hashesSorted.at(j).hash64 : hashesSorted.at(j).hash32)].push_back(HashEntry(i, j));
-		}
-	}
-	cerr << "done." << endl;
-}
-
-CommandGenes::PairwiseOutput * search(CommandGenes::PairwiseInput * input)
-{
-	const Sketch & sketch = input->sketch;
-	uint64_t indexIn = input->index;
-	
-	CommandGenes::PairwiseOutput * output = new CommandGenes::PairwiseOutput(input->sketch, input->index);
-	
-	Comparison * comps = new Comparison[input->index];
-	
-	uint64_t sketchSize = sketch.getMinHashesPerWindow();
-	bool use64 = sketch.getUse64();
-	
-	const HashTable & hashTable = input->hashTable;
-	
-	const HashList & hashesSortedRef = sketch.getReference(input->index).hashesSorted;
-	
-	for ( uint64_t i = 0; i < hashesSortedRef.size(); i++ )
-	{
-		uint64_t row = (use64 ? hashesSortedRef.at(i).hash64 : hashesSortedRef.at(i).hash32);
-		
-		if ( hashTable.count(row) )
-		{
-			const list<HashEntry> & indeces = hashTable.at(row);
-			
-			for ( list<HashEntry>::const_iterator j = indeces.begin(); j != indeces.end(); j++ )
-			{
-				uint64_t index = j->indexSeq;
-				
-				if
-				(
-					index < indexIn && // lower-triangular matrix
-					comps[index].shared + comps[index].skipped < input->parameters.minHashesPerWindow
-				)
-				{
-					Comparison & comp = comps[index];
-					
-					uint64_t skippedNew =
-						comp.skipped +
-						i - comps[index].lastSharedIndexQry + // skipped in query
-						j->indexHash - comp.lastSharedIndexRef; // skipped in ref
-					
-					if ( comp.shared + skippedNew < input->parameters.minHashesPerWindow )
-					{
-						comp.shared++;
-						comp.skipped = skippedNew;
-						comp.lastSharedIndexQry = i + 1;
-						comp.lastSharedIndexRef = j->indexHash + 1;
-					}
-					else // fill out the union to size S with skipped hashes
-					{
-						comp.skipped += input->parameters.minHashesPerWindow - comp.skipped - comp.shared;
-					}
-				}
-			}
-		}
-	}
-	
-	for ( uint64_t i = 0; i < input->index; i++ )
-	{
-		CommandGenes::PairwiseOutput::PairOutput pair;
-		
-		if ( comps[i].shared && compareSketches(&pair, sketch.getReference(input->index), sketch.getReference(i), comps[i].shared, comps[i].shared + comps[i].skipped, sketchSize, sketch.getKmerSize(), sketch.getKmerSpace(), input->maxDistance, input->maxPValue) )
-		{
-			//cerr << "hit!" << endl;
-			pair.index = i;
-			output->pairs.push_back(pair);
-		}
-	}
-	
-	//sort(output->pairs.begin(), output->pairs.end(), CommandGenes::PairwiseOutput::pairOutputLessThan);
-	delete [] comps;
-	
-	return output;
-}
-
-bool compareSketches(CommandGenes::PairwiseOutput::PairOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t common, uint64_t denom, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue)
-{
-	const HashList & hashesSortedRef = refRef.hashesSorted;
-	const HashList & hashesSortedQry = refQry.hashesSorted;
-	
 	double distance;
 	double jaccard = double(common) / denom;
 	
@@ -376,17 +324,198 @@ bool compareSketches(CommandGenes::PairwiseOutput::PairOutput * output, const Sk
 		distance = -log(2 * jaccard / (1. + jaccard)) / kmerSize;
 	}
 	
-	if ( distance > maxDistance || distance == 1 )
-	{
-		return false;
-	}
-	
-	output->numer = common;
-	output->denom = denom;
-	output->distance = distance;
-	output->pValue = pValue(common, refRef.length, refQry.length, kmerSpace, denom);
-	//cerr << "sketch size: " << sketchSize << " common: " << common << " denom: " << denom << " dist: " << distance << " pval: " << output->pValue <<  endl;
-	
-	return output->pValue <= maxPValue;
+	return 1. - distance;
 }
 
+void translate(const char * src, char * dst, uint64_t len)
+{
+	for ( uint64_t n = 0, a = 0; a < len; a++, n+= 3 )
+	{
+		dst[a] = aaFromCodon(src + n);
+	}
+}
+
+char aaFromCodon(const char * codon)
+{
+	string str(codon, 3);
+	
+	if ( codons.count(str) == 1 )
+	{
+		return codons.at(str);
+	}
+	else
+	{
+		return 0;
+	}
+	char aa = 0;
+	
+	switch (codon[0])
+	{
+	case 'A':
+		switch (codon[1])
+		{
+		case 'A':
+			switch (codon[2])
+			{
+				case 'A': aa = 'K'; break;
+				case 'C': aa = 'N'; break;
+				case 'G': aa = 'K'; break;
+				case 'T': aa = 'N'; break;
+			}
+			break;
+		case 'C':
+			switch (codon[2])
+			{
+				case 'A': aa = 'T'; break;
+				case 'C': aa = 'T'; break;
+				case 'G': aa = 'T'; break;
+				case 'T': aa = 'T'; break;
+			}
+			break;
+		case 'G':
+			switch (codon[2])
+			{
+				case 'A': aa = 'R'; break;
+				case 'C': aa = 'S'; break;
+				case 'G': aa = 'R'; break;
+				case 'T': aa = 'S'; break;
+			}
+			break;
+		case 'T':
+			switch (codon[2])
+			{
+				case 'A': aa = 'I'; break;
+				case 'C': aa = 'I'; break;
+				case 'G': aa = 'M'; break;
+				case 'T': aa = 'I'; break;
+			}
+			break;
+		}
+		break;
+	case 'C':
+		switch (codon[1])
+		{
+		case 'A':
+			switch (codon[2])
+			{
+				case 'A': aa = 'Q'; break;
+				case 'C': aa = 'H'; break;
+				case 'G': aa = 'Q'; break;
+				case 'T': aa = 'H'; break;
+			}
+			break;
+		case 'C':
+			switch (codon[2])
+			{
+				case 'A': aa = 'P'; break;
+				case 'C': aa = 'P'; break;
+				case 'G': aa = 'P'; break;
+				case 'T': aa = 'P'; break;
+			}
+			break;
+		case 'G':
+			switch (codon[2])
+			{
+				case 'A': aa = 'R'; break;
+				case 'C': aa = 'R'; break;
+				case 'G': aa = 'R'; break;
+				case 'T': aa = 'R'; break;
+			}
+			break;
+		case 'T':
+			switch (codon[2])
+			{
+				case 'A': aa = 'L'; break;
+				case 'C': aa = 'L'; break;
+				case 'G': aa = 'L'; break;
+				case 'T': aa = 'L'; break;
+			}
+			break;
+		}
+		break;
+	case 'G':
+		switch (codon[1])
+		{
+		case 'A':
+			switch (codon[2])
+			{
+				case 'A': aa = 'E'; break;
+				case 'C': aa = 'D'; break;
+				case 'G': aa = 'E'; break;
+				case 'T': aa = 'D'; break;
+			}
+			break;
+		case 'C':
+			switch (codon[2])
+			{
+				case 'A': aa = 'A'; break;
+				case 'C': aa = 'A'; break;
+				case 'G': aa = 'A'; break;
+				case 'T': aa = 'A'; break;
+			}
+			break;
+		case 'G':
+			switch (codon[2])
+			{
+				case 'A': aa = 'G'; break;
+				case 'C': aa = 'G'; break;
+				case 'G': aa = 'G'; break;
+				case 'T': aa = 'G'; break;
+			}
+			break;
+		case 'T':
+			switch (codon[2])
+			{
+				case 'A': aa = 'V'; break;
+				case 'C': aa = 'V'; break;
+				case 'G': aa = 'V'; break;
+				case 'T': aa = 'V'; break;
+			}
+			break;
+		}
+		break;
+	case 'T':
+		switch (codon[1])
+		{
+		case 'A':
+			switch (codon[2])
+			{
+				case 'A': aa = '*'; break;
+				case 'C': aa = 'Y'; break;
+				case 'G': aa = '*'; break;
+				case 'T': aa = 'Y'; break;
+			}
+			break;
+		case 'C':
+			switch (codon[2])
+			{
+				case 'A': aa = 'S'; break;
+				case 'C': aa = 'S'; break;
+				case 'G': aa = 'S'; break;
+				case 'T': aa = 'S'; break;
+			}
+			break;
+		case 'G':
+			switch (codon[2])
+			{
+				case 'A': aa = '*'; break;
+				case 'C': aa = 'C'; break;
+				case 'G': aa = 'W'; break;
+				case 'T': aa = 'C'; break;
+			}
+			break;
+		case 'T':
+			switch (codon[2])
+			{
+				case 'A': aa = 'L'; break;
+				case 'C': aa = 'F'; break;
+				case 'G': aa = 'L'; break;
+				case 'T': aa = 'F'; break;
+			}
+			break;
+		}
+		break;
+	}
+	
+	return (aa == '*') ? 0 : aa;
+}

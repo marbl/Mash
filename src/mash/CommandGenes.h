@@ -10,112 +10,104 @@
 #include "Command.h"
 #include "Sketch.h"
 #include <list>
+#include <string>
 #include <vector>
+#include <unordered_set>
 #include <unordered_map>
 
-//typedef std::list<uint64_t> * HashTable;
+typedef std::unordered_map< std::string, std::unordered_set<uint64_t> > HashTable;
 
-struct HashEntry
+static const std::unordered_map< std::string, char > codons =
 {
-	HashEntry(uint64_t indexSeqNew, uint64_t indexHashNew) :
-		indexSeq(indexSeqNew), indexHash(indexHashNew) {};
-	
-	uint64_t indexSeq;
-	uint64_t indexHash;
+	{"AAA",	'K'},
+	{"AAC",	'N'},
+	{"AAG",	'K'},
+	{"AAT",	'N'},
+	{"ACA",	'T'},
+	{"ACC",	'T'},
+	{"ACG",	'T'},
+	{"ACT",	'T'},
+	{"AGA",	'R'},
+	{"AGC",	'S'},
+	{"AGG",	'R'},
+	{"AGT",	'S'},
+	{"ATA",	'I'},
+	{"ATC",	'I'},
+	{"ATG",	'M'},
+	{"ATT",	'I'},
+	{"CAA",	'Q'},
+	{"CAC",	'H'},
+	{"CAG",	'Q'},
+	{"CAT",	'H'},
+	{"CCA",	'P'},
+	{"CCC",	'P'},
+	{"CCG",	'P'},
+	{"CCT",	'P'},
+	{"CGA",	'R'},
+	{"CGC",	'R'},
+	{"CGG",	'R'},
+	{"CGT",	'R'},
+	{"CTA",	'L'},
+	{"CTC",	'L'},
+	{"CTG",	'L'},
+	{"CTT",	'L'},
+	{"GAA",	'E'},
+	{"GAC",	'D'},
+	{"GAG",	'E'},
+	{"GAT",	'D'},
+	{"GCA",	'A'},
+	{"GCC",	'A'},
+	{"GCG",	'A'},
+	{"GCT",	'A'},
+	{"GGA",	'G'},
+	{"GGC",	'G'},
+	{"GGG",	'G'},
+	{"GGT",	'G'},
+	{"GTA",	'V'},
+	{"GTC",	'V'},
+	{"GTG",	'V'},
+	{"GTT",	'V'},
+	{"TAA",	'*'},
+	{"TAC",	'Y'},
+	{"TAG",	'*'},
+	{"TAT",	'Y'},
+	{"TCA",	'S'},
+	{"TCC",	'S'},
+	{"TCG",	'S'},
+	{"TCT",	'S'},
+	{"TGA",	'*'},
+	{"TGC",	'C'},
+	{"TGG",	'W'},
+	{"TGT",	'C'},
+	{"TTA",	'L'},
+	{"TTC",	'F'},
+	{"TTG",	'L'},
+	{"TTT",	'F'}
 };
-
-struct Comparison
-{
-	Comparison()
-	{
-		shared = 0;
-		skipped = 0;
-		lastSharedIndexQry = 0;
-		lastSharedIndexRef = 0;
-	}
-	
-	uint64_t shared;
-	uint64_t skipped;
-	
-	// 1-indexed for easier math
-	//
-	uint64_t lastSharedIndexQry;
-	uint64_t lastSharedIndexRef;
-};
-
-typedef std::unordered_map< uint64_t, std::list<HashEntry> > HashTable;
 
 class CommandGenes : public Command
 {
 public:
     
-    struct PairwiseInput
-    {
-        PairwiseInput(const Sketch & sketchNew, uint64_t indexNew, const Sketch::Parameters & parametersNew, double maxDistanceNew, double maxPValueNew, const HashTable & hashTableNew, uint64_t hashTableSizeNew)
-            :
-            sketch(sketchNew),
-            index(indexNew),
-            parameters(parametersNew),
-            maxDistance(maxDistanceNew),
-            maxPValue(maxPValueNew),
-            hashTable(hashTableNew),
-            hashTableSize(hashTableSizeNew)
-            {}
-        
-        const Sketch & sketch;
-        
-        uint64_t index;
-        
-        const Sketch::Parameters & parameters;
-        double maxDistance;
-        double maxPValue;
-        
-		const HashTable & hashTable;
-		uint64_t hashTableSize;
-    };
-    
-    struct PairwiseOutput
-    {
-        PairwiseOutput(const Sketch & sketchNew, uint64_t indexNew)
-            :
-            sketch(sketchNew),
-            index(indexNew)
-        {
-        }
-        
-        ~PairwiseOutput()
-        {
-        }
-        
-        struct PairOutput
-        {
-        	uint64_t index;
-            uint64_t numer;
-            uint64_t denom;
-            double distance;
-            double pValue;
-        };
-        
-        static bool pairOutputLessThan(const PairOutput & a, const PairOutput & b);
-        
-        const Sketch & sketch;
-        
-        uint64_t index;
-        
-        std::vector<PairOutput> pairs;
-    };
-    
     CommandGenes();
     
     int run() const; // override
-    
+
 private:
-    
-    void writeOutput(PairwiseOutput * output, bool table) const;
+	
+	struct Reference
+	{
+		Reference(uint64_t amerCountNew, std::string nameNew, std::string commentNew)
+		: amerCount(amerCountNew), name(nameNew), comment(commentNew) {}
+		
+		uint64_t amerCount;
+		std::string name;
+		std::string comment;
+	};
 };
 
-void fillHashTable(const Sketch & sketch, HashTable & hashTable, uint64_t start, uint64_t end);
-CommandGenes::PairwiseOutput * search(CommandGenes::PairwiseInput * input);
-bool compareSketches(CommandGenes::PairwiseOutput::PairOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t common, uint64_t denom, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue);
+char aaFromCodon(const char * codon);
+double estimateIdentity(uint64_t common, uint64_t denom, int kmerSize, double kmerSpace);
+void translate(const char * src, char * dst, uint64_t len);
 
 #endif
