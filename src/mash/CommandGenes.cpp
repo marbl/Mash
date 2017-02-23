@@ -69,7 +69,7 @@ int CommandGenes::run() const
 	//
 	Sketch::Parameters parameters;
 	//
-	parameters.kmerSize = amerSize * 3;
+	parameters.kmerSize = log(pow(20, amerSize)) / log(4);
 	parameters.minHashesPerWindow = getOption("sketchSize").getArgumentAsNumber();
 	parameters.parallelism = 1;
 	parameters.preserveCase = getOption("case").active;
@@ -111,7 +111,7 @@ int CommandGenes::run() const
 			amerCounts[amer] = 0;
 		}
 		
-		references.push_back(Reference(l - amerSize + 1, kseq->name.s, kseq->comment.s));
+		references.push_back(Reference(l - amerSize + 1, kseq->name.s, kseq->comment.l ? kseq->comment.s : ""));
 	}
 	
 	kseq_destroy(kseq);
@@ -121,7 +121,7 @@ int CommandGenes::run() const
 	
 	memset(shared, 0, sizeof(uint64_t) * references.size());
 	
-	MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.reads ? parameters.minCov : 1, parameters.memoryBound);
+	MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.minCov, parameters.memoryBound);
 	
 	int queryCount = arguments.size() - 1;
 	cerr << "Translating from " << queryCount << " inputs..." << endl;
@@ -211,10 +211,10 @@ int CommandGenes::run() const
 			
 			char * seqTrans = new char[lenTrans];
 			
-			translate(rev ? seqRev : seq, seqTrans, lenTrans);
+			translate((rev ? seqRev : seq) + frame, seqTrans, lenTrans);
 			
 			string strTrans(seqTrans, lenTrans);
-			//cout << strTrans << endl;
+			//cout << i << ": " << strTrans << endl;
 			
 			int64_t lastGood = -1;
 			
@@ -287,7 +287,14 @@ int CommandGenes::run() const
 		exit(1);
 	}
 	
-	cerr << "Reads required for " << parameters.targetCov << "x coverage: " << count << endl;
+	if ( parameters.targetCov != 0 )
+	{
+		cerr << "Reads required for " << parameters.targetCov << "x coverage: " << count << endl;
+	}
+	else
+	{
+		cerr << "Estimated coverage: " << minHashHeap.estimateMultiplicity() << "x" << endl;
+	}
 	cerr << "Estimated genome size: " << minHashHeap.estimateSetSize() << endl;
 	
 	for ( int i = 0; i < references.size(); i++ )
