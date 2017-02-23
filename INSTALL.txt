@@ -54,7 +54,7 @@ Configure options:
   Installs binaries to bin/ and libraries to lib/ within this path. The default
   is /usr/local/, which will typically require sudo for make install. Must be
   absolute path.
---with-capnp=</path/to/capnp/> or  the
+--with-capnp=</path/to/capnp/>
   Where to find the Cap'n Proto install if not in the default location
   (/usr/local). Must be absolute path and should not include bin/ or lib/
   paths and should not include "bin" or "lib".
