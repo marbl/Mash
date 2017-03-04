@@ -8,7 +8,7 @@ ifeq ($(UNAME_S),Darwin)
 	DYNAMICFLAGS += $(CXXFLAGS) -dynamiclib
 	DYNAMICNAME = libmash.dylib 
 else
-	CXXFLAGS += -include src/mash/memcpyLink.h -Wl,--wrap=memcpy -shared
+	CXXFLAGS += -include src/mash/memcpyLink.h -Wl,--wrap=memcpy
 	CXXDYNAMICFLAGS += $(CXXFLAGS) -shared
 	DYNAMICNAME = libmash.so 
 	CFLAGS += -include src/mash/memcpyLink.h
@@ -36,7 +36,7 @@ SOURCES=\
 
 OBJECTS=$(SOURCES:.cpp=.o) src/mash/capnp/MinHash.capnp.o
 
-all : mash libmash.a libmash.so
+all : mash libmash.a dynamic_libmash
 
 mash : libmash.a src/mash/memcpyWrap.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o mash src/mash/memcpyWrap.o libmash.a @capnp@/lib/libcapnp.a @capnp@/lib/libkj.a @mathlib@ -lstdc++ -lz -lm -lpthread
@@ -45,7 +45,7 @@ libmash.a : $(OBJECTS)
 	ar -cr libmash.a $(OBJECTS)
 	ranlib libmash.a
 
-libmash.so : $(OBJECTS)
+dynamic_libmash : $(OBJECTS)
 	$(CXX) $(CXXDYNAMICFLAGS) $(CPPFLAGS) -Wl -o $(DYNAMICNAME) $(OBJECTS) @capnp@/lib/libkj.a @capnp@/lib/libcapnp.a src/mash/memcpyWrap.o @mathlib@ -lstdc++ -lz -lm -lpthread
 
 .SUFFIXES :
