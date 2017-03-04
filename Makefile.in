@@ -77,7 +77,7 @@ install : mash
 clean :
 	-rm mash
 	-rm libmash.a
-	-rm libmash.so
+	-rm ${DYNAMICNAME}
 	-rm src/mash/*.o
 	-rm src/mash/capnp/*.o
 	-rm src/mash/capnp/*.c++
