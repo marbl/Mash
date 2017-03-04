@@ -1,17 +1,19 @@
-CXXFLAGS += -O3 -std=c++11 -fPIC -Isrc -I@capnp@/include -I @mathinc@
+CXXFLAGS += -O3 -std=c++11 -Isrc -I@capnp@/include -I @mathinc@
 CPPFLAGS += @amcppflags@
 
 UNAME_S=$(shell uname -s)
 
 ifeq ($(UNAME_S),Darwin)
 	CXXFLAGS += -mmacosx-version-min=10.7 -stdlib=libc++
-	DYNAMICFLAGS += $(CXXFLAGS) -dynamiclib
+	
+	CXXDYNAMICFLAGS +=  -O3 -std=c++11 -Isrc -dynamiclib
 	DYNAMICNAME = libmash.dylib 
 else
 	CXXFLAGS += -include src/mash/memcpyLink.h -Wl,--wrap=memcpy
-	CXXDYNAMICFLAGS += $(CXXFLAGS) -shared
-	DYNAMICNAME = libmash.so 
 	CFLAGS += -include src/mash/memcpyLink.h
+
+	CXXDYNAMICFLAGS +=  -O3 -std=c++11 -Isrc -shared 
+	DYNAMICNAME = libmash.so
 endif
 
 SOURCES=\
@@ -36,6 +38,11 @@ SOURCES=\
 
 OBJECTS=$(SOURCES:.cpp=.o) src/mash/capnp/MinHash.capnp.o
 
+CSOURCES=\
+	src/capi/HashList.cpp \
+
+COBJECTS=$(CSOURCES:.cpp=.o) src/mash/capnp/MinHash.capnp.o
+
 all : mash libmash.a dynamic_libmash
 
 mash : libmash.a src/mash/memcpyWrap.o
@@ -45,8 +52,8 @@ libmash.a : $(OBJECTS)
 	ar -cr libmash.a $(OBJECTS)
 	ranlib libmash.a
 
-dynamic_libmash : $(OBJECTS)
-	$(CXX) $(CXXDYNAMICFLAGS) $(CPPFLAGS) -Wl -o $(DYNAMICNAME) $(OBJECTS) @capnp@/lib/libkj.a @capnp@/lib/libcapnp.a src/mash/memcpyWrap.o @mathlib@ -lstdc++ -lz -lm -lpthread
+dynamic_libmash : $(COBJECTS)
+	$(CXX) $(CXXDYNAMICFLAGS) $(CPPFLAGS) -o $(DYNAMICNAME) $(COBJECTS) -lstdc++ -lz -lm -lpthread
 
 .SUFFIXES :
 
