@@ -30,23 +30,13 @@ using namespace::std;
 CommandGenes::CommandGenes()
 : Command()
 {
-	name = "x";
-	summary = "Estimate the pairwise distance of protein sequences.";
-	description = "Estimate the pairwise distance of protein sequences. Input can be fasta or a Mash sketch file (.msh). The output fields are [seq-ID-1, seq-ID-2, distance, p-value, shared-hashes].";
-	argumentString = "<fasta>";
+	name = "within";
+	summary = "Determine whether query sequences are within a larger pool of sequences.";
+	description = "Determine whether query sequences are within a larger pool of sequences. The targets must be formatted as a Mash sketch file (.msh), created with the `mash sketch` command. The <pool> files can be contigs or reads, in fasta or fastq, gzipped or not. The output fields are [seq-ID-1, seq-ID-2, distance, p-value, shared-hashes].";
+    argumentString = "<queries> <pool> [<pool>] ...";
 	
 	useOption("help");
-	useOption("threads");
 	useOption("minCov");
-	useOption("targetCov");
-    addOption("kmer", Option(Option::Integer, "k", "Sketch", "K-mer size. Hashes will be based on strings of this many amino acids.", "9", 1, 14));
-    addOption("sketchSize", Option(Option::Integer, "s", "Sketch", "Sketch size. Each sketch will have at most this many non-redundant min-hashes.", "400"));
-    addOption("case", Option(Option::Boolean, "Z", "Sketch", "Preserve case in k-mers and alphabet (case is ignored by default). Sequence letters whose case is not in the current alphabet will be skipped when sketching.", ""));
-//	addOption("list", Option(Option::Boolean, "l", "Input", "List input. Each query file contains a list of sequence files, one per line. The reference file is not affected.", ""));
-	addOption("table", Option(Option::Boolean, "t", "Output", "Table output (will not report p-values, but fields will be blank if they do not meet the p-value threshold).", ""));
-	//addOption("log", Option(Option::Boolean, "L", "Output", "Log scale distances and divide by k-mer size to provide a better analog to phylogenetic distance. The special case of zero shared min-hashes will result in a distance of 1.", ""));
-	addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
-	addOption("distance", Option(Option::Number, "d", "Output", "Maximum distance to report.", "1.0", 0., 1.));
 	//useSketchOptions();
 }
 
@@ -58,73 +48,54 @@ int CommandGenes::run() const
 		return 0;
 	}
 	
-	int threads = options.at("threads").getArgumentAsNumber();
-	bool table = options.at("table").active;
-	//bool log = options.at("log").active;
-	double pValueMax = options.at("pvalue").getArgumentAsNumber();
-	double distanceMax = options.at("distance").getArgumentAsNumber();
-	int amerSize = getOption("kmer").getArgumentAsNumber();
+	if ( ! hasSuffix(arguments[0], suffixSketch) )
+	{
+		cerr << "ERROR: " << arguments[0] << " does not look like a sketch (.msh)" << endl;
+		exit(1);
+	}
 	
-	// for estimating saturation in nucleotide space
-	//
-	Sketch::Parameters parameters;
-	//
-	parameters.kmerSize = log(pow(20, amerSize)) / log(4);
-	parameters.minHashesPerWindow = getOption("sketchSize").getArgumentAsNumber();
-	parameters.parallelism = 1;
-	parameters.preserveCase = getOption("case").active;
-	parameters.noncanonical = false;
-	parameters.concatenated = false;
-    parameters.minCov = getOption("minCov").getArgumentAsNumber();
-    parameters.targetCov = getOption("targetCov").getArgumentAsNumber();
-	setAlphabetFromString(parameters, alphabetNucleotide);
+    vector<string> refArgVector;
+    refArgVector.push_back(arguments[0]);
 	
-	uint64_t amerSpace = pow(20, amerSize);
-    parameters.use64 = amerSpace > pow(2, 32);
+	Sketch sketch;
+    Sketch::Parameters parameters;
 	
-	const string & fileReference = arguments[0];
-	
-	//cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
+    sketch.initFromFiles(refArgVector, parameters);
+    
+    string alphabet;
+    sketch.getAlphabetAsString(alphabet);
+    setAlphabetFromString(parameters, alphabet.c_str());
 	
 	HashTable hashTable;
-	unordered_map<string, uint32_t> amerCounts;
-	vector<CommandGenes::Reference> references;
-	
-	gzFile fp = gzopen(arguments[0].c_str(), "r");
-	kseq_t * kseq = kseq_init(fp);
+	unordered_map<uint64_t, uint32_t> hashCounts;
 	
 	cerr << "Filling table from " << arguments[0] << endl;
 	
-	int l;
-	
-	while ((l = kseq_read(kseq)) >= 0)
+	for ( int i = 0; i < sketch.getReferenceCount(); i++ )
 	{
-		if ( l < amerSize )
-		{
-			continue;
-		}
+		const HashList & hashes = sketch.getReference(i).hashesSorted;
 		
-		for ( int i = 0; i < l - amerSize + 1; i++ )
+		for ( int j = 0; j < hashes.size(); j++ )
 		{
-			string amer(kseq->seq.s + i, amerSize);
-			hashTable[amer].insert(references.size());
-			amerCounts[amer] = 0;
+			uint64_t hash = hashes.get64() ? hashes.at(j).hash64 : hashes.at(j).hash32;
+			hashTable[hash].insert(i);
 		}
-		
-		references.push_back(Reference(l - amerSize + 1, kseq->name.s, kseq->comment.l ? kseq->comment.s : ""));
 	}
 	
-	kseq_destroy(kseq);
-	gzclose(fp);
+	uint64_t * shared = new uint64_t[sketch.getReferenceCount()];
 	
-	uint64_t * shared = new uint64_t[references.size()];
-	
-	memset(shared, 0, sizeof(uint64_t) * references.size());
+	memset(shared, 0, sizeof(uint64_t) * sketch.getReferenceCount());
 	
 	MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.minCov, parameters.memoryBound);
 	
 	int queryCount = arguments.size() - 1;
-	cerr << "Translating from " << queryCount << " inputs..." << endl;
+	cerr << "Streaming from " << queryCount << " inputs..." << endl;
+	
+	bool trans = false;
+	bool use64 = sketch.getUse64();
+	int kmerSize = sketch.getKmerSize();
+	int minCov = options.at("minCov").getArgumentAsNumber();
+	bool noncanonical = sketch.getNoncanonical();
 	
 	// open all query files for round robin
 	//
@@ -153,6 +124,7 @@ int CommandGenes::run() const
 	
 	// perform round-robin, closing files as they end
 	//
+	int l;
 	uint64_t count = 0;
 	list<kseq_t *>::iterator it = kseqs.begin();
 	//
@@ -172,7 +144,7 @@ int CommandGenes::run() const
 			continue;
 		}
 		
-		if ( l < amerSize ) // too short
+		if ( l < kmerSize ) // too short
 		{
 			continue;
 		}
@@ -198,54 +170,102 @@ int CommandGenes::run() const
 			}
 		}
 		
-		char * seqRev = new char[l];
+		char * seqRev;
 		
-		reverseComplement(seq, seqRev, l);
-		
-		for ( int i = 0; i < 6; i++ )
+		if ( ! noncanonical || trans )
 		{
+			seqRev = new char[l];
+			reverseComplement(seq, seqRev, l);
+		}
+		
+		for ( int i = 0; i < (trans ? 6 : 1); i++ )
+		{
+			bool useRevComp = false;
 			int frame = i % 3;
 			bool rev = i > 2;
 			
 			int lenTrans = (l - frame) / 3;
 			
-			char * seqTrans = new char[lenTrans];
+			char * seqTrans;
 			
-			translate((rev ? seqRev : seq) + frame, seqTrans, lenTrans);
-			
-			string strTrans(seqTrans, lenTrans);
-			//cout << i << ": " << strTrans << endl;
+			if ( trans )
+			{
+				seqTrans = new char[lenTrans];
+				translate((rev ? seqRev : seq) + frame, seqTrans, lenTrans);
+			}
 			
 			int64_t lastGood = -1;
+			int length = trans ? lenTrans : l;
 			
-			for ( int j = 0; j < lenTrans - amerSize + 1; j++ )
+			for ( int j = 0; j < length - kmerSize + 1; j++ )
 			{
-				while ( lastGood < j + amerSize && lastGood < lenTrans )
+				while ( lastGood < j + kmerSize - 1 && lastGood < length )
 				{
 					lastGood++;
 					
-					if ( seqTrans[lastGood + 1] == 0 )
+					if ( trans ? (seqTrans[lastGood] == 0) : (!parameters.alphabet[seq[lastGood]]) )
 					{
 						j = lastGood + 1;
 					}
 				}
 				
-				if ( j > lenTrans - amerSize )
+				if ( j > length - kmerSize )
 				{
 					break;
 				}
 				
-				string amer(seqTrans + j, amerSize);
-				
-				//cout << amer << endl;
-				
-				if ( hashTable.count(amer) == 1 )
+				if ( ! noncanonical )
 				{
-					amerCounts[amer]++;
+					bool debug = false;
+					useRevComp = true;
+					bool prefixEqual = true;
+		
+					if ( debug ) {for ( uint64_t k = j; k < j + kmerSize; k++ ) { cout << *(seq + k); } cout << endl;}
 					
-					if ( amerCounts.at(amer) == parameters.minCov )
+					for ( uint64_t k = 0; k < kmerSize; k++ )
 					{
-						const unordered_set<uint64_t> & indeces = hashTable.at(amer);
+						char base = seq[j + k];
+						char baseMinus = seqRev[l - j - kmerSize + k];
+			
+						if ( debug ) cout << baseMinus;
+			
+						if ( prefixEqual && baseMinus > base )
+						{
+							useRevComp = false;
+							break;
+						}
+			
+						if ( prefixEqual && baseMinus < base )
+						{
+							prefixEqual = false;
+						}
+					}
+		
+					if ( debug ) cout << endl;
+				}
+		
+				const char * kmer;
+				
+				if ( trans )
+				{
+					kmer = seqTrans + i;
+				}
+				else
+				{
+					kmer = useRevComp ? seqRev + l - j - kmerSize : seq + j;
+				}
+				
+				hash_u hash = getHash(kmer, kmerSize, use64);
+				
+				uint64_t key = use64 ? hash.hash64 : hash.hash32;
+				
+				if ( hashTable.count(key) == 1 )
+				{
+					hashCounts[key]++;
+					
+					if ( hashCounts.at(key) == minCov )
+					{
+						const unordered_set<uint64_t> & indeces = hashTable.at(key);
 				
 						for ( unordered_set<uint64_t>::const_iterator k = indeces.begin(); k != indeces.end(); k++ )
 						{
@@ -255,11 +275,17 @@ int CommandGenes::run() const
 				}
 			}
 			
-			delete [] seqTrans;
+			if ( trans )
+			{
+				delete [] seqTrans;
+			}
 		}
 		
-		delete [] seqRev;
-		
+		if ( ! sketch.getNoncanonical() || trans )
+		{
+			delete [] seqRev;
+		}
+		/*
 		addMinHashes(minHashHeap, seq, l, parameters);
 		
 		if ( parameters.targetCov > 0 && minHashHeap.estimateMultiplicity() >= parameters.targetCov )
@@ -267,6 +293,7 @@ int CommandGenes::run() const
 			l = -1; // success code
 			break;
 		}
+		*/
 	}
 	
 	for ( int i = 0; i < queryCount; i++ )
@@ -286,7 +313,7 @@ int CommandGenes::run() const
 		
 		exit(1);
 	}
-	
+	/*
 	if ( parameters.targetCov != 0 )
 	{
 		cerr << "Reads required for " << parameters.targetCov << "x coverage: " << count << endl;
@@ -296,14 +323,14 @@ int CommandGenes::run() const
 		cerr << "Estimated coverage: " << minHashHeap.estimateMultiplicity() << "x" << endl;
 	}
 	cerr << "Estimated genome size: " << minHashHeap.estimateSetSize() << endl;
-	
-	for ( int i = 0; i < references.size(); i++ )
+	*/
+	for ( int i = 0; i < sketch.getReferenceCount(); i++ )
 	{
 		if ( shared[i] != 0 )
 		{
-			double identity = estimateIdentity(shared[i], references[i].amerCount, amerSize, amerSpace);
+			double identity = estimateIdentity(shared[i], sketch.getReference(i).hashesSorted.size(), kmerSize, sketch.getKmerSpace());
 			
-			cout << references[i].name << '\t' << identity << endl;
+			cout << identity << '\t' << shared[i] << '/' << sketch.getReference(i).hashesSorted.size() << '\t' << sketch.getReference(i).name << '\t' << sketch.getReference(i).comment << endl;
 		}
 	}
 	
@@ -328,7 +355,7 @@ double estimateIdentity(uint64_t common, uint64_t denom, int kmerSize, double km
 	else
 	{
 		//distance = log(double(common + 1) / (denom + 1)) / log(1. / (denom + 1));
-		distance = -log(2 * jaccard / (1. + jaccard)) / kmerSize;
+		distance = -log(jaccard) / kmerSize;
 	}
 	
 	return 1. - distance;

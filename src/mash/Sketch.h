@@ -36,7 +36,7 @@ public:
     {
         Parameters()
             :
-            parallelism(0),
+            parallelism(1),
             kmerSize(0),
             alphabetSize(0),
             preserveCase(false),

@@ -15,7 +15,7 @@
 #include <unordered_set>
 #include <unordered_map>
 
-typedef std::unordered_map< std::string, std::unordered_set<uint64_t> > HashTable;
+typedef std::unordered_map< uint64_t, std::unordered_set<uint64_t> > HashTable;
 
 static const std::unordered_map< std::string, char > codons =
 {
