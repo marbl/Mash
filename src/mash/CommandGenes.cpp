@@ -141,6 +141,10 @@ int CommandGenes::run() const
 		{
 			kseq_destroy(*it);
 			it = kseqs.erase(it);
+			if ( it == kseqs.end() )
+			{
+				it = kseqs.begin();
+			}
 			continue;
 		}
 		
