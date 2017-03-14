@@ -37,6 +37,7 @@ CommandGenes::CommandGenes()
 	
 	useOption("help");
 	useOption("minCov");
+    addOption("saturation", Option(Option::Boolean, "s", "", "Include saturation curve in output. Each line will have an additional field representing the absolute number of k-mers seen at each Jaccard increase, formatted as a comma-separated list.", ""));
 	//useSketchOptions();
 }
 
@@ -54,6 +55,8 @@ int CommandGenes::run() const
 		exit(1);
 	}
 	
+	bool sat = options.at("saturation").active;
+	
     vector<string> refArgVector;
     refArgVector.push_back(arguments[0]);
 	
@@ -68,6 +71,7 @@ int CommandGenes::run() const
 	
 	HashTable hashTable;
 	unordered_map<uint64_t, uint32_t> hashCounts;
+	unordered_map<uint64_t, list<uint32_t> > saturationByIndex;
 	
 	cerr << "Filling table from " << arguments[0] << endl;
 	
@@ -86,12 +90,25 @@ int CommandGenes::run() const
 	
 	memset(shared, 0, sizeof(uint64_t) * sketch.getReferenceCount());
 	
+	
 	MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.minCov, parameters.memoryBound);
 	
-	int queryCount = arguments.size() - 1;
-	cerr << "Streaming from " << queryCount << " inputs..." << endl;
+	bool trans = (alphabet == alphabetProtein);
 	
-	bool trans = false;
+	int queryCount = arguments.size() - 1;
+	cerr << (trans ? "Translating from " : "Streaming from ");
+	
+	if ( queryCount == 1 )
+	{
+		cerr << arguments[1];
+	}
+	else
+	{
+		cerr << queryCount << " inputs";
+	}
+	
+	cerr << "..." << endl;
+	
 	bool use64 = sketch.getUse64();
 	int kmerSize = sketch.getKmerSize();
 	int minCov = options.at("minCov").getArgumentAsNumber();
@@ -126,6 +143,7 @@ int CommandGenes::run() const
 	//
 	int l;
 	uint64_t count = 0;
+	uint64_t kmersTotal = 0;
 	list<kseq_t *>::iterator it = kseqs.begin();
 	//
 	while ( kseqs.begin() != kseqs.end() )
@@ -207,7 +225,7 @@ int CommandGenes::run() const
 				{
 					lastGood++;
 					
-					if ( trans ? (seqTrans[lastGood] == 0) : (!parameters.alphabet[seq[lastGood]]) )
+					if ( trans ? (seqTrans[lastGood] == '*') : (!parameters.alphabet[seq[lastGood]]) )
 					{
 						j = lastGood + 1;
 					}
@@ -217,6 +235,8 @@ int CommandGenes::run() const
 				{
 					break;
 				}
+				
+				kmersTotal++;
 				
 				if ( ! noncanonical )
 				{
@@ -252,7 +272,7 @@ int CommandGenes::run() const
 				
 				if ( trans )
 				{
-					kmer = seqTrans + i;
+					kmer = seqTrans + j;
 				}
 				else
 				{
@@ -274,6 +294,11 @@ int CommandGenes::run() const
 						for ( unordered_set<uint64_t>::const_iterator k = indeces.begin(); k != indeces.end(); k++ )
 						{
 							shared[*k]++;
+							
+							if ( sat )
+							{
+								saturationByIndex[*k].push_back(kmersTotal);
+							}
 						}
 					}
 				}
@@ -334,7 +359,24 @@ int CommandGenes::run() const
 		{
 			double identity = estimateIdentity(shared[i], sketch.getReference(i).hashesSorted.size(), kmerSize, sketch.getKmerSpace());
 			
-			cout << identity << '\t' << shared[i] << '/' << sketch.getReference(i).hashesSorted.size() << '\t' << sketch.getReference(i).name << '\t' << sketch.getReference(i).comment << endl;
+			cout << identity << '\t' << shared[i] << '/' << sketch.getReference(i).hashesSorted.size() << '\t' << sketch.getReference(i).name << '\t' << sketch.getReference(i).comment;
+			
+			if ( sat )
+			{
+				cout << '\t';
+				
+				for ( list<uint32_t>::const_iterator j = saturationByIndex.at(i).begin(); j != saturationByIndex.at(i).end(); j++ )
+				{
+					if ( j != saturationByIndex.at(i).begin() )
+					{
+						cout << ',';
+					}
+					
+					cout << *j;
+				}
+			}
+			
+			cout << endl;
 		}
 	}
 	
@@ -376,7 +418,7 @@ void translate(const char * src, char * dst, uint64_t len)
 char aaFromCodon(const char * codon)
 {
 	string str(codon, 3);
-	
+	/*
 	if ( codons.count(str) == 1 )
 	{
 		return codons.at(str);
@@ -385,7 +427,8 @@ char aaFromCodon(const char * codon)
 	{
 		return 0;
 	}
-	char aa = 0;
+	*/
+	char aa = '*';//0;
 	
 	switch (codon[0])
 	{
@@ -555,5 +598,5 @@ char aaFromCodon(const char * codon)
 		break;
 	}
 	
-	return (aa == '*') ? 0 : aa;
+	return aa;//(aa == '*') ? 0 : aa;
 }
