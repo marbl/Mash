@@ -38,6 +38,7 @@ CommandGenes::CommandGenes()
 	useOption("help");
 	useOption("minCov");
     addOption("saturation", Option(Option::Boolean, "s", "", "Include saturation curve in output. Each line will have an additional field representing the absolute number of k-mers seen at each Jaccard increase, formatted as a comma-separated list.", ""));
+    addOption("winning!", Option(Option::Boolean, "w", "", "Winner-takes all output. After counting k-mers for each reference, k-mers that appear in multiple references will removed from all except that with the best distance, and distances will subsequently be recomputed.", ""));
 	//useSketchOptions();
 }
 
@@ -73,7 +74,7 @@ int CommandGenes::run() const
 	unordered_map<uint64_t, uint32_t> hashCounts;
 	unordered_map<uint64_t, list<uint32_t> > saturationByIndex;
 	
-	cerr << "Filling table from " << arguments[0] << endl;
+	cerr << "Filling table from " << arguments[0] << "..." << endl;
 	
 	for ( int i = 0; i < sketch.getReferenceCount(); i++ )
 	{
@@ -89,7 +90,6 @@ int CommandGenes::run() const
 	uint64_t * shared = new uint64_t[sketch.getReferenceCount()];
 	
 	memset(shared, 0, sizeof(uint64_t) * sketch.getReferenceCount());
-	
 	
 	MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.minCov, parameters.memoryBound);
 	
@@ -353,6 +353,51 @@ int CommandGenes::run() const
 	}
 	cerr << "Estimated genome size: " << minHashHeap.estimateSetSize() << endl;
 	*/
+	
+	if ( options.at("winning!").active )
+	{
+		cerr << "Reallocating to winners..." << endl;
+		
+		double * scores = new double[sketch.getReferenceCount()];
+		
+		for ( int i = 0; i < sketch.getReferenceCount(); i ++ )
+		{
+			scores[i] = estimateIdentity(shared[i], sketch.getReference(i).hashesSorted.size(), kmerSize, sketch.getKmerSpace());
+		}
+		
+		memset(shared, 0, sizeof(uint64_t) * sketch.getReferenceCount());
+		
+		for ( HashTable::const_iterator i = hashTable.begin(); i != hashTable.end(); i++ )
+		{
+			if ( hashCounts.count(i->first) == 0 || hashCounts.at(i->first) < minCov )
+			{
+				continue;
+			}
+			
+			const unordered_set<uint64_t> & indeces = i->second;
+			double maxScore = 0;
+			vector<uint64_t> maxIndices;
+			
+			for ( unordered_set<uint64_t>::const_iterator k = indeces.begin(); k != indeces.end(); k++ )
+			{
+				if ( scores[*k] > maxScore )
+				{
+					maxScore = scores[*k];
+					maxIndices.clear();
+					maxIndices.push_back(*k);
+				}
+				else if ( scores[*k] == maxScore )
+				{
+					maxIndices.push_back(*k);
+				}
+			}
+			
+			shared[maxIndices[i->first % maxIndices.size()]]++;
+		}
+		
+		delete [] scores;
+	}
+	
 	for ( int i = 0; i < sketch.getReferenceCount(); i++ )
 	{
 		if ( shared[i] != 0 )
