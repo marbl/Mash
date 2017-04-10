@@ -400,7 +400,7 @@ int CommandGenes::run() const
 	
 	for ( int i = 0; i < sketch.getReferenceCount(); i++ )
 	{
-		if ( shared[i] != 0 )
+		//if ( shared[i] != 0 )
 		{
 			double identity = estimateIdentity(shared[i], sketch.getReference(i).hashesSorted.size(), kmerSize, sketch.getKmerSpace());
 			
