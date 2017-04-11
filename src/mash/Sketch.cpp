@@ -242,13 +242,23 @@ void Sketch::initParametersFromCapnp(const char * file)
         exit(1);
     }
     
+    struct stat fileInfo;
+    
+    if ( stat(file, &fileInfo) == -1 )
+    {
+        cerr << "ERROR: could not get file stats for \"" << file << "\"." << endl;
+        exit(1);
+    }
+    
+    void * data = mmap(NULL, fileInfo.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    
     capnp::ReaderOptions readerOptions;
     
     readerOptions.traversalLimitInWords = 1000000000000;
     readerOptions.nestingLimit = 1000000;
     
-    capnp::StreamFdMessageReader * message = new capnp::StreamFdMessageReader(fd, readerOptions);
-    //capnp::FlatArrayMessageReader * message = new capnp::FlatArrayMessageReader(kj::ArrayPtr<const capnp::word>(reinterpret_cast<const capnp::word *>(data), fileInfo.st_size / sizeof(capnp::word)), readerOptions);
+    //capnp::StreamFdMessageReader * message = new capnp::StreamFdMessageReader(fd, readerOptions);
+    capnp::FlatArrayMessageReader * message = new capnp::FlatArrayMessageReader(kj::ArrayPtr<const capnp::word>(reinterpret_cast<const capnp::word *>(data), fileInfo.st_size / sizeof(capnp::word)), readerOptions);
     capnp::MinHash::Reader reader = message->getRoot<capnp::MinHash>();
     
     parameters.kmerSize = reader.getKmerSize();
