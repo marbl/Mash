@@ -87,9 +87,13 @@ int CommandGenes::run() const
 		}
 	}
 	
+	cerr << "   " << hashTable.size() << " distinct hashes." << endl;
+	
 	uint64_t * shared = new uint64_t[sketch.getReferenceCount()];
+	uint64_t * depthTotal = new uint64_t[sketch.getReferenceCount()];
 	
 	memset(shared, 0, sizeof(uint64_t) * sketch.getReferenceCount());
+	memset(depthTotal, 0, sizeof(uint64_t) * sketch.getReferenceCount());
 	
 	MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.minCov, parameters.memoryBound);
 	
@@ -286,21 +290,6 @@ int CommandGenes::run() const
 				if ( hashTable.count(key) == 1 )
 				{
 					hashCounts[key]++;
-					
-					if ( hashCounts.at(key) == minCov )
-					{
-						const unordered_set<uint64_t> & indeces = hashTable.at(key);
-				
-						for ( unordered_set<uint64_t>::const_iterator k = indeces.begin(); k != indeces.end(); k++ )
-						{
-							shared[*k]++;
-							
-							if ( sat )
-							{
-								saturationByIndex[*k].push_back(kmersTotal);
-							}
-						}
-					}
 				}
 			}
 			
@@ -354,6 +343,27 @@ int CommandGenes::run() const
 	cerr << "Estimated genome size: " << minHashHeap.estimateSetSize() << endl;
 	*/
 	
+	cerr << "Summing shared..." << endl;
+	
+	for ( unordered_map<uint64_t, uint32_t>::const_iterator i = hashCounts.begin(); i != hashCounts.end(); i++ )
+	{
+		if ( i->second >= minCov )
+		{
+			const unordered_set<uint64_t> & indeces = hashTable.at(i->first);
+
+			for ( unordered_set<uint64_t>::const_iterator k = indeces.begin(); k != indeces.end(); k++ )
+			{
+				shared[*k]++;
+				depthTotal[*k] += i->second;
+			
+				if ( sat )
+				{
+					saturationByIndex[*k].push_back(kmersTotal);
+				}
+			}
+		}
+	}
+	
 	if ( options.at("winning!").active )
 	{
 		cerr << "Reallocating to winners..." << endl;
@@ -366,6 +376,7 @@ int CommandGenes::run() const
 		}
 		
 		memset(shared, 0, sizeof(uint64_t) * sketch.getReferenceCount());
+		memset(depthTotal, 0, sizeof(uint64_t) * sketch.getReferenceCount());
 		
 		for ( HashTable::const_iterator i = hashTable.begin(); i != hashTable.end(); i++ )
 		{
@@ -393,6 +404,7 @@ int CommandGenes::run() const
 			}
 			
 			shared[maxIndices[i->first % maxIndices.size()]]++;
+			depthTotal[maxIndices[i->first % maxIndices.size()]] += hashCounts.at(i->first);
 		}
 		
 		delete [] scores;
@@ -404,7 +416,7 @@ int CommandGenes::run() const
 		{
 			double identity = estimateIdentity(shared[i], sketch.getReference(i).hashesSorted.size(), kmerSize, sketch.getKmerSpace());
 			
-			cout << identity << '\t' << shared[i] << '/' << sketch.getReference(i).hashesSorted.size() << '\t' << sketch.getReference(i).name << '\t' << sketch.getReference(i).comment;
+			cout << identity << '\t' << shared[i] << '/' << sketch.getReference(i).hashesSorted.size() << '\t' << double(depthTotal[i]) / shared[i] << '\t' << sketch.getReference(i).name << '\t' << sketch.getReference(i).comment;
 			
 			if ( sat )
 			{
