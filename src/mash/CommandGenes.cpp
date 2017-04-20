@@ -89,12 +89,6 @@ int CommandGenes::run() const
 	
 	cerr << "   " << hashTable.size() << " distinct hashes." << endl;
 	
-	uint64_t * shared = new uint64_t[sketch.getReferenceCount()];
-	uint64_t * depthTotal = new uint64_t[sketch.getReferenceCount()];
-	
-	memset(shared, 0, sizeof(uint64_t) * sketch.getReferenceCount());
-	memset(depthTotal, 0, sizeof(uint64_t) * sketch.getReferenceCount());
-	
 	MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.minCov, parameters.memoryBound);
 	
 	bool trans = (alphabet == alphabetProtein);
@@ -345,6 +339,11 @@ int CommandGenes::run() const
 	
 	cerr << "Summing shared..." << endl;
 	
+	uint64_t * shared = new uint64_t[sketch.getReferenceCount()];
+	vector<uint64_t> * depths = new vector<uint64_t>[sketch.getReferenceCount()];
+	
+	memset(shared, 0, sizeof(uint64_t) * sketch.getReferenceCount());
+	
 	for ( unordered_map<uint64_t, uint32_t>::const_iterator i = hashCounts.begin(); i != hashCounts.end(); i++ )
 	{
 		if ( i->second >= minCov )
@@ -354,7 +353,7 @@ int CommandGenes::run() const
 			for ( unordered_set<uint64_t>::const_iterator k = indeces.begin(); k != indeces.end(); k++ )
 			{
 				shared[*k]++;
-				depthTotal[*k] += i->second;
+				depths[*k].push_back(i->second);
 			
 				if ( sat )
 				{
@@ -376,7 +375,11 @@ int CommandGenes::run() const
 		}
 		
 		memset(shared, 0, sizeof(uint64_t) * sketch.getReferenceCount());
-		memset(depthTotal, 0, sizeof(uint64_t) * sketch.getReferenceCount());
+		
+		for ( int i = 0; i < sketch.getReferenceCount(); i++ )
+		{
+			depths[i].clear();
+		}
 		
 		for ( HashTable::const_iterator i = hashTable.begin(); i != hashTable.end(); i++ )
 		{
@@ -403,20 +406,31 @@ int CommandGenes::run() const
 				}
 			}
 			
+			// mod hash to pseudo-randomly distribute among top score ties
+			//
 			shared[maxIndices[i->first % maxIndices.size()]]++;
-			depthTotal[maxIndices[i->first % maxIndices.size()]] += hashCounts.at(i->first);
+			depths[maxIndices[i->first % maxIndices.size()]].push_back(hashCounts.at(i->first));
 		}
 		
 		delete [] scores;
 	}
 	
+	cerr << "Computing coverage medians..." << endl;
+	
 	for ( int i = 0; i < sketch.getReferenceCount(); i++ )
 	{
-		//if ( shared[i] != 0 )
+		sort(depths[i].begin(), depths[i].end());
+	}
+	
+	cerr << "Writing output..." << endl;
+	
+	for ( int i = 0; i < sketch.getReferenceCount(); i++ )
+	{
+		if ( shared[i] != 0 )
 		{
 			double identity = estimateIdentity(shared[i], sketch.getReference(i).hashesSorted.size(), kmerSize, sketch.getKmerSpace());
 			
-			cout << identity << '\t' << shared[i] << '/' << sketch.getReference(i).hashesSorted.size() << '\t' << double(depthTotal[i]) / shared[i] << '\t' << sketch.getReference(i).name << '\t' << sketch.getReference(i).comment;
+			cout << identity << '\t' << shared[i] << '/' << sketch.getReference(i).hashesSorted.size() << '\t' << depths[i].at(shared[i] / 2) << '\t' << sketch.getReference(i).name << '\t' << sketch.getReference(i).comment;
 			
 			if ( sat )
 			{
