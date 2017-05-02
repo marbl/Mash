@@ -15,6 +15,7 @@ int sketchParameterSetup(Sketch::Parameters & parameters, const Command & comman
     parameters.minHashesPerWindow = command.getOption("sketchSize").getArgumentAsNumber();
     parameters.concatenated = ! command.getOption("individual").active;
     parameters.noncanonical = command.getOption("noncanonical").active;
+    parameters.seed = command.getOption("seed").getArgumentAsNumber();
     parameters.reads = command.getOption("reads").active;
     parameters.minCov = command.getOption("minCov").getArgumentAsNumber();
     parameters.targetCov = command.getOption("targetCov").getArgumentAsNumber();

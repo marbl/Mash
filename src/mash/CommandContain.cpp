@@ -96,6 +96,7 @@ int CommandContain::run() const
         parameters.kmerSize = sketchRef.getKmerSize();
         parameters.noncanonical = sketchRef.getNoncanonical();
         parameters.preserveCase = sketchRef.getPreserveCase();
+        parameters.seed = sketchRef.getHashSeed();
         
         string alphabet;
         sketchRef.getAlphabetAsString(alphabet);

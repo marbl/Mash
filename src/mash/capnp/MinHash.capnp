@@ -50,6 +50,7 @@ struct MinHash
 	noncanonical @7 : Bool;
 	alphabet @8 : Text;
 	preserveCase @9 : Bool;
+	hashSeed @10 : UInt32 = 42;
 	
 	referenceList @4 : ReferenceList;
 	locusList @5 : LocusList;

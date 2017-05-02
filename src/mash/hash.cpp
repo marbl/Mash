@@ -7,7 +7,7 @@
 #include "hash.h"
 #include "MurmurHash3.h"
 
-hash_u getHash(const char * seq, int length, bool use64)
+hash_u getHash(const char * seq, int length, uint32_t seed, bool use64)
 {
     //for ( int i = 0; i < length; i++ ) { cout << *(seq + i); } cout << endl;
     

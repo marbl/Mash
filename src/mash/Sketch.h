@@ -41,6 +41,7 @@ public:
             alphabetSize(0),
             preserveCase(false),
             use64(false),
+            seed(0),
             error(0),
             warning(0),
             minHashesPerWindow(0),
@@ -64,6 +65,7 @@ public:
             alphabetSize(other.alphabetSize),
             preserveCase(other.preserveCase),
             use64(other.use64),
+            seed(other.seed),
             error(other.error),
             warning(other.warning),
             minHashesPerWindow(other.minHashesPerWindow),
@@ -86,6 +88,7 @@ public:
         uint32_t alphabetSize;
         bool preserveCase;
         bool use64;
+        uint32_t seed;
         double error;
         double warning;
         uint64_t minHashesPerWindow;
@@ -179,6 +182,7 @@ public:
     bool getConcatenated() const {return parameters.concatenated;}
     float getError() const {return parameters.error;}
     int getHashCount() const {return lociByHash.size();}
+    uint32_t getHashSeed() const {return parameters.seed;}
     const std::vector<Locus> & getLociByHash(hash_t hash) const;
     float getMinHashesPerWindow() const {return parameters.minHashesPerWindow;}
 	int getMinKmerSize(uint64_t reference) const;

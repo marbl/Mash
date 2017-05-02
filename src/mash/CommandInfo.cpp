@@ -8,6 +8,12 @@
 #include "Sketch.h"
 #include <iostream>
 
+#ifdef ARCH_32
+	#define HASH "MurmurHash3_x86_32"
+#else
+	#define HASH "MurmurHash3_x64_128"
+#endif
+	
 using namespace::std;
 
 CommandInfo::CommandInfo()
@@ -85,11 +91,18 @@ int CommandInfo::run() const
         return 1;
     }
     
-    Sketch sketch;
-    Sketch::Parameters params;
-    params.parallelism = 1;
-    
-    sketch.initFromFiles(arguments, params);
+	Sketch sketch;
+	Sketch::Parameters params;
+	params.parallelism = 1;
+	
+	if ( header )
+	{
+		sketch.initParametersFromCapnp(arguments[0].c_str());
+	}
+	else
+	{
+	    sketch.initFromFiles(arguments, params);
+	}
     
     if ( counts )
     {
@@ -110,6 +123,7 @@ int CommandInfo::run() const
     	sketch.getAlphabetAsString(alphabet);
     	
 		cout << "Header:" << endl;
+		cout << "  Hash function (seed):          " << HASH << " (" << sketch.getHashSeed() << ")" << endl;
 		cout << "  K-mer size:                    " << sketch.getKmerSize() << " (" << (sketch.getUse64() ? "64" : "32") << "-bit hashes)" << endl;
 		cout << "  Alphabet:                      " << alphabet << (sketch.getNoncanonical() ? "" : " (canonical)") << (sketch.getPreserveCase() ? " (case-sensitive)" : "") << endl;
 		cout << "  Target min-hashes per sketch:  " << sketch.getMinHashesPerWindow() << endl;
@@ -125,10 +139,10 @@ int CommandInfo::run() const
 			cout << endl;
 			cout << "Sketches:" << endl;
 		
-			columns[0].push_back("Hashes");
-			columns[1].push_back("Length");
-			columns[2].push_back("ID");
-			columns[3].push_back("Comment");
+			columns[0].push_back("[Hashes]");
+			columns[1].push_back("[Length]");
+			columns[2].push_back("[ID]");
+			columns[3].push_back("[Comment]");
 		}
         
         for ( uint64_t i = 0; i < sketch.getReferenceCount(); i++ )
@@ -200,12 +214,6 @@ int CommandInfo::writeJson(const Sketch & sketch) const
 	sketch.getAlphabetAsString(alphabet);
 	bool use64 = sketch.getUse64();
 	
-#ifdef ARCH_32
-	#define HASH "MurmurHash3_x86_32"
-#else
-	#define HASH "MurmurHash3_x64_128"
-#endif
-	
 	cout << "{" << endl;
 	cout << "	\"kmer\" : " << sketch.getKmerSize() << ',' << endl;
 	cout << "	\"alphabet\" : \"" << alphabet << "\"," << endl;
@@ -214,7 +222,7 @@ int CommandInfo::writeJson(const Sketch & sketch) const
 	cout << "	\"sketchSize\" : " << sketch.getMinHashesPerWindow() << ',' << endl;
 	cout << "	\"hashType\" : \"" << HASH << "\"," << endl;
 	cout << "	\"hashBits\" : " << (use64 ? 64 : 32) << ',' << endl;
-	cout << "	\"hashSeed\" : " << seed << ',' << endl;
+	cout << "	\"hashSeed\" : " << sketch.getHashSeed() << ',' << endl;
 	cout << " 	\"sketches\" :" << endl;
 	cout << "	[" << endl;
 	

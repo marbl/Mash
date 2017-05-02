@@ -125,6 +125,11 @@ int Sketch::initFromFiles(const vector<string> & files, const Parameters & param
             	continue;
             }
 			
+            if ( sketchTest.getHashSeed() != parameters.seed )
+            {
+				cerr << "\nWARNING: The sketch " << files[i] << " has a seed size (" << sketchTest.getHashSeed() << ") that does not match the current seed (" << parameters.seed << "). This file will be skipped." << endl << endl;
+				continue;
+            }
 			if ( sketchTest.getKmerSize() != parameters.kmerSize )
 			{
 				cerr << "\nWARNING: The sketch " << files[i] << " has a kmer size (" << sketchTest.getKmerSize() << ") that does not match the current kmer size (" << parameters.kmerSize << "). This file will be skipped." << endl << endl;
@@ -268,6 +273,8 @@ void Sketch::initParametersFromCapnp(const char * file)
     parameters.concatenated = reader.getConcatenated();
     parameters.noncanonical = reader.getNoncanonical();
    	parameters.preserveCase = reader.getPreserveCase();
+    
+   	parameters.seed = reader.getHashSeed();
     
     if ( reader.hasAlphabet() )
     {
@@ -432,6 +439,7 @@ int Sketch::writeToCapnp(const char * file) const
     }
     
     builder.setKmerSize(parameters.kmerSize);
+    builder.setHashSeed(parameters.seed);
     builder.setError(parameters.error);
     builder.setMinHashesPerWindow(parameters.minHashesPerWindow);
     builder.setWindowSize(parameters.windowSize);
@@ -559,7 +567,7 @@ void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const 
         const char * kmer = useRevComp ? seqRev + length - i - kmerSize : seq + i;
         bool filter = false;
         
-        hash_u hash = getHash(useRevComp ? seqRev + length - i - kmerSize : seq + i, kmerSize, parameters.use64);
+        hash_u hash = getHash(useRevComp ? seqRev + length - i - kmerSize : seq + i, kmerSize, parameters.seed, parameters.use64);
         
         if ( debug ) cout << endl;
         
@@ -670,7 +678,7 @@ void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * s
         
         if ( i >= nextValidKmer )
         {
-            Sketch::hash_t hash = getHash(seq + i, kmerSize, parameters.use64).hash64; // TODO: dynamic
+            Sketch::hash_t hash = getHash(seq + i, kmerSize, parameters.seed, parameters.use64).hash64; // TODO: dynamic
             
             if ( verbosity > 1 )
             {
