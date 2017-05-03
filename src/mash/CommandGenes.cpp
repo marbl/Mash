@@ -108,6 +108,7 @@ int CommandGenes::run() const
 	cerr << "..." << endl;
 	
 	bool use64 = sketch.getUse64();
+	uint32_t seed = sketch.getHashSeed();
 	int kmerSize = sketch.getKmerSize();
 	int minCov = options.at("minCov").getArgumentAsNumber();
 	bool noncanonical = sketch.getNoncanonical();
@@ -277,7 +278,7 @@ int CommandGenes::run() const
 					kmer = useRevComp ? seqRev + l - j - kmerSize : seq + j;
 				}
 				
-				hash_u hash = getHash(kmer, kmerSize, use64);
+				hash_u hash = getHash(kmer, kmerSize, seed, use64);
 				
 				uint64_t key = use64 ? hash.hash64 : hash.hash32;
 				
