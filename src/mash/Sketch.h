@@ -51,7 +51,7 @@ public:
             noncanonical(false),
             reads(false),
             memoryBound(0),
-            minCov(0),
+            minCov(1),
             targetCov(0),
             genomeSize(0)
         {

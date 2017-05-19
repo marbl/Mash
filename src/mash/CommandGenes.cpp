@@ -11,7 +11,6 @@
 #include <iostream>
 #include <zlib.h>
 #include "ThreadPool.h"
-#include "sketchParameterSetup.h"
 #include <math.h>
 #include <set>
 
@@ -89,7 +88,7 @@ int CommandGenes::run() const
 	
 	cerr << "   " << hashTable.size() << " distinct hashes." << endl;
 	
-	MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.minCov, parameters.memoryBound);
+	MinHashHeap minHashHeap(sketch.getUse64(), sketch.getMinHashesPerWindow(), parameters.minCov, parameters.memoryBound);
 	
 	bool trans = (alphabet == alphabetProtein);
 	
@@ -278,7 +277,10 @@ int CommandGenes::run() const
 					kmer = useRevComp ? seqRev + l - j - kmerSize : seq + j;
 				}
 				
+				//cout << kmer << '\t' << kmerSize << endl;
 				hash_u hash = getHash(kmer, kmerSize, seed, use64);
+				//cout << kmer << '\t' << hash.hash64 << endl;
+				minHashHeap.tryInsert(hash);
 				
 				uint64_t key = use64 ? hash.hash64 : hash.hash32;
 				
@@ -335,8 +337,10 @@ int CommandGenes::run() const
 	{
 		cerr << "Estimated coverage: " << minHashHeap.estimateMultiplicity() << "x" << endl;
 	}
-	cerr << "Estimated genome size: " << minHashHeap.estimateSetSize() << endl;
 	*/
+	
+	uint64_t setSize = minHashHeap.estimateSetSize();
+	cerr << "   Estimated distinct k-mers in pool: " << setSize << endl;
 	
 	cerr << "Summing shared..." << endl;
 	
@@ -430,8 +434,9 @@ int CommandGenes::run() const
 		if ( shared[i] != 0 )
 		{
 			double identity = estimateIdentity(shared[i], sketch.getReference(i).hashesSorted.size(), kmerSize, sketch.getKmerSpace());
+			double pValue = pValueWithin(shared[i], setSize, sketch.getKmerSpace(), sketch.getReference(i).hashesSorted.size());
 			
-			cout << identity << '\t' << shared[i] << '/' << sketch.getReference(i).hashesSorted.size() << '\t' << depths[i].at(shared[i] / 2) << '\t' << sketch.getReference(i).name << '\t' << sketch.getReference(i).comment;
+			cout << identity << '\t' << shared[i] << '/' << sketch.getReference(i).hashesSorted.size() << '\t' << depths[i].at(shared[i] / 2) << '\t' << pValue << '\t' << sketch.getReference(i).name << '\t' << sketch.getReference(i).comment;
 			
 			if ( sat )
 			{
@@ -477,6 +482,22 @@ double estimateIdentity(uint64_t common, uint64_t denom, int kmerSize, double km
 	}
 	
 	return 1. - distance;
+}
+
+double pValueWithin(uint64_t x, uint64_t setSize, double kmerSpace, uint64_t sketchSize)
+{
+    if ( x == 0 )
+    {
+        return 1.;
+    }
+    
+    double r = 1. / (1. + kmerSpace / setSize);
+    
+#ifdef USE_BOOST
+    return cdf(complement(binomial(sketchSize, r), x - 1));
+#else
+    return gsl_cdf_binomial_Q(x - 1, r, sketchSize);
+#endif
 }
 
 void translate(const char * src, char * dst, uint64_t len)
