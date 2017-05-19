@@ -237,7 +237,7 @@ int Sketch::initFromFiles(const vector<string> & files, const Parameters & param
     return 0;
 }
 
-void Sketch::initParametersFromCapnp(const char * file)
+uint64_t Sketch::initParametersFromCapnp(const char * file)
 {
     int fd = open(file, O_RDONLY);
     
@@ -273,6 +273,10 @@ void Sketch::initParametersFromCapnp(const char * file)
     parameters.concatenated = reader.getConcatenated();
     parameters.noncanonical = reader.getNoncanonical();
    	parameters.preserveCase = reader.getPreserveCase();
+
+    capnp::MinHash::ReferenceList::Reader referenceListReader = reader.getReferenceList();
+    capnp::List<capnp::MinHash::ReferenceList::Reference>::Reader referencesReader = referenceListReader.getReferences();
+    uint64_t referenceCount = referencesReader.size();
     
    	parameters.seed = reader.getHashSeed();
     
@@ -291,6 +295,8 @@ void Sketch::initParametersFromCapnp(const char * file)
 		delete message;
 	}
 	catch (exception e) {}
+	
+	return referenceCount;
 }
 
 bool Sketch::sketchFileBySequence(FILE * file, ThreadPool<Sketch::SketchInput, Sketch::SketchOutput> * threadPool)

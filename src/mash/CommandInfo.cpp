@@ -95,13 +95,16 @@ int CommandInfo::run() const
 	Sketch::Parameters params;
 	params.parallelism = 1;
 	
+	uint64_t referenceCount;
+	
 	if ( header )
 	{
-		sketch.initParametersFromCapnp(arguments[0].c_str());
+		referenceCount = sketch.initParametersFromCapnp(arguments[0].c_str());
 	}
 	else
 	{
 	    sketch.initFromFiles(arguments, params);
+	    referenceCount = sketch.getReferenceCount();
 	}
     
     if ( counts )
@@ -127,7 +130,7 @@ int CommandInfo::run() const
 		cout << "  K-mer size:                    " << sketch.getKmerSize() << " (" << (sketch.getUse64() ? "64" : "32") << "-bit hashes)" << endl;
 		cout << "  Alphabet:                      " << alphabet << (sketch.getNoncanonical() ? "" : " (canonical)") << (sketch.getPreserveCase() ? " (case-sensitive)" : "") << endl;
 		cout << "  Target min-hashes per sketch:  " << sketch.getMinHashesPerWindow() << endl;
-		cout << "  Sketches:                      " << sketch.getReferenceCount() << endl;
+		cout << "  Sketches:                      " << referenceCount << endl;
 	}
 	
     if ( ! header )
