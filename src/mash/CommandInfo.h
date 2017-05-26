@@ -10,6 +10,8 @@
 #include "Command.h"
 #include "Sketch.h"
 
+namespace mash {
+
 class CommandInfo : public Command
 {
 public:
@@ -23,5 +25,7 @@ private:
 	int printCounts(const Sketch & sketch) const;
 	int writeJson(const Sketch & sketch) const;
 };
+
+} // namespace mash
 
 #endif

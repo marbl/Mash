@@ -13,24 +13,22 @@
 #include "CommandInfo.h"
 #include "CommandPaste.h"
 
-using namespace::std;
-
 int main(int argc, const char ** argv)
 {
-    CommandList commandList("mash");
+    mash::CommandList commandList("mash");
     
-    commandList.addCommand(new CommandSketch());
+    commandList.addCommand(new mash::CommandSketch());
     //commandList.addCommand(new CommandFind());
-    commandList.addCommand(new CommandDistance());
+    commandList.addCommand(new mash::CommandDistance());
 #ifdef COMMAND_WITHIN
-    commandList.addCommand(new CommandContain());
+    commandList.addCommand(new mash::CommandContain());
 #endif
 #ifdef COMMAND_FIND
-	commandList.addCommand(new CommandFind());
+	commandList.addCommand(new mash::CommandFind());
 #endif
-    commandList.addCommand(new CommandInfo());
-    commandList.addCommand(new CommandPaste());
-    commandList.addCommand(new CommandBounds());
+    commandList.addCommand(new mash::CommandInfo());
+    commandList.addCommand(new mash::CommandPaste());
+    commandList.addCommand(new mash::CommandBounds());
     
     return commandList.run(argc, argv);
 }

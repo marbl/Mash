@@ -10,6 +10,8 @@
 #include "Command.h"
 #include "Sketch.h"
 
+namespace mash {
+
 class CommandContain : public Command
 {
 public:
@@ -82,5 +84,7 @@ private:
 
 CommandContain::ContainOutput * contain(CommandContain::ContainInput * data);
 double containSketches(const HashList & hashesSortedRef, const HashList & hashesSortedQuery, double & errorToSet);
+
+} // namespace mash
 
 #endif

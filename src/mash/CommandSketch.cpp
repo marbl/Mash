@@ -9,7 +9,12 @@
 #include "sketchParameterSetup.h"
 #include <iostream>
 
-using namespace::std;
+using std::cerr;
+using std::endl;
+using std::string;
+using std::vector;
+
+namespace mash {
 
 CommandSketch::CommandSketch()
 : Command()
@@ -47,7 +52,7 @@ int CommandSketch::run() const
     {
         if ( false && hasSuffix(arguments[i], suffixSketch) )
         {
-            cerr << "ERROR: " << arguments[i] << " looks like it is already sketched.\n";
+            cerr << "ERROR: " << arguments[i] << " looks like it is already sketched." << endl;
             exit(1);
         }
     }
@@ -132,3 +137,5 @@ int CommandSketch::run() const
     
     return 0;
 }
+
+} // namespace mash

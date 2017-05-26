@@ -14,7 +14,13 @@
 #include "ThreadPool.h"
 #include "sketchParameterSetup.h"
 
-using namespace::std;
+using std::cerr;
+using std::cout;
+using std::endl;
+using std::string;
+using std::vector;
+
+namespace mash {
 
 KSEQ_INIT(gzFile, gzread)
 
@@ -223,7 +229,7 @@ CommandFind::FindOutput * find(CommandFind::FindInput * data)
 
 void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput * output, bool minusStrand)
 {
-    typedef unordered_map < uint32_t, set<uint32_t> > PositionsBySequence_umap;
+    typedef std::unordered_map < uint32_t, std::set<uint32_t> > PositionsBySequence_umap;
     
     bool verbose = false;
     
@@ -322,6 +328,8 @@ void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput
     
     for ( PositionsBySequence_umap::iterator i = hits.begin(); i != hits.end(); i++ )
     {
+    	using std::set;
+    	
         // pointer to the position at the beginning of the window; to be updated
         // as the end of the window is incremented
         //
@@ -415,3 +423,5 @@ bool operator<(const CommandFind::FindOutput::Hit & a, const CommandFind::FindOu
     
     return a.score > b.score;
 }
+
+} // namespace mash

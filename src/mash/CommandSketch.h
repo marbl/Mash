@@ -9,6 +9,8 @@
 
 #include "Command.h"
 
+namespace mash {
+
 class CommandSketch : public Command
 {
 public:
@@ -17,5 +19,7 @@ public:
     
     int run() const; // override
 };
+
+} // namespace mash
 
 #endif

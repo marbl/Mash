@@ -9,7 +9,11 @@
 #include <iostream>
 #include "unistd.h"
 
-using namespace::std;
+using std::string;
+using std::cerr;
+using std::endl;
+
+namespace mash {
 
 CommandPaste::CommandPaste()
 : Command()
@@ -32,7 +36,7 @@ int CommandPaste::run() const
     }
     
     bool list = options.at("list").active;
-    vector<string> files;
+    std::vector<string> files;
     
     for ( int i = 1; i < arguments.size(); i++ )
     {
@@ -47,7 +51,7 @@ int CommandPaste::run() const
     }
     
     Sketch sketch;
-    vector<string> filesGood;
+    std::vector<string> filesGood;
     Sketch::Parameters parameters;
     parameters.parallelism = 1;
     
@@ -83,3 +87,5 @@ int CommandPaste::run() const
     
     return 0;
 }
+
+} // namespace mash

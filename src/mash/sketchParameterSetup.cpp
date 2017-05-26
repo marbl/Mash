@@ -7,7 +7,10 @@
 #include "sketchParameterSetup.h"
 #include <iostream>
 
-using namespace::std;
+using std::cerr;
+using std::endl;
+
+namespace mash {
 
 int sketchParameterSetup(Sketch::Parameters & parameters, const Command & command)
 {
@@ -111,3 +114,4 @@ void warnKmerSize(const Sketch::Parameters & parameters, const Command & command
 		<< " is required. See: -" << command.getOption("kmer").identifier << ", -" << command.getOption("warning").identifier << "." << endl << endl;
 }
 
+} // namespace mash

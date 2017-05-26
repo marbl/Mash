@@ -12,7 +12,15 @@
 #include "Command.h"
 #include "version.h"
 
-using namespace::std;
+using std::cout;
+using std::cerr;
+using std::endl;
+using std::string;
+using std::exception;
+using std::vector;
+using std::pair;
+
+namespace mash {
 
 Command::Option::Option
 (
@@ -271,8 +279,8 @@ void Command::print() const
 		
 			if ( option.argumentMin != option.argumentMax )
 			{
-				stringstream stringMin;
-				stringstream stringMax;
+				std::stringstream stringMin;
+				std::stringstream stringMax;
 			
 				if ( option.type == Option::Integer )
 				{
@@ -391,7 +399,7 @@ void splitFile(const string & file, vector<string> & lines)
 {
     string line;
     
-    ifstream in(file);
+    std::ifstream in(file);
     
     if ( in.fail() )
     {
@@ -529,3 +537,5 @@ void printColumns(const vector<vector<string>> & columns, const vector<pair<int,
         cout << endl << endl;
     }
 }
+
+} // namespace mash

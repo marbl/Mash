@@ -9,6 +9,8 @@
 
 #include "Command.h"
 
+namespace mash {
+
 class CommandBounds : public Command
 {
 public:
@@ -16,5 +18,7 @@ public:
     CommandBounds();
     int run() const; // override
 };
+
+} // namespace mash
 
 #endif

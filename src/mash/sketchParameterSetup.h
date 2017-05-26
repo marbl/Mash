@@ -10,7 +10,11 @@
 #include "Command.h"
 #include "Sketch.h"
 
+namespace mash {
+
 int sketchParameterSetup(Sketch::Parameters & parameters, const Command & command);
 void warnKmerSize(const Sketch::Parameters & parameters, const Command & command, uint64_t lengthMax, const std::string & lengthMaxName, double randomChance, int kMin, int warningCount);
+
+} // namespace mash
 
 #endif

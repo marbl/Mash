@@ -11,6 +11,8 @@
 
 #include "Command.h"
 
+namespace mash {
+
 class CommandList
 {
     std::map<std::string, Command *> commands;
@@ -30,5 +32,7 @@ private:
     
     std::string name;
 };
+
+} // namespace mash
 
 #endif

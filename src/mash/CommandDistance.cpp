@@ -21,6 +21,8 @@
 
 using namespace::std;
 
+namespace mash {
+
 CommandDistance::CommandDistance()
 : Command()
 {
@@ -423,3 +425,5 @@ double pValue(uint64_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerS
     return gsl_cdf_binomial_Q(x - 1, r, sketchSize);
 #endif
 }
+
+} // namespace mash
