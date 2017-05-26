@@ -10,7 +10,11 @@
 #include "version.h"
 #include <string.h>
 
-using namespace::std;
+using std::cout;
+using std::endl;
+using std::string;
+
+namespace mash {
 
 CommandList::CommandList(string nameNew)
 {
@@ -19,7 +23,7 @@ CommandList::CommandList(string nameNew)
 
 CommandList::~CommandList()
 {
-    for ( map<string, Command *>::iterator i = commands.begin(); i != commands.end(); i++ )
+    for ( std::map<string, Command *>::iterator i = commands.begin(); i != commands.end(); i++ )
     {
         delete i->second;
     }
@@ -32,6 +36,9 @@ void CommandList::addCommand(Command * command)
 
 void CommandList::print()
 {
+	using std::map;
+	using std::vector;
+	
     vector<vector<string>> columns(1);
     
     cout << endl << "Mash version " << version << endl << endl;
@@ -210,3 +217,5 @@ THE SOFTWARE.\n\
 \n";
 #endif
 }
+
+} // namespace mash

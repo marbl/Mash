@@ -12,6 +12,8 @@
 #include <vector>
 #include <set>
 
+namespace mash {
+
 class Command
 {
 
@@ -99,5 +101,7 @@ inline const Command::Option & Command::getOption(std::string name) const {retur
 void splitFile(const std::string & file, std::vector<std::string> & lines);
 void printColumns(const std::vector<std::vector<std::string>> & columns, int indent = 2, int spacing = 2, const char * missing = "-", int max = 80);
 void printColumns(const std::vector<std::vector<std::string>> & columns, const std::vector<std::pair<int, std::string>> & dividers, int indent = 2, int spacing = 2, const char * missing = "-", int max = 80);
+
+} // namespace mash
 
 #endif

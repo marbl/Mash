@@ -15,7 +15,10 @@
     #include <gsl/gsl_cdf.h>
 #endif
 
-using namespace::std;
+using std::cout;
+using std::endl;
+
+namespace mash {
 
 CommandBounds::CommandBounds()
 : Command()
@@ -99,3 +102,5 @@ int CommandBounds::run() const
 	
 	return 0;
 }
+
+} // namespace mash

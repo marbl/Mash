@@ -8,13 +8,19 @@
 #include "Sketch.h"
 #include <iostream>
 
+using std::cerr;
+using std::cout;
+using std::endl;
+using std::string;
+using std::vector;
+
+namespace mash {
+
 #ifdef ARCH_32
 	#define HASH "MurmurHash3_x86_32"
 #else
 	#define HASH "MurmurHash3_x64_128"
 #endif
-	
-using namespace::std;
 
 CommandInfo::CommandInfo()
 : Command()
@@ -159,8 +165,8 @@ int CommandInfo::run() const
             }
             else
             {
-				columns[0].push_back(to_string(ref.hashesSorted.size()));
-				columns[1].push_back(to_string(ref.length));
+				columns[0].push_back(std::to_string(ref.hashesSorted.size()));
+				columns[1].push_back(std::to_string(ref.length));
 				columns[2].push_back(ref.name);
 				columns[3].push_back(ref.comment);
 			}
@@ -177,6 +183,8 @@ int CommandInfo::run() const
 
 int CommandInfo::printCounts(const Sketch & sketch) const
 {
+	using std::map;
+	
 	if ( sketch.getReferenceCount() == 0 )
 	{
 		cerr << "ERROR: Sketch file contains no sketches" << endl;
@@ -266,3 +274,5 @@ int CommandInfo::writeJson(const Sketch & sketch) const
 	
 	return 0;
 }
+
+} // namespace mash

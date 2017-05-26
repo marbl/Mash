@@ -12,6 +12,8 @@
 #include <string.h>
 #include <queue>
 
+namespace mash {
+
 class CommandFind : public Command
 {
 public:
@@ -89,5 +91,7 @@ private:
 CommandFind::FindOutput * find(CommandFind::FindInput * data);
 void findPerStrand(const CommandFind::FindInput * input, CommandFind::FindOutput * output, bool minusStrand);
 bool operator<(const CommandFind::FindOutput::Hit & a, const CommandFind::FindOutput::Hit & b);
+
+} // namespace mash
 
 #endif

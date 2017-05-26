@@ -14,6 +14,8 @@
 
 using namespace::std;
 
+namespace mash {
+
 CommandContain::CommandContain()
 : Command()
 {
@@ -259,3 +261,5 @@ double containSketches(const HashList & hashesSortedRef, const HashList & hashes
     
     return double(common) / j;
 }
+
+} // namespace mash
