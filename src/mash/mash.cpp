@@ -20,8 +20,8 @@ int main(int argc, const char ** argv)
     
     commandList.addCommand(new mash::CommandSketch());
     //commandList.addCommand(new CommandFind());
-    commandList.addCommand(new CommandDistance());
-    commandList.addCommand(new CommandGenes());
+    commandList.addCommand(new mash::CommandDistance());
+    commandList.addCommand(new mash::CommandGenes());
 #ifdef COMMAND_WITHIN
     commandList.addCommand(new mash::CommandContain());
 #endif
