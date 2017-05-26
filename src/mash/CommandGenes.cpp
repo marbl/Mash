@@ -24,7 +24,16 @@
 #define SET_BINARY_MODE(file)
 KSEQ_INIT(gzFile, gzread)
 
-using namespace::std;
+using std::cerr;
+using std::cout;
+using std::endl;
+using std::list;
+using std::string;
+using std::unordered_map;
+using std::unordered_set;
+using std::vector;
+
+namespace mash {
 
 CommandGenes::CommandGenes()
 : Command()
@@ -693,3 +702,5 @@ char aaFromCodon(const char * codon)
 	
 	return aa;//(aa == '*') ? 0 : aa;
 }
+
+} // namespace mash

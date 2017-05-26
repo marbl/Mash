@@ -15,6 +15,8 @@
 #include <unordered_set>
 #include <unordered_map>
 
+namespace mash {
+
 typedef std::unordered_map< uint64_t, std::unordered_set<uint64_t> > HashTable;
 
 static const std::unordered_map< std::string, char > codons =
@@ -110,5 +112,7 @@ char aaFromCodon(const char * codon);
 double estimateIdentity(uint64_t common, uint64_t denom, int kmerSize, double kmerSpace);
 double pValueWithin(uint64_t x, uint64_t setSize, double kmerSpace, uint64_t sketchSize);
 void translate(const char * src, char * dst, uint64_t len);
+
+} // namespace mash
 
 #endif
