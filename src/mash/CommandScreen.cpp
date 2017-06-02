@@ -4,7 +4,7 @@
 //
 // See the LICENSE.txt file included with this software for license information.
 
-#include "CommandGenes.h"
+#include "CommandScreen.h"
 #include "CommandDistance.h" // for pvalue
 #include "Sketch.h"
 #include "kseq.h"
@@ -35,10 +35,10 @@ using std::vector;
 
 namespace mash {
 
-CommandGenes::CommandGenes()
+CommandScreen::CommandScreen()
 : Command()
 {
-	name = "within";
+	name = "screen";
 	summary = "Determine whether query sequences are within a larger pool of sequences.";
 	description = "Determine whether query sequences are within a larger pool of sequences. The targets must be formatted as a Mash sketch file (.msh), created with the `mash sketch` command. The <pool> files can be contigs or reads, in fasta or fastq, gzipped or not. The output fields are [seq-ID-1, seq-ID-2, distance, p-value, shared-hashes].";
     argumentString = "<queries> <pool> [<pool>] ...";
@@ -50,7 +50,7 @@ CommandGenes::CommandGenes()
 	//useSketchOptions();
 }
 
-int CommandGenes::run() const
+int CommandScreen::run() const
 {
 	if ( arguments.size() < 2 || options.at("help").active )
 	{
@@ -490,7 +490,7 @@ double estimateIdentity(uint64_t common, uint64_t denom, int kmerSize, double km
 		distance = -log(jaccard) / kmerSize;
 	}
 	
-	return 1. - distance;
+	return distance;
 }
 
 double pValueWithin(uint64_t x, uint64_t setSize, double kmerSpace, uint64_t sketchSize)

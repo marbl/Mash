@@ -4,8 +4,8 @@
 //
 // See the LICENSE.txt file included with this software for license information.
 
-#ifndef INCLUDED_CommandGenes
-#define INCLUDED_CommandGenes
+#ifndef INCLUDED_CommandScreen
+#define INCLUDED_CommandScreen
 
 #include "Command.h"
 #include "Sketch.h"
@@ -87,11 +87,11 @@ static const std::unordered_map< std::string, char > codons =
 	{"TTT",	'F'}
 };
 
-class CommandGenes : public Command
+class CommandScreen : public Command
 {
 public:
     
-    CommandGenes();
+    CommandScreen();
     
     int run() const; // override
 

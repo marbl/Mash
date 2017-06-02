@@ -9,7 +9,7 @@
 #include "CommandSketch.h"
 #include "CommandFind.h"
 #include "CommandDistance.h"
-#include "CommandGenes.h"
+#include "CommandScreen.h"
 #include "CommandContain.h"
 #include "CommandInfo.h"
 #include "CommandPaste.h"
@@ -21,7 +21,7 @@ int main(int argc, const char ** argv)
     commandList.addCommand(new mash::CommandSketch());
     //commandList.addCommand(new CommandFind());
     commandList.addCommand(new mash::CommandDistance());
-    commandList.addCommand(new mash::CommandGenes());
+    commandList.addCommand(new mash::CommandScreen());
 #ifdef COMMAND_WITHIN
     commandList.addCommand(new mash::CommandContain());
 #endif
