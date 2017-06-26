@@ -173,12 +173,12 @@ int CommandScreen::run() const
 			continue;
 		}
 		
+		count++;
+		
 		if ( l < kmerSize ) // too short
 		{
 			continue;
 		}
-		
-		count++;
 		
 		char * seq = (*it)->seq.s;
 		
@@ -337,6 +337,7 @@ int CommandScreen::run() const
 		
 		exit(1);
 	}
+	
 	/*
 	if ( parameters.targetCov != 0 )
 	{
@@ -348,8 +349,14 @@ int CommandScreen::run() const
 	}
 	*/
 	
-	uint64_t setSize = minHashHeap.estimateSetSize();
+	uint64_t setSize = 0;//minHashHeap.estimateSetSize();
 	cerr << "   Estimated distinct k-mers in pool: " << setSize << endl;
+	
+	if ( setSize == 0 )
+	{
+		cerr << "WARNING: no valid k-mers in input." << endl;
+		exit(0);
+	}
 	
 	cerr << "Summing shared..." << endl;
 	
@@ -490,7 +497,7 @@ double estimateIdentity(uint64_t common, uint64_t denom, int kmerSize, double km
 		distance = -log(jaccard) / kmerSize;
 	}
 	
-	return distance;
+	return 1.0 - distance;
 }
 
 double pValueWithin(uint64_t x, uint64_t setSize, double kmerSpace, uint64_t sketchSize)
