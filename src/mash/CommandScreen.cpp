@@ -349,7 +349,7 @@ int CommandScreen::run() const
 	}
 	*/
 	
-	uint64_t setSize = 0;//minHashHeap.estimateSetSize();
+	uint64_t setSize = minHashHeap.estimateSetSize();
 	cerr << "   Estimated distinct k-mers in pool: " << setSize << endl;
 	
 	if ( setSize == 0 )
