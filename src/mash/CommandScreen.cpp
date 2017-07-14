@@ -82,7 +82,7 @@ int CommandScreen::run() const
 	unordered_map<uint64_t, uint32_t> hashCounts;
 	unordered_map<uint64_t, list<uint32_t> > saturationByIndex;
 	
-	cerr << "Filling table from " << arguments[0] << "..." << endl;
+	cerr << "Loading " << arguments[0] << "..." << endl;
 	
 	for ( int i = 0; i < sketch.getReferenceCount(); i++ )
 	{
