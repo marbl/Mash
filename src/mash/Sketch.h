@@ -36,7 +36,7 @@ public:
     {
         Parameters()
             :
-            parallelism(0),
+            parallelism(1),
             kmerSize(0),
             alphabetSize(0),
             preserveCase(false),
@@ -51,7 +51,7 @@ public:
             noncanonical(false),
             reads(false),
             memoryBound(0),
-            minCov(0),
+            minCov(1),
             targetCov(0),
             genomeSize(0)
         {
