@@ -48,6 +48,8 @@ CommandScreen::CommandScreen()
 //    addOption("saturation", Option(Option::Boolean, "s", "", "Include saturation curve in output. Each line will have an additional field representing the absolute number of k-mers seen at each Jaccard increase, formatted as a comma-separated list.", ""));
 //    addOption("winning!", Option(Option::Boolean, "w", "", "Winner-takes all output. After counting k-mers for each reference, k-mers that appear in multiple references will removed from all except that with the best distance, and distances will subsequently be recomputed.", ""));
 	//useSketchOptions();
+    addOption("distance", Option(Option::Number, "d", "Output", "Maximum distance to report. Setting to 1 will provide output for every query. Setting to -1 (default) will output everything below 1 (i.e. at least one shared hash)", "-1.0", -1., 1.));
+    addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
 }
 
 int CommandScreen::run() const
@@ -66,6 +68,9 @@ int CommandScreen::run() const
 	
 	bool sat = false;//options.at("saturation").active;
 	
+    double pValueMax = options.at("pvalue").getArgumentAsNumber();
+    double distanceMax = options.at("distance").getArgumentAsNumber();
+    
     vector<string> refArgVector;
     refArgVector.push_back(arguments[0]);
 	
@@ -461,12 +466,23 @@ int CommandScreen::run() const
 	
 	for ( int i = 0; i < sketch.getReferenceCount(); i++ )
 	{
-		if ( shared[i] != 0 )
+		if ( shared[i] != 0 || distanceMax == 1.0)
 		{
 			double distance = estimateDistance(shared[i], sketch.getReference(i).hashesSorted.size(), kmerSize, sketch.getKmerSpace());
+			
+			if ( distanceMax != -1.0 && distanceMax < 1.0 && distance > distanceMax )
+			{
+				continue;
+			}
+			
 			double pValue = pValueWithin(shared[i], setSize, sketch.getKmerSpace(), sketch.getReference(i).hashesSorted.size());
 			
-			cout << distance << '\t' << shared[i] << '/' << sketch.getReference(i).hashesSorted.size() << '\t' << depths[i].at(shared[i] / 2) << '\t' << pValue << '\t' << sketch.getReference(i).name << '\t' << sketch.getReference(i).comment;
+			if ( pValue > pValueMax )
+			{
+				continue;
+			}
+			
+			cout << distance << '\t' << shared[i] << '/' << sketch.getReference(i).hashesSorted.size() << '\t' << (shared[i] > 0 ? depths[i].at(shared[i] / 2) : 0) << '\t' << pValue << '\t' << sketch.getReference(i).name << '\t' << sketch.getReference(i).comment;
 			
 			if ( sat )
 			{
@@ -511,7 +527,7 @@ double estimateDistance(uint64_t common, uint64_t denom, int kmerSize, double km
 		distance = -log(jaccard) / kmerSize;
 	}
 	
-	return 1.0 - distance;
+	return distance;
 }
 
 double pValueWithin(uint64_t x, uint64_t setSize, double kmerSpace, uint64_t sketchSize)
