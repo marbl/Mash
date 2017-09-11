@@ -40,13 +40,13 @@ CommandScreen::CommandScreen()
 {
 	name = "screen";
 	summary = "Determine whether query sequences are within a larger pool of sequences.";
-	description = "Determine whether query sequences are within a larger pool of sequences. The targets must be formatted as a Mash sketch file (.msh), created with the `mash sketch` command. The <pool> files can be contigs or reads, in fasta or fastq, gzipped or not. The output fields are [seq-ID-1, seq-ID-2, distance, p-value, shared-hashes].";
-    argumentString = "<queries> <pool> [<pool>] ...";
+	description = "Determine whether query sequences are within a larger pool of sequences. The queries must be formatted as a single Mash sketch file (.msh), created with the `mash sketch` command. The <pool> files can be contigs or reads, in fasta or fastq, gzipped or not. The output fields are [distance, shared-hashes, median-multiplicity, p-value, query-ID, query-comment], where median-multiplicity is computed for shared hashes, based on the number of observations of those hashes within the pool.";
+    argumentString = "<queries>.msh <pool> [<pool>] ...";
 	
 	useOption("help");
-	useOption("minCov");
-    addOption("saturation", Option(Option::Boolean, "s", "", "Include saturation curve in output. Each line will have an additional field representing the absolute number of k-mers seen at each Jaccard increase, formatted as a comma-separated list.", ""));
-    addOption("winning!", Option(Option::Boolean, "w", "", "Winner-takes all output. After counting k-mers for each reference, k-mers that appear in multiple references will removed from all except that with the best distance, and distances will subsequently be recomputed.", ""));
+//	useOption("minCov");
+//    addOption("saturation", Option(Option::Boolean, "s", "", "Include saturation curve in output. Each line will have an additional field representing the absolute number of k-mers seen at each Jaccard increase, formatted as a comma-separated list.", ""));
+//    addOption("winning!", Option(Option::Boolean, "w", "", "Winner-takes all output. After counting k-mers for each reference, k-mers that appear in multiple references will removed from all except that with the best distance, and distances will subsequently be recomputed.", ""));
 	//useSketchOptions();
 }
 
@@ -64,7 +64,7 @@ int CommandScreen::run() const
 		exit(1);
 	}
 	
-	bool sat = options.at("saturation").active;
+	bool sat = false;//options.at("saturation").active;
 	
     vector<string> refArgVector;
     refArgVector.push_back(arguments[0]);
@@ -118,7 +118,7 @@ int CommandScreen::run() const
 	bool use64 = sketch.getUse64();
 	uint32_t seed = sketch.getHashSeed();
 	int kmerSize = sketch.getKmerSize();
-	int minCov = options.at("minCov").getArgumentAsNumber();
+	int minCov = 1;//options.at("minCov").getArgumentAsNumber();
 	bool noncanonical = sketch.getNoncanonical();
 	
 	// open all query files for round robin
@@ -384,7 +384,7 @@ int CommandScreen::run() const
 		}
 	}
 	
-	if ( options.at("winning!").active )
+	if ( false )//options.at("winning!").active )
 	{
 		cerr << "Reallocating to winners..." << endl;
 		
@@ -392,7 +392,7 @@ int CommandScreen::run() const
 		
 		for ( int i = 0; i < sketch.getReferenceCount(); i ++ )
 		{
-			scores[i] = estimateIdentity(shared[i], sketch.getReference(i).hashesSorted.size(), kmerSize, sketch.getKmerSpace());
+			scores[i] = 1.0 - estimateDistance(shared[i], sketch.getReference(i).hashesSorted.size(), kmerSize, sketch.getKmerSpace());
 		}
 		
 		memset(shared, 0, sizeof(uint64_t) * sketch.getReferenceCount());
@@ -449,10 +449,10 @@ int CommandScreen::run() const
 	{
 		if ( shared[i] != 0 )
 		{
-			double identity = estimateIdentity(shared[i], sketch.getReference(i).hashesSorted.size(), kmerSize, sketch.getKmerSpace());
+			double distance = estimateDistance(shared[i], sketch.getReference(i).hashesSorted.size(), kmerSize, sketch.getKmerSpace());
 			double pValue = pValueWithin(shared[i], setSize, sketch.getKmerSpace(), sketch.getReference(i).hashesSorted.size());
 			
-			cout << identity << '\t' << shared[i] << '/' << sketch.getReference(i).hashesSorted.size() << '\t' << depths[i].at(shared[i] / 2) << '\t' << pValue << '\t' << sketch.getReference(i).name << '\t' << sketch.getReference(i).comment;
+			cout << distance << '\t' << shared[i] << '/' << sketch.getReference(i).hashesSorted.size() << '\t' << depths[i].at(shared[i] / 2) << '\t' << pValue << '\t' << sketch.getReference(i).name << '\t' << sketch.getReference(i).comment;
 			
 			if ( sat )
 			{
@@ -478,7 +478,7 @@ int CommandScreen::run() const
 	return 0;
 }
 
-double estimateIdentity(uint64_t common, uint64_t denom, int kmerSize, double kmerSpace)
+double estimateDistance(uint64_t common, uint64_t denom, int kmerSize, double kmerSpace)
 {
 	double distance;
 	double jaccard = double(common) / denom;

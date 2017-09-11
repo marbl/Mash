@@ -109,7 +109,7 @@ private:
 };
 
 char aaFromCodon(const char * codon);
-double estimateIdentity(uint64_t common, uint64_t denom, int kmerSize, double kmerSpace);
+double estimateDistance(uint64_t common, uint64_t denom, int kmerSize, double kmerSpace);
 double pValueWithin(uint64_t x, uint64_t setSize, double kmerSpace, uint64_t sketchSize);
 void translate(const char * src, char * dst, uint64_t len);
 
