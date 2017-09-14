@@ -25,7 +25,7 @@ CommandBounds::CommandBounds()
 {
     name = "bounds";
     summary = "Print a table of Mash error bounds.";
-    description = "Print a table of Mash error bounds for various sketch sizes and Mash distances based on a given k-mer size and desired confidence.";
+    description = "Print a table of Mash error bounds for various sketch sizes and Mash distances based on a given k-mer size and desired confidence. Note that these calculations assume sequences are much larger than the sketch size, and will overestimate error bounds if this is not the case.";
     argumentString = "";
     
     useOption("help");
@@ -54,51 +54,81 @@ int CommandBounds::run() const
 	cout << "   k:   " << k << endl;
 	cout << "   p:   " << getOption("prob").getArgumentAsNumber() << endl << endl;
 	
-	cout << "\tMash distance" << endl;
-	cout << "Sketch";
-	
-	for ( int i = 0; i < distCount; i++ )
+	for ( int cont = 0; cont < 2; cont++ )
 	{
-		cout << '\t' << dists[i];
-	}
-	
-	cout << endl;
-	
-	for ( int i = 0; i < sketchSizeCount; i++ )
-	{
-		int s = sketchSizes[i];
-		cout << s;
-		
-		for ( int j = 0; j < distCount; j++ )
+		if ( cont )
 		{
-			double m2j = 1.0 / (2.0 * exp(k * dists[j]) - 1.0);
-			
-			int x = 0;
-			
-			while ( x < s )
-			{
-#ifdef USE_BOOST
-			    double cdfx = cdf(binomial(s, m2j), x);
-#else
-			    double cdfx = gsl_cdf_binomial_P(x, m2j, s);
-#endif
-				if ( cdfx > q2 )
-				{
-					break;
-				}
-				
-				x++;
-			}
-			
-			double je = double(x) / s;
-			double j2m = -1.0 / k * log(2.0 * je / (1.0 + je));
-			cout << '\t' << j2m - dists[j];
+			cout << "\tScreen distance" << endl;
+		}
+		else
+		{
+			cout << "\tMash distance" << endl;
 		}
 		
+		cout << "Sketch";
+	
+		for ( int i = 0; i < distCount; i++ )
+		{
+			cout << '\t' << dists[i];
+		}
+	
+		cout << endl;
+	
+		for ( int i = 0; i < sketchSizeCount; i++ )
+		{
+			int s = sketchSizes[i];
+			cout << s;
+		
+			for ( int j = 0; j < distCount; j++ )
+			{
+				double m2j;
+				
+				if ( cont )
+				{
+					m2j = exp(-k * dists[j]);
+				}
+				else
+				{
+					m2j = 1.0 / (2.0 * exp(k * dists[j]) - 1.0);
+				}
+			
+				int x = 0;
+			
+				while ( x < s )
+				{
+#ifdef USE_BOOST
+					double cdfx = cdf(binomial(s, m2j), x);
+#else
+					double cdfx = gsl_cdf_binomial_P(x, m2j, s);
+#endif
+					if ( cdfx > q2 )
+					{
+						break;
+					}
+				
+					x++;
+				}
+			
+				double je = double(x) / s;
+				double j2m;
+				
+				if ( cont )
+				{
+					j2m = -1.0 / k * log(je);
+				}
+				else
+				{
+					j2m = -1.0 / k * log(2.0 * je / (1.0 + je));
+				}
+				
+				cout << '\t' << j2m - dists[j];
+			}
+		
+			cout << endl;
+		}
+	
 		cout << endl;
 	}
-	
-	cout << endl;
 	
 	return 0;
 }

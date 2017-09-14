@@ -25,7 +25,7 @@ CommandSketch::CommandSketch()
     argumentString = "<input> [<input>] ...";
     
     useOption("help");
-    addOption("list", Option(Option::Boolean, "l", "Input", "List input. Each <input> file will be interpreted as a list of sequence files, one per line.", ""));
+    addOption("list", Option(Option::Boolean, "l", "Input", "List input. Lines in each <input> specify paths to sequence files, one per line.", ""));
     addOption("prefix", Option(Option::File, "o", "Output", "Output prefix (first input file used if unspecified). The suffix '.msh' will be appended.", ""));
     useSketchOptions();
 }
