@@ -11,7 +11,6 @@
 #include <iostream>
 #include <zlib.h>
 #include "ThreadPool.h"
-#include <atomic>
 #include <math.h>
 #include <set>
 
