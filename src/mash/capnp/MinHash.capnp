@@ -42,7 +42,7 @@ struct MinHash
 		loci @0 : List(Locus);
 	}
 	
-	kmerSize @0 : UInt32;
+	kmerSizeOld @0 : UInt32;
 	windowSize @1 : UInt32;
 	minHashesPerWindow @2 : UInt32;
 	concatenated @3 : Bool;
@@ -51,6 +51,7 @@ struct MinHash
 	alphabet @8 : Text;
 	preserveCase @9 : Bool;
 	hashSeed @10 : UInt32 = 42;
+	kmerSize @11 : UInt32;
 	
 	referenceList @4 : ReferenceList;
 	locusList @5 : LocusList;

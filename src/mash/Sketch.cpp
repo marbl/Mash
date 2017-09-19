@@ -266,7 +266,7 @@ uint64_t Sketch::initParametersFromCapnp(const char * file)
     capnp::FlatArrayMessageReader * message = new capnp::FlatArrayMessageReader(kj::ArrayPtr<const capnp::word>(reinterpret_cast<const capnp::word *>(data), fileInfo.st_size / sizeof(capnp::word)), readerOptions);
     capnp::MinHash::Reader reader = message->getRoot<capnp::MinHash>();
     
-    parameters.kmerSize = reader.getKmerSize();
+    parameters.kmerSize = reader.getKmerSize() > 0 ? reader.getKmerSize() : reader.getKmerSizeOld();
     parameters.error = reader.getError();
     parameters.minHashesPerWindow = reader.getMinHashesPerWindow();
     parameters.windowSize = reader.getWindowSize();
@@ -445,6 +445,14 @@ int Sketch::writeToCapnp(const char * file) const
     }
     
     builder.setKmerSize(parameters.kmerSize);
+    
+    if ( parameters.seed == 42 )
+    {
+    	// allow old versions to use this sketch by providing a valid kmer size		
+    	
+	    builder.setKmerSizeOld(parameters.kmerSize);
+    }
+    
     builder.setHashSeed(parameters.seed);
     builder.setError(parameters.error);
     builder.setMinHashesPerWindow(parameters.minHashesPerWindow);
