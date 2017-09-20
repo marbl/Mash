@@ -48,6 +48,7 @@ CommandScreen::CommandScreen()
 //    addOption("saturation", Option(Option::Boolean, "s", "", "Include saturation curve in output. Each line will have an additional field representing the absolute number of k-mers seen at each Jaccard increase, formatted as a comma-separated list.", ""));
 //    addOption("winning!", Option(Option::Boolean, "w", "", "Winner-takes all output. After counting k-mers for each reference, k-mers that appear in multiple references will removed from all except that with the best distance, and distances will subsequently be recomputed.", ""));
 	//useSketchOptions();
+	useOption("threads");
     addOption("identity", Option(Option::Number, "i", "Output", "Minimum identity to report. Inclusive unless set to zero, in which case only identities greater than zero (i.e. with at least one shared hash) will be reported. Set to -1 to output everything.", "0", -1., 1.));
     addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
 }
@@ -116,7 +117,7 @@ int CommandScreen::run() const
 	
 	cerr << "   " << hashTable.size() << " distinct hashes." << endl;
 	
-	MinHashHeap minHashHeap(sketch.getUse64(), sketch.getMinHashesPerWindow());
+	unordered_set<MinHashHeap *> minHashHeaps;
 	
 	bool trans = (alphabet == alphabetProtein);
 	
@@ -228,22 +229,45 @@ int CommandScreen::run() const
 		//
 		memcpy(seqCopy, seq, l);
 		
-		threadPool.runWhenThreadAvailable(new HashInput(hashCounts, seqCopy, l, parameters, trans));
+		if ( minHashHeaps.begin() == minHashHeaps.end() )
+		{
+			minHashHeaps.emplace(new MinHashHeap(sketch.getUse64(), sketch.getMinHashesPerWindow()));
+		}
+		
+		threadPool.runWhenThreadAvailable(new HashInput(hashCounts, *minHashHeaps.begin(), seqCopy, l, parameters, trans));
+		
+		minHashHeaps.erase(minHashHeaps.begin());
 		
 		while ( threadPool.outputAvailable() )
 		{
-			useThreadOutput(threadPool.popOutputWhenAvailable(), minHashHeap);
+			useThreadOutput(threadPool.popOutputWhenAvailable(), minHashHeaps);
 		}
 	}
     
 	while ( threadPool.running() )
 	{
-		useThreadOutput(threadPool.popOutputWhenAvailable(), minHashHeap);
+		useThreadOutput(threadPool.popOutputWhenAvailable(), minHashHeaps);
 	}
 	
 	for ( int i = 0; i < queryCount; i++ )
 	{
 		gzclose(fps[i]);
+	}
+	
+	MinHashHeap minHashHeap(sketch.getUse64(), sketch.getMinHashesPerWindow());
+	
+	for ( unordered_set<MinHashHeap *>::const_iterator i = minHashHeaps.begin(); i != minHashHeaps.end(); i++ )
+	{
+		HashList hashList;
+		
+		(*i)->toHashList(hashList);
+		
+		for ( int i = 0; i < hashList.size(); i++ )
+		{
+			minHashHeap.tryInsert(hashList.at(i));
+		}
+		
+		delete *i;
 	}
 	
 	if (  l != -1 )
@@ -434,7 +458,7 @@ double estimateDistance(uint64_t common, uint64_t denom, int kmerSize, double km
 
 CommandScreen::HashOutput * hashSequence(CommandScreen::HashInput * input)
 {
-	CommandScreen::HashOutput * output = new CommandScreen::HashOutput(input->parameters);
+	CommandScreen::HashOutput * output = new CommandScreen::HashOutput(input->minHashHeap);
 	
 	int l = input->length;
 	bool trans = input->trans;
@@ -546,7 +570,7 @@ CommandScreen::HashOutput * hashSequence(CommandScreen::HashInput * input)
 			//cout << kmer << '\t' << kmerSize << endl;
 			hash_u hash = getHash(kmer, kmerSize, seed, use64);
 			//cout << kmer << '\t' << hash.hash64 << endl;
-			output->minHashHeap.tryInsert(hash);
+			input->minHashHeap->tryInsert(hash);
 			
 			uint64_t key = use64 ? hash.hash64 : hash.hash32;
 			
@@ -790,19 +814,9 @@ char aaFromCodon(const char * codon)
 	return aa;//(aa == '*') ? 0 : aa;
 }
 
-void useThreadOutput(CommandScreen::HashOutput * output, MinHashHeap & minHashHeap)
+void useThreadOutput(CommandScreen::HashOutput * output, unordered_set<MinHashHeap *> & minHashHeaps)
 {
-	// merge minHashes from threads into central minHash table for set size estimation
-	
-	HashList hashList;
-	
-	output->minHashHeap.toHashList(hashList);
-	
-	for ( int i = 0; i < hashList.size(); i++ )
-	{
-		minHashHeap.tryInsert(hashList.at(i));
-	}
-	
+	minHashHeaps.emplace(output->minHashHeap);
 	delete output;
 }
 
