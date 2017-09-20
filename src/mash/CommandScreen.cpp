@@ -48,7 +48,7 @@ CommandScreen::CommandScreen()
 //    addOption("saturation", Option(Option::Boolean, "s", "", "Include saturation curve in output. Each line will have an additional field representing the absolute number of k-mers seen at each Jaccard increase, formatted as a comma-separated list.", ""));
 //    addOption("winning!", Option(Option::Boolean, "w", "", "Winner-takes all output. After counting k-mers for each reference, k-mers that appear in multiple references will removed from all except that with the best distance, and distances will subsequently be recomputed.", ""));
 	//useSketchOptions();
-    addOption("distance", Option(Option::Number, "d", "Output", "Maximum distance to report. Setting to 1 will provide output for every query. Setting to -1 (default) will output everything below 1 (i.e. at least one shared hash)", "-1.0", -1., 1.));
+    addOption("identity", Option(Option::Number, "i", "Output", "Minimum identity to report. Inclusive unless set to zero, in which case only identities greater than zero (i.e. with at least one shared hash) will be reported. Set to -1 to output everything.", "0", -1., 1.));
     addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
 }
 
@@ -69,7 +69,7 @@ int CommandScreen::run() const
 	bool sat = false;//options.at("saturation").active;
 	
     double pValueMax = options.at("pvalue").getArgumentAsNumber();
-    double distanceMax = options.at("distance").getArgumentAsNumber();
+    double identityMin = options.at("identity").getArgumentAsNumber();
     
     vector<string> refArgVector;
     refArgVector.push_back(arguments[0]);
@@ -466,11 +466,11 @@ int CommandScreen::run() const
 	
 	for ( int i = 0; i < sketch.getReferenceCount(); i++ )
 	{
-		if ( shared[i] != 0 || distanceMax == 1.0)
+		if ( shared[i] != 0 || identityMin < 0.0)
 		{
 			double distance = estimateDistance(shared[i], sketch.getReference(i).hashesSorted.size(), kmerSize, sketch.getKmerSpace());
 			
-			if ( distanceMax != -1.0 && distanceMax < 1.0 && distance > distanceMax )
+			if ( distance < identityMin )
 			{
 				continue;
 			}
@@ -510,24 +510,24 @@ int CommandScreen::run() const
 
 double estimateDistance(uint64_t common, uint64_t denom, int kmerSize, double kmerSpace)
 {
-	double distance;
+	double identity;
 	double jaccard = double(common) / denom;
 	
 	if ( common == denom ) // avoid -0
 	{
-		distance = 0;
+		identity = 1.;
 	}
 	else if ( common == 0 ) // avoid inf
 	{
-		distance = 1.;
+		identity = 0.;
 	}
 	else
 	{
 		//distance = log(double(common + 1) / (denom + 1)) / log(1. / (denom + 1));
-		distance = -log(jaccard) / kmerSize;
+		identity = pow(jaccard, 1. / kmerSize);
 	}
 	
-	return distance;
+	return identity;
 }
 
 double pValueWithin(uint64_t x, uint64_t setSize, double kmerSpace, uint64_t sketchSize)
