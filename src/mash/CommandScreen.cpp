@@ -11,6 +11,7 @@
 #include <iostream>
 #include <zlib.h>
 #include "ThreadPool.h"
+#include <atomic>
 #include <math.h>
 #include <set>
 
@@ -83,8 +84,16 @@ int CommandScreen::run() const
     sketch.getAlphabetAsString(alphabet);
     setAlphabetFromString(parameters, alphabet.c_str());
 	
+	parameters.parallelism = options.at("threads").getArgumentAsNumber();
+	parameters.kmerSize = sketch.getKmerSize();
+	parameters.noncanonical = sketch.getNoncanonical();
+	parameters.use64 = sketch.getUse64();
+	parameters.preserveCase = sketch.getPreserveCase();
+	parameters.seed = sketch.getHashSeed();
+	parameters.minHashesPerWindow = sketch.getMinHashesPerWindow();
+	
 	HashTable hashTable;
-	unordered_map<uint64_t, uint32_t> hashCounts;
+	unordered_map<uint64_t, std::atomic<uint32_t>> hashCounts;
 	unordered_map<uint64_t, list<uint32_t> > saturationByIndex;
 	
 	cerr << "Loading " << arguments[0] << "..." << endl;
@@ -96,17 +105,23 @@ int CommandScreen::run() const
 		for ( int j = 0; j < hashes.size(); j++ )
 		{
 			uint64_t hash = hashes.get64() ? hashes.at(j).hash64 : hashes.at(j).hash32;
+			
+			if ( hashTable.count(hash) == 0 )
+			{
+				hashCounts[hash] = 0;
+			}
+			
 			hashTable[hash].insert(i);
 		}
 	}
 	
 	cerr << "   " << hashTable.size() << " distinct hashes." << endl;
 	
-	MinHashHeap minHashHeap(sketch.getUse64(), sketch.getMinHashesPerWindow(), parameters.minCov, parameters.memoryBound);
+	MinHashHeap minHashHeap(sketch.getUse64(), sketch.getMinHashesPerWindow());
 	
 	bool trans = (alphabet == alphabetProtein);
 	
-	if ( ! trans )
+/*	if ( ! trans )
 	{
 		if ( alphabet != alphabetNucleotide )
 		{
@@ -120,6 +135,7 @@ int CommandScreen::run() const
 			exit(1);
 		}
 	}
+*/	
 	int queryCount = arguments.size() - 1;
 	cerr << (trans ? "Translating from " : "Streaming from ");
 	
@@ -134,11 +150,10 @@ int CommandScreen::run() const
 	
 	cerr << "..." << endl;
 	
-	bool use64 = sketch.getUse64();
-	uint32_t seed = sketch.getHashSeed();
-	int kmerSize = sketch.getKmerSize();
+	int kmerSize = parameters.kmerSize;
 	int minCov = 1;//options.at("minCov").getArgumentAsNumber();
-	bool noncanonical = sketch.getNoncanonical();
+	
+	ThreadPool<CommandScreen::HashInput, CommandScreen::HashOutput> threadPool(hashSequence, parameters.parallelism);
 	
 	// open all query files for round robin
 	//
@@ -208,135 +223,23 @@ int CommandScreen::run() const
 			it = kseqs.begin();
 		}
 		
-		// uppercase
+		// buffer this out since kseq will overwrite (deleted by HashInput destructor)
 		//
-		for ( uint64_t i = 0; i < l; i++ )
+		char * seqCopy = new char[l];
+		//
+		memcpy(seqCopy, seq, l);
+		
+		threadPool.runWhenThreadAvailable(new HashInput(hashCounts, seqCopy, l, parameters, trans));
+		
+		while ( threadPool.outputAvailable() )
 		{
-			if ( ! parameters.preserveCase && seq[i] > 96 && seq[i] < 123 )
-			{
-				seq[i] -= 32;
-			}
+			useThreadOutput(threadPool.popOutputWhenAvailable(), minHashHeap);
 		}
-		
-		char * seqRev;
-		
-		if ( ! noncanonical || trans )
-		{
-			seqRev = new char[l];
-			reverseComplement(seq, seqRev, l);
-		}
-		
-		for ( int i = 0; i < (trans ? 6 : 1); i++ )
-		{
-			bool useRevComp = false;
-			int frame = i % 3;
-			bool rev = i > 2;
-			
-			int lenTrans = (l - frame) / 3;
-			
-			char * seqTrans;
-			
-			if ( trans )
-			{
-				seqTrans = new char[lenTrans];
-				translate((rev ? seqRev : seq) + frame, seqTrans, lenTrans);
-			}
-			
-			int64_t lastGood = -1;
-			int length = trans ? lenTrans : l;
-			
-			for ( int j = 0; j < length - kmerSize + 1; j++ )
-			{
-				while ( lastGood < j + kmerSize - 1 && lastGood < length )
-				{
-					lastGood++;
-					
-					if ( trans ? (seqTrans[lastGood] == '*') : (!parameters.alphabet[seq[lastGood]]) )
-					{
-						j = lastGood + 1;
-					}
-				}
-				
-				if ( j > length - kmerSize )
-				{
-					break;
-				}
-				
-				kmersTotal++;
-				
-				if ( ! noncanonical )
-				{
-					bool debug = false;
-					useRevComp = true;
-					bool prefixEqual = true;
-		
-					if ( debug ) {for ( uint64_t k = j; k < j + kmerSize; k++ ) { cout << *(seq + k); } cout << endl;}
-					
-					for ( uint64_t k = 0; k < kmerSize; k++ )
-					{
-						char base = seq[j + k];
-						char baseMinus = seqRev[l - j - kmerSize + k];
-			
-						if ( debug ) cout << baseMinus;
-			
-						if ( prefixEqual && baseMinus > base )
-						{
-							useRevComp = false;
-							break;
-						}
-			
-						if ( prefixEqual && baseMinus < base )
-						{
-							prefixEqual = false;
-						}
-					}
-		
-					if ( debug ) cout << endl;
-				}
-		
-				const char * kmer;
-				
-				if ( trans )
-				{
-					kmer = seqTrans + j;
-				}
-				else
-				{
-					kmer = useRevComp ? seqRev + l - j - kmerSize : seq + j;
-				}
-				
-				//cout << kmer << '\t' << kmerSize << endl;
-				hash_u hash = getHash(kmer, kmerSize, seed, use64);
-				//cout << kmer << '\t' << hash.hash64 << endl;
-				minHashHeap.tryInsert(hash);
-				
-				uint64_t key = use64 ? hash.hash64 : hash.hash32;
-				
-				if ( hashTable.count(key) == 1 )
-				{
-					hashCounts[key]++;
-				}
-			}
-			
-			if ( trans )
-			{
-				delete [] seqTrans;
-			}
-		}
-		
-		if ( ! sketch.getNoncanonical() || trans )
-		{
-			delete [] seqRev;
-		}
-		/*
-		addMinHashes(minHashHeap, seq, l, parameters);
-		
-		if ( parameters.targetCov > 0 && minHashHeap.estimateMultiplicity() >= parameters.targetCov )
-		{
-			l = -1; // success code
-			break;
-		}
-		*/
+	}
+    
+	while ( threadPool.running() )
+	{
+		useThreadOutput(threadPool.popOutputWhenAvailable(), minHashHeap);
 	}
 	
 	for ( int i = 0; i < queryCount; i++ )
@@ -384,7 +287,7 @@ int CommandScreen::run() const
 	
 	memset(shared, 0, sizeof(uint64_t) * sketch.getReferenceCount());
 	
-	for ( unordered_map<uint64_t, uint32_t>::const_iterator i = hashCounts.begin(); i != hashCounts.end(); i++ )
+	for ( unordered_map<uint64_t, std::atomic<uint32_t> >::const_iterator i = hashCounts.begin(); i != hashCounts.end(); i++ )
 	{
 		if ( i->second >= minCov )
 		{
@@ -397,7 +300,7 @@ int CommandScreen::run() const
 			
 				if ( sat )
 				{
-					saturationByIndex[*k].push_back(kmersTotal);
+					saturationByIndex[*k].push_back(0);// TODO kmersTotal);
 				}
 			}
 		}
@@ -528,6 +431,154 @@ double estimateDistance(uint64_t common, uint64_t denom, int kmerSize, double km
 	}
 	
 	return identity;
+}
+
+CommandScreen::HashOutput * hashSequence(CommandScreen::HashInput * input)
+{
+	CommandScreen::HashOutput * output = new CommandScreen::HashOutput(input->parameters);
+	
+	int l = input->length;
+	bool trans = input->trans;
+	
+	bool use64 = input->parameters.use64;
+	uint32_t seed = input->parameters.seed;
+	int kmerSize = input->parameters.kmerSize;
+	bool noncanonical = input->parameters.noncanonical;
+	
+	char * seq = input->seq;
+	
+	// uppercase
+	//
+	for ( uint64_t i = 0; i < l; i++ )
+	{
+		if ( ! input->parameters.preserveCase && seq[i] > 96 && seq[i] < 123 )
+		{
+			seq[i] -= 32;
+		}
+	}
+	
+	char * seqRev;
+	
+	if ( ! noncanonical || trans )
+	{
+		seqRev = new char[l];
+		reverseComplement(seq, seqRev, l);
+	}
+	
+	for ( int i = 0; i < (trans ? 6 : 1); i++ )
+	{
+		bool useRevComp = false;
+		int frame = i % 3;
+		bool rev = i > 2;
+		
+		int lenTrans = (l - frame) / 3;
+		
+		char * seqTrans;
+		
+		if ( trans )
+		{
+			seqTrans = new char[lenTrans];
+			translate((rev ? seqRev : seq) + frame, seqTrans, lenTrans);
+		}
+		
+		int64_t lastGood = -1;
+		int length = trans ? lenTrans : l;
+		
+		for ( int j = 0; j < length - kmerSize + 1; j++ )
+		{
+			while ( lastGood < j + kmerSize - 1 && lastGood < length )
+			{
+				lastGood++;
+				
+				if ( trans ? (seqTrans[lastGood] == '*') : (!input->parameters.alphabet[seq[lastGood]]) )
+				{
+					j = lastGood + 1;
+				}
+			}
+			
+			if ( j > length - kmerSize )
+			{
+				break;
+			}
+			
+			//kmersTotal++; TODO
+			
+			if ( ! noncanonical )
+			{
+				bool debug = false;
+				useRevComp = true;
+				bool prefixEqual = true;
+	
+				if ( debug ) {for ( uint64_t k = j; k < j + kmerSize; k++ ) { cout << *(seq + k); } cout << endl;}
+				
+				for ( uint64_t k = 0; k < kmerSize; k++ )
+				{
+					char base = seq[j + k];
+					char baseMinus = seqRev[l - j - kmerSize + k];
+		
+					if ( debug ) cout << baseMinus;
+		
+					if ( prefixEqual && baseMinus > base )
+					{
+						useRevComp = false;
+						break;
+					}
+		
+					if ( prefixEqual && baseMinus < base )
+					{
+						prefixEqual = false;
+					}
+				}
+	
+				if ( debug ) cout << endl;
+			}
+	
+			const char * kmer;
+			
+			if ( trans )
+			{
+				kmer = seqTrans + j;
+			}
+			else
+			{
+				kmer = useRevComp ? seqRev + l - j - kmerSize : seq + j;
+			}
+			
+			//cout << kmer << '\t' << kmerSize << endl;
+			hash_u hash = getHash(kmer, kmerSize, seed, use64);
+			//cout << kmer << '\t' << hash.hash64 << endl;
+			output->minHashHeap.tryInsert(hash);
+			
+			uint64_t key = use64 ? hash.hash64 : hash.hash32;
+			
+			if ( input->hashCounts.count(key) == 1 )
+			{
+				//cout << "Incrementing " << key << endl;
+				input->hashCounts[key]++;
+			}
+		}
+		
+		if ( trans )
+		{
+			delete [] seqTrans;
+		}
+	}
+	
+	if ( ! noncanonical || trans )
+	{
+		delete [] seqRev;
+	}
+	/*
+	addMinHashes(minHashHeap, seq, l, parameters);
+	
+	if ( parameters.targetCov > 0 && minHashHeap.estimateMultiplicity() >= parameters.targetCov )
+	{
+		l = -1; // success code
+		break;
+	}
+	*/
+	
+	return output;
 }
 
 double pValueWithin(uint64_t x, uint64_t setSize, double kmerSpace, uint64_t sketchSize)
@@ -738,6 +789,22 @@ char aaFromCodon(const char * codon)
 	}
 	
 	return aa;//(aa == '*') ? 0 : aa;
+}
+
+void useThreadOutput(CommandScreen::HashOutput * output, MinHashHeap & minHashHeap)
+{
+	// merge minHashes from threads into central minHash table for set size estimation
+	
+	HashList hashList;
+	
+	output->minHashHeap.toHashList(hashList);
+	
+	for ( int i = 0; i < hashList.size(); i++ )
+	{
+		minHashHeap.tryInsert(hashList.at(i));
+	}
+	
+	delete output;
 }
 
 } // namespace mash

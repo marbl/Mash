@@ -91,6 +91,45 @@ class CommandScreen : public Command
 {
 public:
     
+    struct HashInput
+    {
+    	HashInput(std::unordered_map<uint64_t, std::atomic<uint32_t> > & hashCountsNew, char * seqNew, uint64_t lengthNew, const Sketch::Parameters & parametersNew, bool transNew)
+    	:
+    	hashCounts(hashCountsNew),
+    	seq(seqNew),
+    	length(lengthNew),
+    	parameters(parametersNew),
+    	trans(transNew)
+    	{}
+    	
+    	~HashInput()
+    	{
+    		if ( seq != 0 )
+    		{
+	    		delete [] seq;
+	    	}
+    	}
+    	
+    	std::string fileName;
+    	
+    	char * seq;
+    	uint64_t length;
+    	bool trans;
+    	
+    	Sketch::Parameters parameters;
+		std::unordered_map<uint64_t, std::atomic<uint32_t> > & hashCounts;
+    };
+    
+    struct HashOutput
+    {
+    	HashOutput(const Sketch::Parameters & parameters)
+    	:
+    	minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.minCov, parameters.memoryBound)
+    	{}
+    	
+    	MinHashHeap minHashHeap;
+    };
+    
     CommandScreen();
     
     int run() const; // override
@@ -110,8 +149,10 @@ private:
 
 char aaFromCodon(const char * codon);
 double estimateDistance(uint64_t common, uint64_t denom, int kmerSize, double kmerSpace);
+CommandScreen::HashOutput * hashSequence(CommandScreen::HashInput * input);
 double pValueWithin(uint64_t x, uint64_t setSize, double kmerSpace, uint64_t sketchSize);
 void translate(const char * src, char * dst, uint64_t len);
+void useThreadOutput(CommandScreen::HashOutput * output, MinHashHeap & minHashHeap);
 
 } // namespace mash
 
