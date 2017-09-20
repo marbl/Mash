@@ -4,4 +4,4 @@
 //
 // See the LICENSE.txt file included with this software for license information.
 
-static const char * version = "1.2";
+static const char * version = "2.0";
