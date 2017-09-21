@@ -184,37 +184,78 @@ int CommandScreen::run() const
 	//
 	int l;
 	uint64_t count = 0;
-	uint64_t kmersTotal = 0;
+	//uint64_t kmersTotal = 0;
+	uint64_t chunkSize = 1 << 20;
+	string input;
+	input.reserve(chunkSize);
 	list<kseq_t *>::iterator it = kseqs.begin();
 	//
-	while ( kseqs.begin() != kseqs.end() )
+	while ( true )
 	{
-		l = kseq_read(*it);
+		if ( kseqs.begin() == kseqs.end() )
+		{
+			l = 0;
+		}
+		else
+		{
+			l = kseq_read(*it);
 		
-		if ( l < -1 ) // error
+			if ( l < -1 ) // error
+			{
+				break;
+			}
+		
+			if ( l == -1 ) // eof
+			{
+				kseq_destroy(*it);
+				it = kseqs.erase(it);
+				if ( it == kseqs.end() )
+				{
+					it = kseqs.begin();
+				}
+				//continue;
+			}
+		}
+		
+		if ( input.length() + (l >= kmerSize ? l + 1 : 0) > chunkSize || kseqs.begin() == kseqs.end() )
+		{
+			// chunk big enough or at the end; time to flush
+			
+			// buffer this out since kseq will overwrite (deleted by HashInput destructor)
+			//
+			char * seqCopy = new char[input.length()];
+			//
+			memcpy(seqCopy, input.c_str(), input.length());
+			
+			if ( minHashHeaps.begin() == minHashHeaps.end() )
+			{
+				minHashHeaps.emplace(new MinHashHeap(sketch.getUse64(), sketch.getMinHashesPerWindow()));
+			}
+			
+			threadPool.runWhenThreadAvailable(new HashInput(hashCounts, *minHashHeaps.begin(), seqCopy, input.length(), parameters, trans));
+		
+			input = "";
+		
+			minHashHeaps.erase(minHashHeaps.begin());
+		
+			while ( threadPool.outputAvailable() )
+			{
+				useThreadOutput(threadPool.popOutputWhenAvailable(), minHashHeaps);
+			}
+		}
+		
+		if ( kseqs.begin() == kseqs.end() )
 		{
 			break;
 		}
 		
-		if ( l == -1 ) // eof
-		{
-			kseq_destroy(*it);
-			it = kseqs.erase(it);
-			if ( it == kseqs.end() )
-			{
-				it = kseqs.begin();
-			}
-			continue;
-		}
-		
 		count++;
 		
-		if ( l < kmerSize ) // too short
+		if ( l >= kmerSize )
 		{
-			continue;
+			input.append(1, '*');
+			input.append((*it)->seq.s, l);
 		}
-		
-		char * seq = (*it)->seq.s;
 		
 		it++;
 		
@@ -222,26 +263,12 @@ int CommandScreen::run() const
 		{
 			it = kseqs.begin();
 		}
-		
-		// buffer this out since kseq will overwrite (deleted by HashInput destructor)
-		//
-		char * seqCopy = new char[l];
-		//
-		memcpy(seqCopy, seq, l);
-		
-		if ( minHashHeaps.begin() == minHashHeaps.end() )
-		{
-			minHashHeaps.emplace(new MinHashHeap(sketch.getUse64(), sketch.getMinHashesPerWindow()));
-		}
-		
-		threadPool.runWhenThreadAvailable(new HashInput(hashCounts, *minHashHeaps.begin(), seqCopy, l, parameters, trans));
-		
-		minHashHeaps.erase(minHashHeaps.begin());
-		
-		while ( threadPool.outputAvailable() )
-		{
-			useThreadOutput(threadPool.popOutputWhenAvailable(), minHashHeaps);
-		}
+	}
+	
+	if (  l != -1 )
+	{
+		cerr << "\nERROR: reading inputs" << endl;
+		exit(1);
 	}
     
 	while ( threadPool.running() )
@@ -258,7 +285,7 @@ int CommandScreen::run() const
 	
 	for ( unordered_set<MinHashHeap *>::const_iterator i = minHashHeaps.begin(); i != minHashHeaps.end(); i++ )
 	{
-		HashList hashList;
+		HashList hashList(parameters.kmerSize);
 		
 		(*i)->toHashList(hashList);
 		
@@ -268,12 +295,6 @@ int CommandScreen::run() const
 		}
 		
 		delete *i;
-	}
-	
-	if (  l != -1 )
-	{
-		cerr << "\nERROR: reading inputs" << endl;
-		exit(1);
 	}
 	
 	if ( count == 0 )
@@ -300,7 +321,7 @@ int CommandScreen::run() const
 	if ( setSize == 0 )
 	{
 		cerr << "WARNING: no valid k-mers in input." << endl;
-		exit(0);
+		//exit(0);
 	}
 	
 	cerr << "Summing shared..." << endl;
