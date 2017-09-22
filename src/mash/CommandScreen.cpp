@@ -44,11 +44,11 @@ CommandScreen::CommandScreen()
     argumentString = "<queries>.msh <pool> [<pool>] ...";
 	
 	useOption("help");
+	useOption("threads");
 //	useOption("minCov");
 //    addOption("saturation", Option(Option::Boolean, "s", "", "Include saturation curve in output. Each line will have an additional field representing the absolute number of k-mers seen at each Jaccard increase, formatted as a comma-separated list.", ""));
-//    addOption("winning!", Option(Option::Boolean, "w", "", "Winner-takes all output. After counting k-mers for each reference, k-mers that appear in multiple references will removed from all except that with the best distance, and distances will subsequently be recomputed.", ""));
+    addOption("winning!", Option(Option::Boolean, "w", "", "Winner-takes-all strategy for identity estimates. After counting hashes for each query, hashes that appear in multiple queries will removed from all except the one with the best identity, and other identities will be reduced. This removes output redundancy, but does not provide a true compositional breakdown.", ""));
 	//useSketchOptions();
-	useOption("threads");
     addOption("identity", Option(Option::Number, "i", "Output", "Minimum identity to report. Inclusive unless set to zero, in which case only identities greater than zero (i.e. with at least one shared hash) will be reported. Set to -1 to output everything.", "0", -1., 1.));
     addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
 }
@@ -350,7 +350,7 @@ int CommandScreen::run() const
 		}
 	}
 	
-	if ( false )//options.at("winning!").active )
+	if ( options.at("winning!").active )
 	{
 		cerr << "Reallocating to winners..." << endl;
 		
