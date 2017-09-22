@@ -266,7 +266,7 @@ uint64_t Sketch::initParametersFromCapnp(const char * file)
     capnp::FlatArrayMessageReader * message = new capnp::FlatArrayMessageReader(kj::ArrayPtr<const capnp::word>(reinterpret_cast<const capnp::word *>(data), fileInfo.st_size / sizeof(capnp::word)), readerOptions);
     capnp::MinHash::Reader reader = message->getRoot<capnp::MinHash>();
     
-    parameters.kmerSize = reader.getKmerSize() > 0 ? reader.getKmerSize() : reader.getKmerSizeOld();
+    parameters.kmerSize = reader.getKmerSize();
     parameters.error = reader.getError();
     parameters.minHashesPerWindow = reader.getMinHashesPerWindow();
     parameters.windowSize = reader.getWindowSize();
@@ -274,7 +274,7 @@ uint64_t Sketch::initParametersFromCapnp(const char * file)
     parameters.noncanonical = reader.getNoncanonical();
    	parameters.preserveCase = reader.getPreserveCase();
 
-    capnp::MinHash::ReferenceList::Reader referenceListReader = reader.getReferenceList();
+    capnp::MinHash::ReferenceList::Reader referenceListReader = reader.getReferenceList().getReferences().size() ? reader.getReferenceList() : reader.getReferenceListOld();
     capnp::List<capnp::MinHash::ReferenceList::Reference>::Reader referencesReader = referenceListReader.getReferences();
     uint64_t referenceCount = referencesReader.size();
     
@@ -370,7 +370,7 @@ int Sketch::writeToCapnp(const char * file) const
     capnp::MallocMessageBuilder message;
     capnp::MinHash::Builder builder = message.initRoot<capnp::MinHash>();
     
-    capnp::MinHash::ReferenceList::Builder referenceListBuilder = builder.initReferenceList();
+    capnp::MinHash::ReferenceList::Builder referenceListBuilder = (parameters.seed == 42 ? builder.initReferenceListOld() : builder.initReferenceList());
     
     capnp::List<capnp::MinHash::ReferenceList::Reference>::Builder referencesBuilder = referenceListBuilder.initReferences(references.size());
     
@@ -445,14 +445,6 @@ int Sketch::writeToCapnp(const char * file) const
     }
     
     builder.setKmerSize(parameters.kmerSize);
-    
-    if ( parameters.seed == 42 )
-    {
-    	// allow old versions to use this sketch by providing a valid kmer size		
-    	
-	    builder.setKmerSizeOld(parameters.kmerSize);
-    }
-    
     builder.setHashSeed(parameters.seed);
     builder.setError(parameters.error);
     builder.setMinHashesPerWindow(parameters.minHashesPerWindow);
@@ -941,7 +933,7 @@ Sketch::SketchOutput * loadCapnp(Sketch::SketchInput * input)
     capnp::FlatArrayMessageReader * message = new capnp::FlatArrayMessageReader(kj::ArrayPtr<const capnp::word>(reinterpret_cast<const capnp::word *>(data), fileInfo.st_size / sizeof(capnp::word)), readerOptions);
     capnp::MinHash::Reader reader = message->getRoot<capnp::MinHash>();
     
-    capnp::MinHash::ReferenceList::Reader referenceListReader = reader.getReferenceList();
+    capnp::MinHash::ReferenceList::Reader referenceListReader = reader.getReferenceList().getReferences().size() ? reader.getReferenceList() : reader.getReferenceListOld();
     
     capnp::List<capnp::MinHash::ReferenceList::Reference>::Reader referencesReader = referenceListReader.getReferences();
     
