@@ -47,7 +47,7 @@ CommandScreen::CommandScreen()
 	useOption("threads");
 //	useOption("minCov");
 //    addOption("saturation", Option(Option::Boolean, "s", "", "Include saturation curve in output. Each line will have an additional field representing the absolute number of k-mers seen at each Jaccard increase, formatted as a comma-separated list.", ""));
-    addOption("winning!", Option(Option::Boolean, "w", "", "Winner-takes-all strategy for identity estimates. After counting hashes for each query, hashes that appear in multiple queries will removed from all except the one with the best identity, and other identities will be reduced. This removes output redundancy, but does not provide a true compositional breakdown.", ""));
+    addOption("winning!", Option(Option::Boolean, "w", "", "Winner-takes-all strategy for identity estimates. After counting hashes for each query, hashes that appear in multiple queries will removed from all except the one with the best identity, and other identities will be reduced. This removes output redundancy, providing a rough compositional outline.", ""));
 	//useSketchOptions();
     addOption("identity", Option(Option::Number, "i", "Output", "Minimum identity to report. Inclusive unless set to zero, in which case only identities greater than zero (i.e. with at least one shared hash) will be reported. Set to -1 to output everything.", "0", -1., 1.));
     addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
@@ -358,7 +358,7 @@ int CommandScreen::run() const
 		
 		for ( int i = 0; i < sketch.getReferenceCount(); i ++ )
 		{
-			scores[i] = 1.0 - estimateDistance(shared[i], sketch.getReference(i).hashesSorted.size(), kmerSize, sketch.getKmerSpace());
+			scores[i] = estimateIdentity(shared[i], sketch.getReference(i).hashesSorted.size(), kmerSize, sketch.getKmerSpace());
 		}
 		
 		memset(shared, 0, sizeof(uint64_t) * sketch.getReferenceCount());
@@ -415,9 +415,9 @@ int CommandScreen::run() const
 	{
 		if ( shared[i] != 0 || identityMin < 0.0)
 		{
-			double distance = estimateDistance(shared[i], sketch.getReference(i).hashesSorted.size(), kmerSize, sketch.getKmerSpace());
+			double identity = estimateIdentity(shared[i], sketch.getReference(i).hashesSorted.size(), kmerSize, sketch.getKmerSpace());
 			
-			if ( distance < identityMin )
+			if ( identity < identityMin )
 			{
 				continue;
 			}
@@ -429,7 +429,7 @@ int CommandScreen::run() const
 				continue;
 			}
 			
-			cout << distance << '\t' << shared[i] << '/' << sketch.getReference(i).hashesSorted.size() << '\t' << (shared[i] > 0 ? depths[i].at(shared[i] / 2) : 0) << '\t' << pValue << '\t' << sketch.getReference(i).name << '\t' << sketch.getReference(i).comment;
+			cout << identity << '\t' << shared[i] << '/' << sketch.getReference(i).hashesSorted.size() << '\t' << (shared[i] > 0 ? depths[i].at(shared[i] / 2) : 0) << '\t' << pValue << '\t' << sketch.getReference(i).name << '\t' << sketch.getReference(i).comment;
 			
 			if ( sat )
 			{
@@ -455,7 +455,7 @@ int CommandScreen::run() const
 	return 0;
 }
 
-double estimateDistance(uint64_t common, uint64_t denom, int kmerSize, double kmerSpace)
+double estimateIdentity(uint64_t common, uint64_t denom, int kmerSize, double kmerSpace)
 {
 	double identity;
 	double jaccard = double(common) / denom;
