@@ -47,7 +47,7 @@ CommandScreen::CommandScreen()
 	useOption("threads");
 //	useOption("minCov");
 //    addOption("saturation", Option(Option::Boolean, "s", "", "Include saturation curve in output. Each line will have an additional field representing the absolute number of k-mers seen at each Jaccard increase, formatted as a comma-separated list.", ""));
-    addOption("winning!", Option(Option::Boolean, "w", "", "Winner-takes-all strategy for identity estimates. After counting hashes for each query, hashes that appear in multiple queries will removed from all except the one with the best identity, and other identities will be reduced. This removes output redundancy, providing a rough compositional outline.", ""));
+    addOption("winning!", Option(Option::Boolean, "w", "", "Winner-takes-all strategy for identity estimates. After counting hashes for each query, hashes that appear in multiple queries will removed from all except the one with the best identity (ties broken by larger query), and other identities will be reduced. This removes output redundancy, providing a rough compositional outline.", ""));
 	//useSketchOptions();
     addOption("identity", Option(Option::Number, "i", "Output", "Minimum identity to report. Inclusive unless set to zero, in which case only identities greater than zero (i.e. with at least one shared hash) will be reported. Set to -1 to output everything.", "0", -1., 1.));
     addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
@@ -377,26 +377,26 @@ int CommandScreen::run() const
 			
 			const unordered_set<uint64_t> & indeces = i->second;
 			double maxScore = 0;
-			vector<uint64_t> maxIndices;
+			uint64_t maxLength = 0;
+			uint64_t maxIndex;
 			
 			for ( unordered_set<uint64_t>::const_iterator k = indeces.begin(); k != indeces.end(); k++ )
 			{
 				if ( scores[*k] > maxScore )
 				{
 					maxScore = scores[*k];
-					maxIndices.clear();
-					maxIndices.push_back(*k);
+					maxIndex = *k;
+					maxLength = sketch.getReference(*k).length;
 				}
-				else if ( scores[*k] == maxScore )
+				else if ( scores[*k] == maxScore && sketch.getReference(*k).length > maxLength )
 				{
-					maxIndices.push_back(*k);
+					maxIndex = *k;
+					maxLength = sketch.getReference(*k).length;
 				}
 			}
 			
-			// mod hash to pseudo-randomly distribute among top score ties
-			//
-			shared[maxIndices[i->first % maxIndices.size()]]++;
-			depths[maxIndices[i->first % maxIndices.size()]].push_back(hashCounts.at(i->first));
+			shared[maxIndex]++;
+			depths[maxIndex].push_back(hashCounts.at(i->first));
 		}
 		
 		delete [] scores;
