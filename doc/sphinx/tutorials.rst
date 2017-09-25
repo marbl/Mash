@@ -94,6 +94,30 @@ Sort the results to see the top hits and their p-values:
 
   sort -gk3 distances.tab | head
 
+Containment of RefSeq genomes in a read set
+-------------------------------------------
+
+If a read set potentially has multiple genomes, it can be "screened" against the
+database to estimate how well each genome is contained in the read set:
+
+.. code::
+
+  mash screen RefSeqSketches.msh reads.fastq > screen.tab
+
+Screening ERR024951, for example, shows the expected organism, *Salmonella enterica*, but also an apparent contaminant, *Klebsiella pneumoniae*, and many contained plasmids (output sorted and abridged; the fields are [identity, shared-hashes, median-multiplicity, p-value, query-ID, query-comment]):
+
+.. code::
+
+  1	400/400	93	0	./rcn/refseq-NG-623-.-.-.-pSTR1-Shigella_flexneri.fna	
+  1	400/400	78	0	./rcn/refseq-NZ-573-PRJNA224116-SAMN02885365-GCF_000764615.1-pPMK1_A-Klebsiella_pneumoniae.fna	
+  1	400/400	76	0	./rcn/refseq-NG-1351-.-.-.-pNCC801-Enterococcus_faecalis.fna	
+  1	400/400	54	0	./rcn/refseq-NG-98360-.-.-.-virulence_plasmid-Salmonella_enterica_subsp._enterica_serovar_Dublin.fna
+  [...]
+  0.999844	399/400	1130	0	./rcn/refseq-NR-90371-PRJNA188943-.-.-.-Salmonella_enterica_subsp._enterica_serovar_Typhimurium.fna
+  [...]
+  0.998897	393/400	113	0	./rcn/refseq-NZ-1328378-PRJNA224116-SAMN02138586-GCF_000492775.1-.-Klebsiella_pneumoniae_MGH_46.fna
+  [...]
+
 Building a custom RefSeq database
 ---------------------------------
 
