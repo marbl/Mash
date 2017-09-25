@@ -1171,6 +1171,21 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 			continue;
 		}
 		
+		if ( count == 0 )
+		{
+			if ( input->fileName == "-" )
+			{
+				reference.name = seq->name.s;
+				reference.comment = seq->comment.s;
+			}
+			else
+			{
+				reference.comment = seq->name.s;
+				reference.comment.append(" ");
+				reference.comment.append(seq->comment.s);
+			}
+		}
+		
 		count++;
 		
 		//if ( verbosity > 0 && parameters.windowed ) cout << '>' << seq->name.s << " (" << l << "nt)" << endl << endl;
@@ -1181,11 +1196,6 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 		if ( ! parameters.reads )
 		{
 			reference.length += l;
-			
-			if ( input->fileName == "-" && reference.name == "" )
-			{
-				reference.name = seq->name.s;
-			}
 		}
 		
 		addMinHashes(minHashHeap, seq->seq.s, l, parameters);
@@ -1207,6 +1217,16 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 		{
 			reference.length = minHashHeap.estimateSetSize();
 		}
+	}
+	
+	if ( count > 1 )
+	{
+		//reference.comment.insert(0, " seqs] ");
+		//reference.comment.insert(0, to_string(count));
+		//reference.comment.insert(0, "[");
+		reference.comment.append(" [... ");
+		reference.comment.append(to_string(count - 1));
+		reference.comment.append(" more]");
 	}
 	
 	if (  l != -1 )
