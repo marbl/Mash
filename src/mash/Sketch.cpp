@@ -1221,12 +1221,12 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 	
 	if ( count > 1 )
 	{
-		//reference.comment.insert(0, " seqs] ");
-		//reference.comment.insert(0, to_string(count));
-		//reference.comment.insert(0, "[");
-		reference.comment.append(" [... ");
-		reference.comment.append(to_string(count - 1));
-		reference.comment.append(" more]");
+		reference.comment.insert(0, " seqs] ");
+		reference.comment.insert(0, to_string(count));
+		reference.comment.insert(0, "[");
+		reference.comment.append(" [...]");
+		//reference.comment.append(to_string(count - 1));
+		//reference.comment.append(" more]");
 	}
 	
 	if (  l != -1 )
