@@ -59,7 +59,7 @@ reference (which there are two of in the sketch file):
 Querying read sets against an existing RefSeq sketch
 ----------------------------------------------------
 
-Download and gunzip the pre-sketched RefSeq archive (reads not provided here;
+Download the pre-sketched RefSeq archive (reads not provided here;
 10x-100x coverage of a single genome with any sequencing technology should
 work):
 
