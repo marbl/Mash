@@ -104,6 +104,8 @@ Sort the results to see the top hits and their p-values:
 Screening a read set for containment of RefSeq genomes
 ------------------------------------------------------
 
+(new in `Mash v2.0 <https://github.com/marbl/Mash/releases>`_)
+
 If a read set potentially has multiple genomes, it can be "screened" against the
 database to estimate how well each genome is contained in the read set. We can
 use the `SRA Toolkit <https://www.ncbi.nlm.nih.gov/sra/docs/toolkitsoft/>`_ to
