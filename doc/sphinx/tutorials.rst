@@ -59,7 +59,7 @@ reference (which there are two of in the sketch file):
 Querying read sets against an existing RefSeq sketch
 ----------------------------------------------------
 
-Download and gunzip the pre-sketched RefSeq archive (reads not provided here;
+Download the pre-sketched RefSeq archive (reads not provided here;
 10x-100x coverage of a single genome with any sequencing technology should
 work):
 
@@ -103,6 +103,8 @@ Sort the results to see the top hits and their p-values:
 
 Screening a read set for containment of RefSeq genomes
 ------------------------------------------------------
+
+(new in `Mash v2.0 <https://github.com/marbl/Mash/releases>`_)
 
 If a read set potentially has multiple genomes, it can be "screened" against the
 database to estimate how well each genome is contained in the read set. We can
