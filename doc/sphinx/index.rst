@@ -26,6 +26,7 @@ Downloads
 =========
 
 * `Linux/OSX binaries and source <https://github.com/marbl/Mash/releases>`_
+* `RefSeq sketch database <https://gembox.cbcb.umd.edu/mash/refseq.genomes.k21s1000.msh>`_
 
 Documentation
 =============
