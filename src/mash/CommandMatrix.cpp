@@ -57,12 +57,6 @@ int CommandMatrix::run() const
     	return 1;
     }
     
-    uint64_t lengthMax;
-    double randomChance;
-    int kMin;
-    string lengthMaxName;
-    int warningCount = 0;
-    
     const string & fileReference = arguments[0];
     
     bool isSketch = hasSuffix(fileReference, suffixSketch);
@@ -129,33 +123,6 @@ int CommandMatrix::run() const
         string alphabet;
         sketchAll.getAlphabetAsString(alphabet);
         setAlphabetFromString(parameters, alphabet.c_str());
-    }
-    else
-    {
-        cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...";
-
-        double lengthThreshold = (parameters.warning * sketchAll.getKmerSpace()) / (1. - parameters.warning);
-        for ( uint64_t i = 0; i < sketchAll.getReferenceCount(); i++ )
-        {
-            uint64_t length = sketchAll.getReference(i).length;
-        
-            if ( length <= lengthThreshold )
-            {
-                continue;
-            }
-
-            if ( warningCount == 0 || length > lengthMax )
-            {
-                lengthMax = length;
-                lengthMaxName = sketchAll.getReference(i).name;
-                randomChance = sketchAll.getRandomKmerChance(i);
-                kMin = sketchAll.getMinKmerSize(i);
-            }
-        
-            warningCount++;
-        }
-    
-        cerr << "done.\n";
     }
     
     ThreadPool<CompareInput, CompareOutput> threadPool(compare, threads);
