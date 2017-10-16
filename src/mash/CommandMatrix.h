@@ -18,7 +18,7 @@ public:
     
     struct CompareInput
     {
-        CompareInput(const Sketch & sketchRefNew, const Sketch & sketchQueryNew, uint64_t indexRefNew, uint64_t indexQueryNew, uint64_t pairCountNew, const Sketch::Parameters & parametersNew, double maxDistanceNew, double maxPValueNew)
+        CompareInput(const Sketch & sketchRefNew, const Sketch & sketchQueryNew, uint64_t indexRefNew, uint64_t indexQueryNew, uint64_t pairCountNew, const Sketch::Parameters & parametersNew, double maxPValueNew)
             :
             sketchRef(sketchRefNew),
             sketchQuery(sketchQueryNew),
@@ -26,7 +26,6 @@ public:
             indexQuery(indexQueryNew),
             pairCount(pairCountNew),
             parameters(parametersNew),
-            maxDistance(maxDistanceNew),
             maxPValue(maxPValueNew)
             {}
         
@@ -38,7 +37,6 @@ public:
         uint64_t pairCount;
         
         const Sketch::Parameters & parameters;
-        double maxDistance;
         double maxPValue;
     };
     
@@ -89,7 +87,7 @@ private:
 };
 
 CommandMatrix::CompareOutput * compare(CommandMatrix::CompareInput * input);
-void compareSketches(CommandMatrix::CompareOutput::PairOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxDistance, double maxPValue);
+void compareSketches(CommandMatrix::CompareOutput::PairOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxPValue);
 double pValue(uint64_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint64_t sketchSize);
 
 } // namespace mash

@@ -67,6 +67,24 @@ int CommandMatrix::run() const
     
     bool isSketch = hasSuffix(fileReference, suffixSketch);
     
+    vector<string> filenames;
+
+    if ( list )
+    {
+        for ( string arg: arguments )
+        {
+            splitFile(arg, filenames);
+        }
+    }
+    else
+    {
+        filenames = arguments;
+    }
+    
+    
+    Sketch sketchAll;
+    sketchAll.initFromFiles(filenames, parameters, 0, true);
+       
     if ( isSketch )
     {
         if ( options.at("kmer").active )
@@ -92,48 +110,34 @@ int CommandMatrix::run() const
             cerr << "ERROR: The option -" << options.at("alphabet").identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
             return 1;
         }
-    }
-    else
-    {
-        cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...";
-    }
-    
-    vector<string> refArgVector;
-    refArgVector.push_back(fileReference);
-    
-    //cerr << "Sketch for " << fileReference << " not found or out of date; creating..." << endl;
-    
-    Sketch sketchRef;
-    sketchRef.initFromFiles(refArgVector, parameters);
-    
-    
-    if ( isSketch )
-    {
+
         if ( options.at("sketchSize").active )
         {
-            if ( parameters.reads && parameters.minHashesPerWindow != sketchRef.getMinHashesPerWindow() )
+            if ( parameters.reads && parameters.minHashesPerWindow != sketchAll.getMinHashesPerWindow() )
             {
                 cerr << "ERROR: The sketch size must match the reference when using a bloom filter (leave this option out to inherit from the reference sketch)." << endl;
                 return 1;
             }
         }
         
-        parameters.minHashesPerWindow = sketchRef.getMinHashesPerWindow();
-        parameters.kmerSize = sketchRef.getKmerSize();
-        parameters.noncanonical = sketchRef.getNoncanonical();
-        parameters.preserveCase = sketchRef.getPreserveCase();
-        parameters.seed = sketchRef.getHashSeed();
+        parameters.minHashesPerWindow = sketchAll.getMinHashesPerWindow();
+        parameters.kmerSize = sketchAll.getKmerSize();
+        parameters.noncanonical = sketchAll.getNoncanonical();
+        parameters.preserveCase = sketchAll.getPreserveCase();
+        parameters.seed = sketchAll.getHashSeed();
         
         string alphabet;
-        sketchRef.getAlphabetAsString(alphabet);
+        sketchAll.getAlphabetAsString(alphabet);
         setAlphabetFromString(parameters, alphabet.c_str());
     }
     else
     {
-        double lengthThreshold = (parameters.warning * sketchRef.getKmerSpace()) / (1. - parameters.warning);
-        for ( uint64_t i = 0; i < sketchRef.getReferenceCount(); i++ )
+        cerr << "Sketching " << fileReference << " (provide sketch file made with \"mash sketch\" to skip)...";
+
+        double lengthThreshold = (parameters.warning * sketchAll.getKmerSpace()) / (1. - parameters.warning);
+        for ( uint64_t i = 0; i < sketchAll.getReferenceCount(); i++ )
         {
-            uint64_t length = sketchRef.getReference(i).length;
+            uint64_t length = sketchAll.getReference(i).length;
         
             if ( length <= lengthThreshold )
             {
@@ -143,9 +147,9 @@ int CommandMatrix::run() const
             if ( warningCount == 0 || length > lengthMax )
             {
                 lengthMax = length;
-                lengthMaxName = sketchRef.getReference(i).name;
-                randomChance = sketchRef.getRandomKmerChance(i);
-                kMin = sketchRef.getMinKmerSize(i);
+                lengthMaxName = sketchAll.getReference(i).name;
+                randomChance = sketchAll.getRandomKmerChance(i);
+                kMin = sketchAll.getMinKmerSize(i);
             }
         
             warningCount++;
@@ -155,25 +159,6 @@ int CommandMatrix::run() const
     }
     
     ThreadPool<CompareInput, CompareOutput> threadPool(compare, threads);
-    
-    vector<string> filenames;
-
-    if ( list )
-    {
-        for ( string arg: arguments )
-        {
-            splitFile(arg, filenames);
-        }
-    }
-    else
-    {
-        filenames = arguments;
-    }
-    
-    
-    Sketch sketchAll;
-    sketchAll.initFromFiles(filenames, parameters, 0, true);
-    
     uint64_t count = sketchAll.getReferenceCount();
     uint64_t pairCount = count * count;
     uint64_t pairsPerThread = pairCount / parameters.parallelism;
@@ -195,7 +180,7 @@ int CommandMatrix::run() const
 
         for ( uint64_t j = 0; j < i; j++ )
         {
-            auto task = CompareInput(sketchAll, sketchAll, j, i, /*pairsPerThread*/1, parameters, distanceMax, pValueMax);
+            auto task = CompareInput(sketchAll, sketchAll, j, i, /*pairsPerThread*/1, parameters, pValueMax);
             // run
             auto output = compare(&task);
             mat[j][i] = mat[i][j] = output->pairs[0].distance;
