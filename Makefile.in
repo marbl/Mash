@@ -21,6 +21,7 @@ SOURCES=\
 	src/mash/CommandPaste.cpp \
 	src/mash/CommandSketch.cpp \
 	src/mash/CommandList.cpp \
+	src/mash/CommandMatrix.cpp \
 	src/mash/hash.cpp \
 	src/mash/HashList.cpp \
 	src/mash/HashPriorityQueue.cpp \
