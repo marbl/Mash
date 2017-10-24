@@ -51,12 +51,8 @@ struct CompareInput
 
 struct CompareOutput
 {
-    CompareOutput(const Sketch & sketchRefNew, const Sketch & sketchQueryNew, uint64_t indexRefNew, uint64_t indexQueryNew, uint64_t pairCountNew)
+    CompareOutput(uint64_t pairCountNew)
         :
-        sketchRef(sketchRefNew),
-        sketchQuery(sketchQueryNew),
-        indexRef(indexRefNew),
-        indexQuery(indexQueryNew),
         pairCount(pairCountNew)
     {
         pairs = new PairOutput[pairCount];
@@ -75,18 +71,11 @@ struct CompareOutput
         double pValue;
         bool pass;
     };
-    
-    const Sketch & sketchRef;
-    const Sketch & sketchQuery;
-    
-    uint64_t indexRef;
-    uint64_t indexQuery;
+
     uint64_t pairCount;
-    
     PairOutput * pairs;
 };
 
-void writeOutput(CompareOutput * output, bool table);
 CompareOutput * compare(CompareInput * input);
 CompareOutput::PairOutput compareSketches(const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxPValue);
 double pValue(uint64_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint64_t sketchSize);
@@ -232,7 +221,7 @@ CompareOutput * compare(CompareInput * input)
     const Sketch & sketchRef = input->sketchRef;
     const Sketch & sketchQuery = input->sketchQuery;
     
-    CompareOutput * output = new CompareOutput(input->sketchRef, input->sketchQuery, input->indexRef, input->indexQuery, input->pairCount);
+    CompareOutput * output = new CompareOutput(input->pairCount);
     
     uint64_t sketchSize = sketchQuery.getMinHashesPerWindow() < sketchRef.getMinHashesPerWindow() ?
         sketchQuery.getMinHashesPerWindow() :
