@@ -26,21 +26,6 @@ namespace mash {
 
 std::string extract_name(const std::string &file_name);
 
-struct CompareInput
-{
-    CompareInput(const Sketch & sketchNew, uint64_t indexRefNew, uint64_t indexQueryNew)
-        :
-        sketch(sketchNew),
-        indexRef(indexRefNew),
-        indexQuery(indexQueryNew)
-        {}
-    
-    const Sketch & sketch;
-    
-    uint64_t indexRef;
-    uint64_t indexQuery;
-};
-
 struct PairOutput
 {
     uint64_t numer;
@@ -49,8 +34,7 @@ struct PairOutput
     double pValue;
 };
 
-std::vector<PairOutput> compare(CompareInput * input);
-PairOutput compareSketches(const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace);
+PairOutput compare(const Sketch & sketchNew, uint64_t indexRefNew, uint64_t indexQueryNew);
 double pValue(uint64_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint64_t sketchSize);
 
 CommandMatrix::CommandMatrix()
@@ -163,10 +147,9 @@ int CommandMatrix::run() const
 
         for ( uint64_t j = 0; j < i; j++ )
         {
-            auto task = CompareInput(sketchAll, j, i);
             // run
-            auto output = compare(&task);
-            mat[j][i] = mat[i][j] = output[0].distance;
+            auto output = compare(sketchAll, j, i);
+            mat[j][i] = mat[i][j] = output.distance;
         }
     }
 
@@ -189,35 +172,15 @@ int CommandMatrix::run() const
     return 0;
 }
 
-std::vector<PairOutput> compare(CompareInput * input)
+PairOutput compare(const Sketch & sketch, uint64_t indexRef, uint64_t indexQuery)
 {
-    const Sketch & sketch = input->sketch;
-    
-    auto output = std::vector<PairOutput>(1);
-    
     uint64_t sketchSize = sketch.getMinHashesPerWindow();
     
-    uint64_t i = input->indexQuery;
-    uint64_t j = input->indexRef;
-    
-    for ( uint64_t k = 0; k < 1 && i < sketch.getReferenceCount(); k++ )
-    {
-        output[k] = compareSketches(sketch.getReference(j), sketch.getReference(i), sketchSize, sketch.getKmerSize(), sketch.getKmerSpace());
-        
-        j++;
-        
-        if ( j == sketch.getReferenceCount() )
-        {
-            j = 0;
-            i++;
-        }
-    }
-    
-    return output;
-}
+    auto refRef = sketch.getReference(indexRef);
+    auto refQry = sketch.getReference(indexQuery);
+    int kmerSize = sketch.getKmerSize();
+    double kmerSpace = sketch.getKmerSpace();
 
-PairOutput compareSketches(const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace)
-{
     uint64_t i = 0;
     uint64_t j = 0;
     uint64_t common = 0;
