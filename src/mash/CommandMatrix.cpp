@@ -23,6 +23,8 @@ using namespace::std;
 
 namespace mash {
 
+std::string extract_name(const std::string &file_name);
+
 CommandMatrix::CommandMatrix()
 : Command()
 {
@@ -143,7 +145,8 @@ int CommandMatrix::run() const
     cout << count << "\n";
     for ( uint64_t i = 0; i < count; i++ )
     {
-        cout << sketchAll.getReference(i).name;
+        auto file_name = sketchAll.getReference(i).name;
+        cout << extract_name(file_name);
 
         for ( uint64_t j = 0; j < count; j++ )
         {
@@ -267,6 +270,21 @@ void compareSketches(CommandMatrix::CompareOutput::PairOutput * output, const Sk
     }
     
     output->pass = true;
+}
+
+std::string extract_name(const std::string &file_name)
+{
+    // find the last path separator
+    auto left = file_name.rfind('/');
+    left = (left == std::string::npos) ? 0 : left + 1;
+    // left is the position one of to the right of the path separator
+
+    // find the extension
+    auto right = file_name.find('.', left);
+    right = (right == std::string::npos) ? file_name.size() : right;
+
+    // copy only the file name, not its path or extension
+    return file_name.substr(left, right - left);
 }
 
 } // namespace mash
