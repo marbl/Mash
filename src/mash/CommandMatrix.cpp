@@ -28,10 +28,9 @@ std::string extract_name(const std::string &file_name);
 
 struct CompareInput
 {
-    CompareInput(const Sketch & sketchRefNew, const Sketch & sketchQueryNew, uint64_t indexRefNew, uint64_t indexQueryNew, uint64_t pairCountNew, const Sketch::Parameters & parametersNew, double maxPValueNew)
+    CompareInput(const Sketch & sketchNew, uint64_t indexRefNew, uint64_t indexQueryNew, uint64_t pairCountNew, const Sketch::Parameters & parametersNew, double maxPValueNew)
         :
-        sketchRef(sketchRefNew),
-        sketchQuery(sketchQueryNew),
+        sketch(sketchNew),
         indexRef(indexRefNew),
         indexQuery(indexQueryNew),
         pairCount(pairCountNew),
@@ -39,8 +38,7 @@ struct CompareInput
         maxPValue(maxPValueNew)
         {}
     
-    const Sketch & sketchRef;
-    const Sketch & sketchQuery;
+    const Sketch & sketch;
     
     uint64_t indexRef;
     uint64_t indexQuery;
@@ -173,7 +171,7 @@ int CommandMatrix::run() const
 
         for ( uint64_t j = 0; j < i; j++ )
         {
-            auto task = CompareInput(sketchAll, sketchAll, j, i, /*pairsPerThread*/1, parameters, pValueMax);
+            auto task = CompareInput(sketchAll, j, i, /*pairsPerThread*/1, parameters, pValueMax);
             // run
             auto output = compare(&task);
             mat[j][i] = mat[i][j] = output[0].distance;
@@ -201,25 +199,22 @@ int CommandMatrix::run() const
 
 std::vector<PairOutput> compare(CompareInput * input)
 {
-    const Sketch & sketchRef = input->sketchRef;
-    const Sketch & sketchQuery = input->sketchQuery;
+    const Sketch & sketch = input->sketch;
     
     auto output = std::vector<PairOutput>(input->pairCount);
     
-    uint64_t sketchSize = sketchQuery.getMinHashesPerWindow() < sketchRef.getMinHashesPerWindow() ?
-        sketchQuery.getMinHashesPerWindow() :
-        sketchRef.getMinHashesPerWindow();
+    uint64_t sketchSize = sketch.getMinHashesPerWindow();
     
     uint64_t i = input->indexQuery;
     uint64_t j = input->indexRef;
     
-    for ( uint64_t k = 0; k < input->pairCount && i < sketchQuery.getReferenceCount(); k++ )
+    for ( uint64_t k = 0; k < input->pairCount && i < sketch.getReferenceCount(); k++ )
     {
-        output[k] = compareSketches(sketchRef.getReference(j), sketchQuery.getReference(i), sketchSize, sketchRef.getKmerSize(), sketchRef.getKmerSpace(), input->maxPValue);
+        output[k] = compareSketches(sketch.getReference(j), sketch.getReference(i), sketchSize, sketch.getKmerSize(), sketch.getKmerSpace(), input->maxPValue);
         
         j++;
         
-        if ( j == sketchRef.getReferenceCount() )
+        if ( j == sketch.getReferenceCount() )
         {
             j = 0;
             i++;
