@@ -88,7 +88,7 @@ struct CompareOutput
 
 void writeOutput(CompareOutput * output, bool table);
 CompareOutput * compare(CompareInput * input);
-void compareSketches(CompareOutput::PairOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxPValue);
+CompareOutput::PairOutput compareSketches(const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxPValue);
 double pValue(uint64_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint64_t sketchSize);
 
 CommandMatrix::CommandMatrix()
@@ -243,7 +243,7 @@ CompareOutput * compare(CompareInput * input)
     
     for ( uint64_t k = 0; k < input->pairCount && i < sketchQuery.getReferenceCount(); k++ )
     {
-        compareSketches(&output->pairs[k], sketchRef.getReference(j), sketchQuery.getReference(i), sketchSize, sketchRef.getKmerSize(), sketchRef.getKmerSpace(), input->maxPValue);
+        output->pairs[k] = compareSketches(sketchRef.getReference(j), sketchQuery.getReference(i), sketchSize, sketchRef.getKmerSize(), sketchRef.getKmerSpace(), input->maxPValue);
         
         j++;
         
@@ -257,7 +257,7 @@ CompareOutput * compare(CompareInput * input)
     return output;
 }
 
-void compareSketches(CompareOutput::PairOutput * output, const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxPValue)
+CompareOutput::PairOutput compareSketches(const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxPValue)
 {
     uint64_t i = 0;
     uint64_t j = 0;
@@ -266,14 +266,14 @@ void compareSketches(CompareOutput::PairOutput * output, const Sketch::Reference
     const HashList & hashesSortedRef = refRef.hashesSorted;
     const HashList & hashesSortedQry = refQry.hashesSorted;
     
-    
+    auto use64 = hashesSortedRef.get64();
     while ( denom < sketchSize && i < hashesSortedRef.size() && j < hashesSortedQry.size() )
     {
-        if ( hashLessThan(hashesSortedRef.at(i), hashesSortedQry.at(j), hashesSortedRef.get64()) )
+        if ( hashLessThan(hashesSortedRef.at(i), hashesSortedQry.at(j), use64) )
         {
             i++;
         }
-        else if ( hashLessThan(hashesSortedQry.at(j), hashesSortedRef.at(i), hashesSortedRef.get64()) )
+        else if ( hashLessThan(hashesSortedQry.at(j), hashesSortedRef.at(i), use64) )
         {
             j++;
         }
@@ -323,13 +323,17 @@ void compareSketches(CompareOutput::PairOutput * output, const Sketch::Reference
         //distance = log(double(common + 1) / (denom + 1)) / log(1. / (denom + 1));
         distance = -log(2 * jaccard / (1. + jaccard)) / kmerSize;
     }
+
+    CompareOutput::PairOutput output;
     
-    output->numer = common;
-    output->denom = denom;
-    output->distance = distance;
-    output->pValue = pValue(common, refRef.length, refQry.length, kmerSpace, denom);
+    output.numer = common;
+    output.denom = denom;
+    output.distance = distance;
+    output.pValue = pValue(common, refRef.length, refQry.length, kmerSpace, denom);
     
-    output->pass = output->pValue <= maxPValue;
+    output.pass = output.pValue <= maxPValue;
+
+    return output;
 }
 
 std::string extract_name(const std::string &file_name)
