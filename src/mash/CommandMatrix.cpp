@@ -7,6 +7,7 @@
 #include "CommandMatrix.h"
 #include "Sketch.h"
 #include <iostream>
+#include <vector>
 #include <zlib.h>
 #include "ThreadPool.h"
 #include "sketchParameterSetup.h"
@@ -49,35 +50,17 @@ struct CompareInput
     double maxPValue;
 };
 
-struct CompareOutput
+struct PairOutput
 {
-    CompareOutput(uint64_t pairCountNew)
-        :
-        pairCount(pairCountNew)
-    {
-        pairs = new PairOutput[pairCount];
-    }
-    
-    ~CompareOutput()
-    {
-        delete [] pairs;
-    }
-    
-    struct PairOutput
-    {
-        uint64_t numer;
-        uint64_t denom;
-        double distance;
-        double pValue;
-        bool pass;
-    };
-
-    uint64_t pairCount;
-    PairOutput * pairs;
+    uint64_t numer;
+    uint64_t denom;
+    double distance;
+    double pValue;
+    bool pass;
 };
 
-CompareOutput * compare(CompareInput * input);
-CompareOutput::PairOutput compareSketches(const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxPValue);
+std::vector<PairOutput> compare(CompareInput * input);
+PairOutput compareSketches(const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxPValue);
 double pValue(uint64_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint64_t sketchSize);
 
 CommandMatrix::CommandMatrix()
@@ -168,7 +151,7 @@ int CommandMatrix::run() const
         setAlphabetFromString(parameters, alphabet.c_str());
     }
     
-    ThreadPool<CompareInput, CompareOutput> threadPool(compare, threads);
+    // ThreadPool<CompareInput, CompareOutput> threadPool(compare, threads);
     uint64_t count = sketchAll.getReferenceCount();
     uint64_t pairCount = count * count;
     uint64_t pairsPerThread = pairCount / parameters.parallelism;
@@ -193,7 +176,7 @@ int CommandMatrix::run() const
             auto task = CompareInput(sketchAll, sketchAll, j, i, /*pairsPerThread*/1, parameters, pValueMax);
             // run
             auto output = compare(&task);
-            mat[j][i] = mat[i][j] = output->pairs[0].distance;
+            mat[j][i] = mat[i][j] = output[0].distance;
         }
     }
 
@@ -216,12 +199,12 @@ int CommandMatrix::run() const
     return 0;
 }
 
-CompareOutput * compare(CompareInput * input)
+std::vector<PairOutput> compare(CompareInput * input)
 {
     const Sketch & sketchRef = input->sketchRef;
     const Sketch & sketchQuery = input->sketchQuery;
     
-    CompareOutput * output = new CompareOutput(input->pairCount);
+    auto output = std::vector<PairOutput>(input->pairCount);
     
     uint64_t sketchSize = sketchQuery.getMinHashesPerWindow() < sketchRef.getMinHashesPerWindow() ?
         sketchQuery.getMinHashesPerWindow() :
@@ -232,7 +215,7 @@ CompareOutput * compare(CompareInput * input)
     
     for ( uint64_t k = 0; k < input->pairCount && i < sketchQuery.getReferenceCount(); k++ )
     {
-        output->pairs[k] = compareSketches(sketchRef.getReference(j), sketchQuery.getReference(i), sketchSize, sketchRef.getKmerSize(), sketchRef.getKmerSpace(), input->maxPValue);
+        output[k] = compareSketches(sketchRef.getReference(j), sketchQuery.getReference(i), sketchSize, sketchRef.getKmerSize(), sketchRef.getKmerSpace(), input->maxPValue);
         
         j++;
         
@@ -246,7 +229,7 @@ CompareOutput * compare(CompareInput * input)
     return output;
 }
 
-CompareOutput::PairOutput compareSketches(const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxPValue)
+PairOutput compareSketches(const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxPValue)
 {
     uint64_t i = 0;
     uint64_t j = 0;
@@ -313,7 +296,7 @@ CompareOutput::PairOutput compareSketches(const Sketch::Reference & refRef, cons
         distance = -log(2 * jaccard / (1. + jaccard)) / kmerSize;
     }
 
-    CompareOutput::PairOutput output;
+    PairOutput output;
     
     output.numer = common;
     output.denom = denom;
