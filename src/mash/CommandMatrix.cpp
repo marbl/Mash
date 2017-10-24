@@ -28,24 +28,17 @@ std::string extract_name(const std::string &file_name);
 
 struct CompareInput
 {
-    CompareInput(const Sketch & sketchNew, uint64_t indexRefNew, uint64_t indexQueryNew, uint64_t pairCountNew, const Sketch::Parameters & parametersNew, double maxPValueNew)
+    CompareInput(const Sketch & sketchNew, uint64_t indexRefNew, uint64_t indexQueryNew)
         :
         sketch(sketchNew),
         indexRef(indexRefNew),
-        indexQuery(indexQueryNew),
-        pairCount(pairCountNew),
-        parameters(parametersNew),
-        maxPValue(maxPValueNew)
+        indexQuery(indexQueryNew)
         {}
     
     const Sketch & sketch;
     
     uint64_t indexRef;
     uint64_t indexQuery;
-    uint64_t pairCount;
-    
-    const Sketch::Parameters & parameters;
-    double maxPValue;
 };
 
 struct PairOutput
@@ -54,11 +47,10 @@ struct PairOutput
     uint64_t denom;
     double distance;
     double pValue;
-    bool pass;
 };
 
 std::vector<PairOutput> compare(CompareInput * input);
-PairOutput compareSketches(const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxPValue);
+PairOutput compareSketches(const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace);
 double pValue(uint64_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint64_t sketchSize);
 
 CommandMatrix::CommandMatrix()
@@ -171,7 +163,7 @@ int CommandMatrix::run() const
 
         for ( uint64_t j = 0; j < i; j++ )
         {
-            auto task = CompareInput(sketchAll, j, i, /*pairsPerThread*/1, parameters, pValueMax);
+            auto task = CompareInput(sketchAll, j, i);
             // run
             auto output = compare(&task);
             mat[j][i] = mat[i][j] = output[0].distance;
@@ -201,16 +193,16 @@ std::vector<PairOutput> compare(CompareInput * input)
 {
     const Sketch & sketch = input->sketch;
     
-    auto output = std::vector<PairOutput>(input->pairCount);
+    auto output = std::vector<PairOutput>(1);
     
     uint64_t sketchSize = sketch.getMinHashesPerWindow();
     
     uint64_t i = input->indexQuery;
     uint64_t j = input->indexRef;
     
-    for ( uint64_t k = 0; k < input->pairCount && i < sketch.getReferenceCount(); k++ )
+    for ( uint64_t k = 0; k < 1 && i < sketch.getReferenceCount(); k++ )
     {
-        output[k] = compareSketches(sketch.getReference(j), sketch.getReference(i), sketchSize, sketch.getKmerSize(), sketch.getKmerSpace(), input->maxPValue);
+        output[k] = compareSketches(sketch.getReference(j), sketch.getReference(i), sketchSize, sketch.getKmerSize(), sketch.getKmerSpace());
         
         j++;
         
@@ -224,7 +216,7 @@ std::vector<PairOutput> compare(CompareInput * input)
     return output;
 }
 
-PairOutput compareSketches(const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace, double maxPValue)
+PairOutput compareSketches(const Sketch::Reference & refRef, const Sketch::Reference & refQry, uint64_t sketchSize, int kmerSize, double kmerSpace)
 {
     uint64_t i = 0;
     uint64_t j = 0;
@@ -298,8 +290,6 @@ PairOutput compareSketches(const Sketch::Reference & refRef, const Sketch::Refer
     output.distance = distance;
     output.pValue = pValue(common, refRef.length, refQry.length, kmerSpace, denom);
     
-    output.pass = output.pValue <= maxPValue;
-
     return output;
 }
 
