@@ -31,11 +31,9 @@ struct PairOutput
     uint64_t numer;
     uint64_t denom;
     double distance;
-    double pValue;
 };
 
 PairOutput compare(const Sketch & sketchNew, uint64_t indexRefNew, uint64_t indexQueryNew);
-double pValue(uint64_t x, uint64_t lengthRef, uint64_t lengthQuery, double kmerSpace, uint64_t sketchSize);
 
 CommandMatrix::CommandMatrix()
 : Command()
@@ -46,8 +44,8 @@ CommandMatrix::CommandMatrix()
     argumentString = "<file> ...";
     
     useOption("help");
-    addOption("list", Option(Option::Boolean, "l", "Input", "List input. Lines in each <query> specify paths to sequence files, one per line. The reference file is not affected.", ""));
-    addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
+    addOption("list", Option(Option::Boolean, "l", "Input", "List input. Lines in each <file> specify paths to sequence files, one per line.", ""));
+    // addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
     useSketchOptions();
 }
 
@@ -226,7 +224,6 @@ PairOutput compare(const Sketch & sketch, uint64_t indexRef, uint64_t indexQuery
     output.numer = common;
     output.denom = denom;
     output.distance = distance;
-    output.pValue = pValue(common, refRef.length, refQry.length, kmerSpace, denom);
     
     return output;
 }
