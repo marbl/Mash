@@ -149,18 +149,18 @@ PairOutput compare(const Sketch & sketch, uint64_t indexRef, uint64_t indexQuery
 {
     uint64_t sketchSize = sketch.getMinHashesPerWindow();
     
-    auto refRef = sketch.getReference(indexRef);
-    auto refQry = sketch.getReference(indexQuery);
-    int kmerSize = sketch.getKmerSize();
-    double kmerSpace = sketch.getKmerSpace();
-
     uint64_t i = 0;
     uint64_t j = 0;
     uint64_t common = 0;
     uint64_t denom = 0;
-    const HashList & hashesSortedRef = refRef.hashesSorted;
-    const HashList & hashesSortedQry = refQry.hashesSorted;
+    const HashList & hashesSortedRef = sketch.getReference(indexRef).hashesSorted;
+    const HashList & hashesSortedQry = sketch.getReference(indexQuery).hashesSorted;
     
+    /*
+     * The following code should be replaced with std::set_intersection, but
+     * some design choice prevent this.
+     */
+
     auto use64 = hashesSortedRef.get64();
     while ( denom < sketchSize && i < hashesSortedRef.size() && j < hashesSortedQry.size() )
     {
@@ -216,7 +216,7 @@ PairOutput compare(const Sketch & sketch, uint64_t indexRef, uint64_t indexQuery
     else
     {
         //distance = log(double(common + 1) / (denom + 1)) / log(1. / (denom + 1));
-        distance = -log(2 * jaccard / (1. + jaccard)) / kmerSize;
+        distance = -log(2 * jaccard / (1. + jaccard)) / sketch.getKmerSize();
     }
 
     PairOutput output;
