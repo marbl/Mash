@@ -116,6 +116,11 @@ int CommandMatrix::run() const
     for ( uint64_t i = 0; i < count; i++ )
     {
         mat[i] = &matbase[i * count];
+    }
+
+    #pragma omp parallel for num_threads(threads)
+    for ( uint64_t i = 0; i < count; i++ )
+    {
         mat[i][i] = 0.0;
 
         for ( uint64_t j = 0; j < i; j++ )

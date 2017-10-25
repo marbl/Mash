@@ -1,5 +1,5 @@
-CXXFLAGS += -O3 -std=c++11 -Isrc -I@capnp@/include -I@mathinc@
-CPPFLAGS += @amcppflags@
+CXXFLAGS += @OPENMP_CXXFLAGS@ -O3 -std=c++11 -Isrc -I@capnp@/include -I@mathinc@
+CPPFLAGS += @OPENMP_CPPFLAGS@ @amcppflags@
 
 UNAME_S=$(shell uname -s)
 
