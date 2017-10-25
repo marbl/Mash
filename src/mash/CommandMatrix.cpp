@@ -60,24 +60,17 @@ int CommandMatrix::run() const
     }
     
     int threads = options.at("threads").getArgumentAsNumber();
-    bool list = options.at("list").active;
-    //bool log = options.at("log").active;
-    double pValueMax = options.at("pvalue").getArgumentAsNumber();
     
     Sketch::Parameters parameters;
     
     if ( sketchParameterSetup(parameters, *(Command *)this) )
     {
-    	return 1;
+        return 1;
     }
-    
-    const string & fileReference = arguments[0];
-    
-    bool isSketch = hasSuffix(fileReference, suffixSketch);
     
     vector<string> filenames;
 
-    if ( list )
+    if ( options.at("list").active )
     {
         for ( string arg: arguments )
         {
@@ -89,10 +82,10 @@ int CommandMatrix::run() const
         filenames = arguments;
     }
     
-    
     Sketch sketchAll;
     sketchAll.initFromFiles(filenames, parameters, 0, true);
        
+    bool isSketch = hasSuffix(filenames[0], suffixSketch);
     if ( isSketch )
     {
         auto unavailable_options = {"kmer", "noncanonical", "protein", "alphabet"};
@@ -113,29 +106,11 @@ int CommandMatrix::run() const
                 return 1;
             }
         }
-        
-        parameters.minHashesPerWindow = sketchAll.getMinHashesPerWindow();
-        parameters.kmerSize = sketchAll.getKmerSize();
-        parameters.noncanonical = sketchAll.getNoncanonical();
-        parameters.preserveCase = sketchAll.getPreserveCase();
-        parameters.seed = sketchAll.getHashSeed();
-        
-        string alphabet;
-        sketchAll.getAlphabetAsString(alphabet);
-        setAlphabetFromString(parameters, alphabet.c_str());
+
+        // As far as I can tell, `parameters` is unused.
     }
     
-    // ThreadPool<CompareInput, CompareOutput> threadPool(compare, threads);
     uint64_t count = sketchAll.getReferenceCount();
-    uint64_t pairCount = count * count;
-    uint64_t pairsPerThread = pairCount / parameters.parallelism;
-    static uint64_t maxPairsPerThread = 0x1000;
-
-    pairsPerThread = std::max(pairsPerThread, 1lu);
-    pairsPerThread = std::min(pairsPerThread, maxPairsPerThread);
-    
-    uint64_t iFloor = pairsPerThread / count;
-    uint64_t iMod = pairsPerThread % count;
 
     auto matbase = new double[count*count];
     auto mat = new double*[count];
