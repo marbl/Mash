@@ -67,6 +67,12 @@ install : mash
 	cp `pwd`/src/mash/*.h @prefix@/include/mash/
 	cp `pwd`/src/mash/capnp/MinHash.capnp.h @prefix@/include/mash/capnp/
 
+.PHONY: uninstall
+uninstall:
+	rm -f @prefix@/bin/mash
+	rm -f @prefix@/lib/libmash.a
+	rm -rf @prefix@/include/mash
+
 clean :
 	-rm mash
 	-rm libmash.a
