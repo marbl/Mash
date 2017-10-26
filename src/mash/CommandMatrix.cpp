@@ -163,7 +163,7 @@ PairOutput compare(const Sketch & sketch, uint64_t indexRef, uint64_t indexQuery
     
     /*
      * The following code should be replaced with std::set_intersection, but
-     * some design choice prevent this.
+     * some poor design choices of HashList prevent this.
      */
 
     auto use64 = hashesSortedRef.get64();
@@ -187,6 +187,14 @@ PairOutput compare(const Sketch & sketch, uint64_t indexRef, uint64_t indexQuery
         denom++;
     }
     
+    /*
+     * If I am not mistaken, this block could be just:
+     *
+     *  denom = hashesSortedRef.size() + hashesSortedQry.size() - common;
+     *
+     * But I am not sure in the cases of different sizes.
+     */
+
     if ( denom < sketchSize )
     {
         // complete the union operation if possible
