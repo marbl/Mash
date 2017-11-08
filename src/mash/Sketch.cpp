@@ -1176,13 +1176,13 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 			if ( input->fileName == "-" )
 			{
 				reference.name = seq->name.s;
-				reference.comment = seq->comment.s;
+				reference.comment = seq->comment.s ? seq->comment.s : "";
 			}
 			else
 			{
 				reference.comment = seq->name.s;
 				reference.comment.append(" ");
-				reference.comment.append(seq->comment.s);
+				reference.comment.append(seq->comment.s ? seq->comment.s : "");
 			}
 		}
 		
