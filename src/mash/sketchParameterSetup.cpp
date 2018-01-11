@@ -61,7 +61,7 @@ int sketchParameterSetup(Sketch::Parameters & parameters, const Command & comman
     
     if ( parameters.reads && ! parameters.concatenated )
     {
-        cerr << "ERROR: The option " << command.getOption("individual").identifier << " cannot be used with " << command.getOption("unique").identifier << "." << endl;
+        cerr << "ERROR: The option " << command.getOption("individual").identifier << " cannot be used with " << command.getOption("reads").identifier << "." << endl;
         return 1;
     }
     

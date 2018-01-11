@@ -1239,7 +1239,7 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 	{
 		if ( skipped )
 		{
-			cerr << "\nWARNING: All fasta records in " << input->fileName << "were shorter than the k-mer size (" << parameters.kmerSize << ")." << endl;
+			cerr << "\nWARNING: All fasta records in " << input->fileName << " were shorter than the k-mer size (" << parameters.kmerSize << ")." << endl;
 		}
 		else
 		{
