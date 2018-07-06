@@ -91,6 +91,77 @@ uint64_t Sketch::getReferenceIndex(string id) const
     }
 }
 
+int Sketch::initFromSequences(const std::vector<Sequence>& seqs, const Parameters & parametersNew, int verbosity, bool enforceParameters, bool contain)
+{
+    parameters = parametersNew;
+    
+    auto minHashHeap = MinHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.reads ? parameters.minCov : 1, parameters.memoryBound);
+    auto threadPool = ThreadPool<Sketch::SketchInput, Sketch::SketchOutput>(0, parameters.parallelism);
+
+    for (const auto& seq: seqs) {
+        for (size_t i=0; i<seq.seqs.size(); i++) {
+            char *will_get_deleted = new char[seq.seqs[i].size() + 1];
+            memcpy(will_get_deleted, seq.seqs[i].c_str(), seq.seqs[i].size() + 1);
+
+            auto in = new SketchInput("", will_get_deleted, seq.seqs[i].size(), seq.names[i], seq.comments[i], parameters);
+
+            threadPool.runWhenThreadAvailable( in, sketchSequence);
+            // while ( threadPool.outputAvailable() )
+            // {
+            //  useThreadOutput(threadPool.popOutputWhenAvailable());
+            // }
+
+            // auto *out = sketchSequence(&in);
+            // useThreadOutput(out);
+        }
+    }
+
+    while ( threadPool.running() )
+    {
+        useThreadOutput(threadPool.popOutputWhenAvailable());
+    }
+    
+    createIndex();
+
+    return 0;
+}
+
+
+
+int Sketch::initFromSequence(const Sequence& seq, const Parameters & parametersNew, int verbosity, bool enforceParameters, bool contain)
+{
+    parameters = parametersNew;
+    
+	MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.reads ? parameters.minCov : 1, parameters.memoryBound);
+
+    auto threadPool = ThreadPool<Sketch::SketchInput, Sketch::SketchOutput>(0, parameters.parallelism);
+
+	for (size_t i=0; i<seq.seqs.size(); i++) {
+		char *will_get_deleted = new char[seq.seqs[i].size() + 1];
+		memcpy(will_get_deleted, seq.seqs[i].c_str(), seq.seqs[i].size() + 1);
+
+		auto in = new SketchInput("", will_get_deleted, seq.seqs[i].size(), seq.names[i], seq.comments[i], parameters);
+
+		threadPool.runWhenThreadAvailable( in, sketchSequence);
+		// while ( threadPool.outputAvailable() )
+		// {
+		// 	useThreadOutput(threadPool.popOutputWhenAvailable());
+		// }
+
+        // auto *out = sketchSequence(&in);
+        // useThreadOutput(out);
+    }
+
+	while ( threadPool.running() )
+	{
+		useThreadOutput(threadPool.popOutputWhenAvailable());
+	}
+    
+    createIndex();
+
+    return 0;
+}
+
 int Sketch::initFromFiles(const vector<string> & files, const Parameters & parametersNew, int verbosity, bool enforceParameters, bool contain)
 {
     parameters = parametersNew;
@@ -618,7 +689,7 @@ void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * s
         bool isMinmer;
     };
     
-    // All potential min-hash loci in the current window organized by their
+    // All reverseComplementpotential min-hash loci in the current window organized by their
     // hashes so repeats can be grouped and so the sorted keys can be used to
     // keep track of the current h bottom hashes. A deque is used here (rather
     // than a standard queue) for each list of candidate loci for the sake of
@@ -709,24 +780,15 @@ void getMinHashPositions(vector<Sketch::PositionHash> & positionHashes, char * s
             //
             newCandidates->second.push_back(CandidateLocus(i));
             
-            if
-            (
-                inserted.second && // inserted; decrement maxMinmer if...
-                (
-                    (
-                        // ...just reached number of mins
-                        
-                        maxMinmer == candidatesByHash.end() &&
-                        candidatesByHash.size() == mins
-                    ) ||
-                    (
-                        // ...inserted before maxMinmer
-                        
-                        maxMinmer != candidatesByHash.end() &&
-                        newCandidates->first < maxMinmer->first
-                    )
-                )
-            )
+            // inserted; decrement maxMinmer if...
+            // ...just reached number of mins
+            // ...inserted before maxMinmer
+
+            bool doDecMaxMinmer = maxMinmer == candidatesByHash.end() ?
+                candidatesByHash.size() == mins :
+                newCandidates->first < maxMinmer->first;
+            
+            if ( inserted.second && doDecMaxMinmer )
             {
                 maxMinmer--;
                 

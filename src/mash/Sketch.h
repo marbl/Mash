@@ -16,6 +16,7 @@
 #include <string.h>
 #include "MinHashHeap.h"
 #include "ThreadPool.h"
+#include "Sequence.h"
 
 static const char * capnpHeader = "Cap'n Proto";
 static const int capnpHeaderLength = strlen(capnpHeader);
@@ -30,6 +31,8 @@ class Sketch
 {
 public:
     
+    Sketch() = default;
+
     typedef uint64_t hash_t;
     
     struct Parameters
@@ -176,7 +179,8 @@ public:
     	std::vector<Reference> references;
 	    std::vector<std::vector<PositionHash>> positionHashesByReference;
     };
-    
+
+ 
     void getAlphabetAsString(std::string & alphabet) const;
     uint32_t getAlphabetSize() const {return parameters.alphabetSize;}
     bool getConcatenated() const {return parameters.concatenated;}
@@ -206,6 +210,9 @@ public:
     void warnKmerSize(uint64_t lengthMax, const std::string & lengthMaxName, double randomChance, int kMin, int warningCount) const;
     bool writeToFile() const;
     int writeToCapnp(const char * file) const;
+
+    int initFromSequences(const std::vector<Sequence>& seqs, const Parameters & parametersNew, int verbosity = 0, bool enforceParameters = false, bool contain = false);
+    int initFromSequence(const Sequence& seq, const Parameters & parametersNew, int verbosity = 0, bool enforceParameters = false, bool contain = false);
     
 private:
     

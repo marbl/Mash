@@ -1,5 +1,6 @@
-CXXFLAGS += @OPENMP_CXXFLAGS@ -O3 -std=c++11 -Isrc -I@capnp@/include -I@mathinc@
+CXXFLAGS += @OPENMP_CXXFLAGS@ -ggdb -O3 -std=c++11 -Isrc -I@capnp@/include -I@mathinc@
 CPPFLAGS += @OPENMP_CPPFLAGS@ @amcppflags@
+#-fsanitize=address
 
 UNAME_S=$(shell uname -s)
 
@@ -31,6 +32,7 @@ SOURCES=\
 	src/mash/mash.cpp \
 	src/mash/Sketch.cpp \
 	src/mash/sketchParameterSetup.cpp \
+	src/mash/Sequence.cpp
 
 OBJECTS=$(SOURCES:.cpp=.o) src/mash/capnp/MinHash.capnp.o
 

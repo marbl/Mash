@@ -80,33 +80,20 @@ int CommandMatrix::run() const
         filenames = arguments;
     }
     
+    // Sketch sketchAll;
+    // sketchAll.initFromFiles(filenames, parameters, 0, true);
+
+    auto seqs = std::vector<Sequence>{};
+    std::transform(filenames.begin(), filenames.end(), std::back_inserter(seqs),[](std::string file_name){
+        return Sequence::fromFile(file_name);
+    });
+
     Sketch sketchAll;
-    sketchAll.initFromFiles(filenames, parameters, 0, true);
-       
-    bool isSketch = hasSuffix(filenames[0], suffixSketch);
-    if ( isSketch )
-    {
-        auto unavailable_options = {"kmer", "noncanonical", "protein", "alphabet"};
-        for ( auto opt: unavailable_options)
-        {
-            if ( options.at(opt).active )
-            {
-                cerr << "ERROR: The option -" << options.at(opt).identifier << " cannot be used when a sketch is provided; it is inherited from the sketch." << endl;
-                return 1;
-            }
-        }
-
-        if ( options.at("sketchSize").active )
-        {
-            if ( parameters.reads && parameters.minHashesPerWindow != sketchAll.getMinHashesPerWindow() )
-            {
-                cerr << "ERROR: The sketch size must match the reference when using a bloom filter (leave this option out to inherit from the reference sketch)." << endl;
-                return 1;
-            }
-        }
-
-        // As far as I can tell, `parameters` is unused.
-    }
+    sketchAll.initFromSequences(seqs, parameters, 0, true);
+    // for (auto &seq: seqs) {
+        // TODO: parallelize this
+        // sketchAll.initFromSequences(seq, parameters, 0, true);
+    // }
     
     uint64_t count = sketchAll.getReferenceCount();
 
