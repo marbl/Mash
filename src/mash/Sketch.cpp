@@ -112,13 +112,6 @@ int Sketch::initFromSequences(const std::vector<Sequence>& seqs, const Parameter
             auto in = new SketchInput("", will_get_deleted, seq.seqs[i].size(), seq.names[i], seq.comments[i], parameters);
 
             threadPool.runWhenThreadAvailable( in, sketchSequence);
-            // while ( threadPool.outputAvailable() )
-            // {
-            //  useThreadOutput(threadPool.popOutputWhenAvailable());
-            // }
-
-            // auto *out = sketchSequence(&in);
-            // useThreadOutput(out);
         }
     }
 
@@ -565,6 +558,7 @@ void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const 
     int kmerSize = parameters.kmerSize;
     uint64_t mins = parameters.minHashesPerWindow;
     bool noncanonical = parameters.noncanonical;
+    bool canonical = !noncanonical;
     
     // Determine the 'mins' smallest hashes, including those already provided
     // (potentially replacing them). This allows min-hash sets across multiple
@@ -582,7 +576,7 @@ void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const 
     
     char * seqRev;
     
-    if ( ! noncanonical )
+    if ( canonical )
     {
     	seqRev = new char[length];
         reverseComplement(seq, seqRev, length);
@@ -618,46 +612,32 @@ void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const 
 			break;
 		}
             
-        if ( ! noncanonical )
-        {
-            useRevComp = true;
-            bool prefixEqual = true;
+        // TODO: we are assuming canonical bases for now.
+
+        /* The following code compares the forward kmer and the reverse
+         * complement *lexicographically* and only computes the hash for
+         * the lesser of the two. That then gets added to the sketch.
+         * However, I think, that is problematic, because the larger
+         * kmer can well have a smaller sketch. See also
+         * https://github.com/marbl/Mash/issues/91
+         *
+         */
+        const char *kmer_fwd = seq + i;
+        const char *kmer_rev = seqRev + length - i - kmerSize;
+        int t = strncmp(kmer_fwd, kmer_rev, kmerSize);
+        const char *kmer = t <= 0 ? kmer_fwd : kmer_rev;
         
-            if ( debug ) {for ( uint64_t j = i; j < i + kmerSize; j++ ) { cout << *(seq + j); } cout << endl;}
+        // hash_u hash_fwd = getHash(kmer_fwd, kmerSize, parameters.seed, parameters.use64);
+        // hash_u hash_rev = getHash(kmer_rev, kmerSize, parameters.seed, parameters.use64);
+
+        hash_u hash = getHash(kmer, kmerSize, parameters.seed, parameters.use64);
         
-            for ( uint64_t j = 0; j < kmerSize; j++ )
-            {
-                char base = seq[i + j];
-                char baseMinus = seqRev[length - i - kmerSize + j];
-            
-                if ( debug ) cout << baseMinus;
-            
-                if ( prefixEqual && baseMinus > base )
-                {
-                    useRevComp = false;
-                    break;
-                }
-            
-                if ( prefixEqual && baseMinus < base )
-                {
-                    prefixEqual = false;
-                }
-            }
-        
-            if ( debug ) cout << endl;
-        }
-        
-        const char * kmer = useRevComp ? seqRev + length - i - kmerSize : seq + i;
-        bool filter = false;
-        
-        hash_u hash = getHash(useRevComp ? seqRev + length - i - kmerSize : seq + i, kmerSize, parameters.seed, parameters.use64);
-        
-        if ( debug ) cout << endl;
         
 		minHashHeap.tryInsert(hash);
+        // minHashHeap.tryInsert(hash_rev);
     }
     
-    if ( ! noncanonical )
+    if ( canonical )
     {
         delete [] seqRev;
     }
