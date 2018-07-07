@@ -76,12 +76,15 @@ void MinHashHeap::clear()
 	multiplicitySum = 0;
 }
 
+#define UNLIKELY(X) __builtin_expect((X), false)
+#define LIKELY(X) __builtin_expect((X), true)
+
 void MinHashHeap::tryInsert(hash_u hash)
 {
 	if
 	(
-		hashes.size() < cardinalityMaximum ||
-		hashLessThan(hash, hashesQueue.top(), use64)
+		UNLIKELY(hashes.size() < cardinalityMaximum ||
+			hashLessThan(hash, hashesQueue.top(), use64))
 	)
 	{
 		if ( hashes.count(hash) == 0 )

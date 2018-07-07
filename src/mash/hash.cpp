@@ -36,15 +36,3 @@ hash_u getHash(const char * seq, int length, uint32_t seed, bool use64)
     
     return hash;
 }
-
-bool hashLessThan(hash_u hash1, hash_u hash2, bool use64)
-{
-    if ( use64 )
-    {
-        return hash1.hash64 < hash2.hash64;
-    }
-    else
-    {
-        return hash1.hash32 < hash2.hash32;
-    }
-}
