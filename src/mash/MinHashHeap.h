@@ -7,6 +7,10 @@
 #include <math.h>
 #include "bloom_filter.hpp"
 
+#define UNLIKELY(X) __builtin_expect((X), false)
+#define LIKELY(X) __builtin_expect((X), true)
+
+
 class MinHashHeap
 {
 public:
@@ -19,7 +23,12 @@ public:
 	double estimateSetSize() const;
 	void toCounts(std::vector<uint32_t> & counts) const;
     void toHashList(HashList & hashList) const;
-	void tryInsert(hash_u hash);
+    void insert(hash_u hash);
+	void tryInsert(hash_u hash) {
+		if ( UNLIKELY(hashes.size() < cardinalityMaximum || hashLessThan(hash, hashesQueue.top(), use64))) {
+			insert(hash);
+		}
+	}
 
 private:
 

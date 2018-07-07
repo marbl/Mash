@@ -76,85 +76,75 @@ void MinHashHeap::clear()
 	multiplicitySum = 0;
 }
 
-#define UNLIKELY(X) __builtin_expect((X), false)
-#define LIKELY(X) __builtin_expect((X), true)
-
-void MinHashHeap::tryInsert(hash_u hash)
+void MinHashHeap::insert(hash_u hash)
 {
-	if
-	(
-		UNLIKELY(hashes.size() < cardinalityMaximum ||
-			hashLessThan(hash, hashesQueue.top(), use64))
-	)
+	if ( hashes.count(hash) == 0 )
 	{
-		if ( hashes.count(hash) == 0 )
+		if ( bloomFilter != 0 )
 		{
-			if ( bloomFilter != 0 )
-			{
-                const unsigned char * data = use64 ? (const unsigned char *)&hash.hash64 : (const unsigned char *)&hash.hash32;
-            	size_t length = use64 ? 8 : 4;
-            	
-                if ( bloomFilter->contains(data, length) )
-                {
-					hashes.insert(hash, 2);
-					hashesQueue.push(hash);
-					multiplicitySum += 2;
-	                kmersUsed++;
-                }
-            	else
-            	{
-	                bloomFilter->insert(data, length);
-	                kmersTotal++;
-	            }
-			}
-			else if ( multiplicityMinimum == 1 || hashesPending.count(hash) == multiplicityMinimum - 1 )
-			{
-				hashes.insert(hash, multiplicityMinimum);
+            const unsigned char * data = use64 ? (const unsigned char *)&hash.hash64 : (const unsigned char *)&hash.hash32;
+        	size_t length = use64 ? 8 : 4;
+        	
+            if ( bloomFilter->contains(data, length) )
+            {
+				hashes.insert(hash, 2);
 				hashesQueue.push(hash);
-				multiplicitySum += multiplicityMinimum;
-				
-				if ( multiplicityMinimum > 1 )
-				{
-					// just remove from set for now; will be removed from
-					// priority queue when it's on top
-					//
-					hashesPending.erase(hash);
-				}
-			}
-			else
-			{
-				if ( hashesPending.count(hash) == 0 )
-				{
-					hashesQueuePending.push(hash);
-				}
+				multiplicitySum += 2;
+                kmersUsed++;
+            }
+        	else
+        	{
+                bloomFilter->insert(data, length);
+                kmersTotal++;
+            }
+		}
+		else if ( multiplicityMinimum == 1 || hashesPending.count(hash) == multiplicityMinimum - 1 )
+		{
+			hashes.insert(hash, multiplicityMinimum);
+			hashesQueue.push(hash);
+			multiplicitySum += multiplicityMinimum;
 			
-				hashesPending.insert(hash, 1);
+			if ( multiplicityMinimum > 1 )
+			{
+				// just remove from set for now; will be removed from
+				// priority queue when it's on top
+				//
+				hashesPending.erase(hash);
 			}
 		}
 		else
 		{
-			hashes.insert(hash, 1);
-			multiplicitySum++;
-		}
-		
-		if ( hashes.size() > cardinalityMaximum )
-		{
-			multiplicitySum -= hashes.count(hashesQueue.top());
-			hashes.erase(hashesQueue.top());
-			
-			// loop since there could be zombie hashes (gone from hashesPending)
-			//
-			while ( hashesQueuePending.size() > 0 && hashLessThan(hashesQueue.top(), hashesQueuePending.top(), use64) )
+			if ( hashesPending.count(hash) == 0 )
 			{
-				if ( hashesPending.count(hashesQueuePending.top()) )
-				{
-					hashesPending.erase(hashesQueuePending.top());
-				}
-				
-				hashesQueuePending.pop();
+				hashesQueuePending.push(hash);
+			}
+		
+			hashesPending.insert(hash, 1);
+		}
+	}
+	else
+	{
+		hashes.insert(hash, 1);
+		multiplicitySum++;
+	}
+	
+	if ( hashes.size() > cardinalityMaximum )
+	{
+		multiplicitySum -= hashes.count(hashesQueue.top());
+		hashes.erase(hashesQueue.top());
+		
+		// loop since there could be zombie hashes (gone from hashesPending)
+		//
+		while ( hashesQueuePending.size() > 0 && hashLessThan(hashesQueue.top(), hashesQueuePending.top(), use64) )
+		{
+			if ( hashesPending.count(hashesQueuePending.top()) )
+			{
+				hashesPending.erase(hashesQueuePending.top());
 			}
 			
-			hashesQueue.pop();
+			hashesQueuePending.pop();
 		}
+		
+		hashesQueue.pop();
 	}
 }
