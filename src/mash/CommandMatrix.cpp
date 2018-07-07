@@ -80,20 +80,12 @@ int CommandMatrix::run() const
         filenames = arguments;
     }
     
-    // Sketch sketchAll;
-    // sketchAll.initFromFiles(filenames, parameters, 0, true);
-
     auto seqs = std::vector<Sequence>{};
     std::transform(filenames.begin(), filenames.end(), std::back_inserter(seqs),[](std::string file_name){
         return Sequence::fromFile(file_name);
     });
 
-    Sketch sketchAll;
-    sketchAll.initFromSequences(seqs, parameters, 0, true);
-    // for (auto &seq: seqs) {
-        // TODO: parallelize this
-        // sketchAll.initFromSequences(seq, parameters, 0, true);
-    // }
+    auto sketchAll = Sketch(seqs, parameters);
     
     uint64_t count = sketchAll.getReferenceCount();
 

@@ -91,6 +91,12 @@ uint64_t Sketch::getReferenceIndex(string id) const
     }
 }
 
+Sketch::Sketch(const std::vector<Sequence>& seqs, Parameters parametersNew) : Sketch()
+{
+    initFromSequences(seqs, parametersNew);
+}
+
+
 int Sketch::initFromSequences(const std::vector<Sequence>& seqs, const Parameters & parametersNew, int verbosity, bool enforceParameters, bool contain)
 {
     parameters = parametersNew;

@@ -30,9 +30,6 @@ static const char * alphabetProtein = "ACDEFGHIKLMNPQRSTVWY";
 class Sketch
 {
 public:
-    
-    Sketch() = default;
-
     typedef uint64_t hash_t;
     
     struct Parameters
@@ -214,6 +211,9 @@ public:
     int initFromSequences(const std::vector<Sequence>& seqs, const Parameters & parametersNew, int verbosity = 0, bool enforceParameters = false, bool contain = false);
     int initFromSequence(const Sequence& seq, const Parameters & parametersNew, int verbosity = 0, bool enforceParameters = false, bool contain = false);
     
+    Sketch() = default;
+    Sketch(const std::vector<Sequence>& seqs, Parameters parametersNew);
+
 private:
     
     void createIndex();
