@@ -23,7 +23,6 @@ SOURCES=\
 	src/mash/CommandSketch.cpp \
 	src/mash/CommandList.cpp \
 	src/mash/CommandMatrix.cpp \
-	src/mash/hash.cpp \
 	src/mash/HashList.cpp \
 	src/mash/HashSet.cpp \
 	src/mash/MinHashHeap.cpp \
