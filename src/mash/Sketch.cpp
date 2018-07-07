@@ -1113,14 +1113,7 @@ void reverseComplement(const char * src, char * dest, int length)
     {
         char base = src[i];
         
-        switch ( base )
-        {
-            case 'A': base = 'T'; break;
-            case 'C': base = 'G'; break;
-            case 'G': base = 'C'; break;
-            case 'T': base = 'A'; break;
-            default: break;
-        }
+        base = base & 2 ? base ^ 4 : base ^ 21;
         
         dest[length - i - 1] = base;
     }
