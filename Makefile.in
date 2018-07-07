@@ -25,7 +25,6 @@ SOURCES=\
 	src/mash/CommandMatrix.cpp \
 	src/mash/hash.cpp \
 	src/mash/HashList.cpp \
-	src/mash/HashPriorityQueue.cpp \
 	src/mash/HashSet.cpp \
 	src/mash/MinHashHeap.cpp \
 	src/mash/MurmurHash3.cpp \
