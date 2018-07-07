@@ -1,6 +1,6 @@
-// Copyright © 2015, Battelle National Biodefense Institute (BNBI);
+// Copyright © 2015, 2018 Battelle National Biodefense Institute (BNBI);
 // all rights reserved. Authored by: Brian Ondov, Todd Treangen,
-// Sergey Koren, and Adam Phillippy
+// Sergey Koren, Adam Phillippy, and Fabian Klötzl
 //
 // See the LICENSE.txt file included with this software for license information.
 
@@ -559,6 +559,9 @@ void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const 
     uint64_t mins = parameters.minHashesPerWindow;
     bool noncanonical = parameters.noncanonical;
     bool canonical = !noncanonical;
+
+    auto use64 = parameters.use64;
+    auto seed = parameters.seed;
     
     // Determine the 'mins' smallest hashes, including those already provided
     // (potentially replacing them). This allows min-hash sets across multiple
@@ -581,61 +584,49 @@ void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const 
     	seqRev = new char[length];
         reverseComplement(seq, seqRev, length);
     }
-    
-    for ( uint64_t i = 0; i < length - kmerSize + 1; i++ )
-    {
-        bool useRevComp = false;
-        bool debug = false;
-        
-		// repeatedly skip kmers with bad characters
-		
-		bool bad = false;
-		
-		for ( uint64_t j = i; j < i + kmerSize && i + kmerSize <= length; j++ )
-		{
-			if ( ! parameters.alphabet[seq[j]] )
-			{
-				i = j; // skip to past the bad character
-				bad = true;
-				break;
-			}
-		}
-		
-		if ( bad )
-		{
+
+	auto is_valid = [&](char c){
+		return !!parameters.alphabet[c];
+	};
+
+	auto next_valid = [&](const char *begin, const char *end){
+		return std::find_if(begin, end, is_valid);
+	};
+
+	auto next_invalid = [&](const char *begin, const char *end){
+		return std::find_if_not(begin, end, is_valid);
+	};
+
+	auto begin = seq;
+	auto end = seq + length;
+	auto it = next_valid(begin, end);
+
+	while (it < end)
+	{
+		assert(is_valid(*it));
+		auto range_end = next_invalid(it, end);
+		assert(range_end == end || !is_valid(*range_end));
+		if (range_end - it < kmerSize) {
+			// not enough characters for a hash.
+			it = next_valid(range_end, end);
 			continue;
 		}
-	
-		if ( i + kmerSize > length )
-		{
-			// skipped to end
-			break;
+
+		for (uint64_t i = it - seq; i < range_end - seq - kmerSize; i++) {
+			// TODO: we are assuming canonical bases for now.
+
+			const char *kmer_fwd = seq + i;
+			const char *kmer_rev = seqRev + length - i - kmerSize;
+
+			hash_u hash_fwd = getHash(kmer_fwd, kmerSize, seed, use64);
+			hash_u hash_rev = getHash(kmer_rev, kmerSize, seed, use64);
+
+			minHashHeap.tryInsert(hash_fwd);
+			minHashHeap.tryInsert(hash_rev);
 		}
-            
-        // TODO: we are assuming canonical bases for now.
 
-        /* The following code compares the forward kmer and the reverse
-         * complement *lexicographically* and only computes the hash for
-         * the lesser of the two. That then gets added to the sketch.
-         * However, I think, that is problematic, because the larger
-         * kmer can well have a smaller sketch. See also
-         * https://github.com/marbl/Mash/issues/91
-         *
-         */
-        const char *kmer_fwd = seq + i;
-        const char *kmer_rev = seqRev + length - i - kmerSize;
-        int t = strncmp(kmer_fwd, kmer_rev, kmerSize);
-        const char *kmer = t <= 0 ? kmer_fwd : kmer_rev;
-        
-        // hash_u hash_fwd = getHash(kmer_fwd, kmerSize, parameters.seed, parameters.use64);
-        // hash_u hash_rev = getHash(kmer_rev, kmerSize, parameters.seed, parameters.use64);
-
-        hash_u hash = getHash(kmer, kmerSize, parameters.seed, parameters.use64);
-        
-        
-		minHashHeap.tryInsert(hash);
-        // minHashHeap.tryInsert(hash_rev);
-    }
+		it = next_valid(range_end, end);
+	}
     
     if ( canonical )
     {
