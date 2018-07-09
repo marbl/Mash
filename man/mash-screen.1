@@ -1,0 +1,28 @@
+.TH "MASH SCREEN" "1" "2018-07-09" "@VERSION@" "mash manual"
+.SH NAME
+mash screen \- Determine whether query sequences are within a larger pool of sequences
+.SH SYNOPSIS
+.B mash screen
+[\fIOPTIONS\fR...] \fIQUERIES\fR.msh \fIPOOL\fR...
+.SH DESCRIPTION
+.TP
+Determine how well query sequences are contained within a pool of sequences. The queries must be formatted as a single Mash sketch file (.msh), created with the \fBmash sketch\fR command. The \fIPOOL\fR files can be contigs or reads, in fasta or fastq, gzipped or not, and "-" can be given for \fIPOOL\fR to read from standard input. The \fIPOOL\fR sequences are assumed to be nucleotides, and will be 6-frame translated if the \fIQUERIES\fR are amino acids. The output fields are [identity, shared-hashes, median-multiplicity, p-value, query-ID, query-comment], where median-multiplicity is computed for shared hashes, based on the number of observations of those hashes within the pool.
+.SH OPTIONS
+.TP
+\fB\-h\fR
+Help
+.TP
+\fB\-p\fR \fIint\fR
+Parallelism. This many threads will be spawned for processing; default: 1.
+.TP
+\fB\-w\fR
+Winner-takes-all strategy for identity estimates. After counting hashes for each query, hashes that appear in multiple queries will be removed from all except the one with the best identity (ties broken by larger query), and other identities will be reduced. This removes output redundancy, providing a rough compositional outline.
+.TP
+\fB\-i\fR \fInum\fR
+Minimum identity to report. Inclusive unless set to zero, in which case only identities greater than zero (i.e. with at least one shared hash) will be reported. Set to -1 to output everything; default: 0.
+.TP
+\fB\-v\fR \fInum\fR
+Maximum p-value to report; default: 1.0.
+.SH MASH
+Part of the \fBmash\fR(1) program.
+.SS

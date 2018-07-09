@@ -1,0 +1,28 @@
+.TH "MASH INFO" "1" "2018-07-09" "@VERSION@" "mash manual"
+.SH NAME
+mash info \- Display information about sketch files
+.SH SYNOPSIS
+.B mash info
+[\fIOPTION\fR] \fISKETCH\fR
+.SH DESCRIPTION
+.TP
+Display information about sketch files.
+.SH OPTIONS
+.TP
+\fB\-h\fR
+Help
+.TP
+\fB\-H\fR
+Only show header info. Do not list each sketch. Incompatible with \fI\-d\fR, \fI\-t\fR and \fI\-c\fR.
+.TP
+\fB\-t\fR
+Tabular output (rather than padded), with no header. Incompatible with \fI\-d\fR, \fI\-H\fR and \fI\-c\fR.
+.TP
+\fB\-c\fR
+Show hash count histograms for each sketch. Incompatible with \fI\-d\fR, \fI\-H\fR and \fI\-t\fR.
+.TP
+\fB\-d\fR
+Dump sketches in JSON format. Incompatible with \fI\-H\fR, \fI\-t\fR, and \fI\-c\fR.
+.SH MASH
+Part of the \fBmash\fR(1) program.
+.SS

@@ -1,0 +1,22 @@
+.TH "MASH BOUNDS" "1" "2018-07-09" "@VERSION@" "mash manual"
+.SH NAME
+mash bounds \- Print a table of Mash error bounds
+.SH SYNOPSIS
+.B mash bounds
+[\fIOPTIONS\fR...]
+.SH DESCRIPTION
+.TP
+Print a table of Mash error bounds for various sketch sizes and Mash distances based on a given k-mer size and desired confidence. Note that these calculations assume sequences are much larger than the sketch size, and will overestimate error bounds if this is not the case.
+.SH OPTIONS
+.TP
+\fB\-h\fR
+Help
+.TP
+\fB\-k\fR \fIint\fR
+Set the k-mer size (1-31); default: 21.
+.TP
+\fB\-p\fR \fInum\fR
+Mash distance estimates will be within the given error bounds with this probability; default: 0.99.
+.SH MASH
+Part of the \fBmash\fR(1) program.
+.SS

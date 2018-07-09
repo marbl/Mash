@@ -1,0 +1,42 @@
+.TH MASH "1" "2018-07-09" "@VERSION@" "mash manual"
+.SH NAME
+mash \- sequence distance estimations using MinHash
+.SH SYNOPSIS
+.B mash
+<command> [\fIOPTIONS...\fR] \fIFILES\fR...
+.SH DESCRIPTION
+.TP
+Mash is a fast sequence distance estimator that uses the MinHash algorithm and is designed to work with genomes and metagenomes in the form of assemblies or reads.
+.SH OPTIONS
+.TP
+\fB\--license\fR
+Show license and copyright information.
+.SH COMMANDS
+.TP
+\fBbounds\fR
+Print a table of Mash error bounds.
+.TP
+\fBdist\fR
+Estimate the distance of query sequences to references.
+.TP
+\fBinfo\fR
+Display information about sketch files.
+.TP
+\fBmatrix\fR
+Compute the distance matrix.
+.TP
+\fBpaste\fR
+Create a single sketch file from multiple sketch files.
+.TP
+\fBscreen\fR
+Determine whether query sequences are within a larger pool of sequences.
+.TP
+\fBsketch\fR
+Create sketches (reduced representations for fast operations).
+.SH COPYRIGHT
+Copyright \(co 2015, Battelle National Biodefense Institute (BNBI);
+all rights reserved. Authored by: Brian Ondov, Todd Treangen,
+Sergey Koren, and Adam Phillippy
+.br
+Released under 3-Clause BSD License.
+.SS

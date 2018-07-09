@@ -1,0 +1,78 @@
+.TH "MASH DIST" "1" "2018-07-09" "@VERSION@" "mash manual"
+.SH NAME
+mash dist \- Estimate the distance of query sequences to references
+.SH SYNOPSIS
+.B mash dist
+[\fIOPTIONS\fR...] \fIREFERENCE\fR \fIQUERY\fR...
+.SH DESCRIPTION
+.TP
+Estimate the distance of each query sequence to the reference. Both the reference and queries can be fasta or fastq, gzipped or not, or Mash sketch files (.msh) with matching k-mer sizes. Query files can also be files of file names (see \fB\-l\fR). Whole files are compared by default (see \fB\-i\fR). The output fields are [reference-ID, query-ID, distance, p-value, shared-hashes].
+.SH OPTIONS
+.TP
+\fB\-h\fR
+Help
+.TP
+\fB\-p\fR \fIint\fR
+Parallelism. This many threads will be spawned for processing; default: 1.
+.SS INPUT
+.TP
+\fB\-l\fR
+List input. Lines in each \fIquery\fR specify paths to sequence files, one per line. The reference file is not affected.
+.SS OUTPUT
+.TP
+\fB\-t\fR
+Table output (will not report p-values, but fields will be blank if they do not meet the p-value threshold).
+.TP
+\fB\-v\fR \fInum\fR
+Maximum p-value to report. \fInum\fR in range (0-1); default: 1.0.
+.TP
+\fB\-d\fR \fInum\fR
+Maximum distance to report. \fInum\fR in range (0-1); default: 1.0.
+.SS SKETCHING
+.TP
+\fB\-k\fR \fIint\fR
+K-mer size. Hashes will be based on strings of this many nucleotides. Canonical nucleotides are used by default (see Alphabet options below). \fIint\fR in range (1-32), default: 21.
+.TP
+\fB\-s\fR \fIint\fR
+Sketch size. Each sketch will have at most this many non-redundant min-hashes; default: 1000.
+.TP
+\fB\-i\fR
+Sketch individual sequences, rather than whole files, e.g. for multi-fastas of single-chromosome genomes or pair-wise gene comparisons.
+.TP
+\fB\-S\fR \fIint\fR
+Seed to provide to the hash function; default: 42.
+.TP
+\fB\-w\fR \fInum\fR
+Probability threshold for warning about low k-mer size. \fInum\fR in range (0-1); default: 0.01.
+.TP
+\fB\-r\fR
+Input is a read set. See Reads options below. Incompatible with \fB\-i\fR.
+.SS SKETCHING (READS)
+.TP
+\fB\-b\fR \fIsize\fR
+Use a Bloom filter of this size (raw bytes or with K/M/G/T) to filter out unique k-mers. This is useful if exact filtering with \fB\-m\fR uses too much memory. However, some unique k-mers may pass erroneously, and copies cannot be counted beyond 2. Implies \fB\-r\fR.
+.TP
+\fB\-m\fR \fIint\fR
+Minimum copies of each k-mer required to pass noise filter for reads. Implies \fB\-r\fR; default: 1.
+.TP
+\fB\-c\fR \fInum\fR
+Target coverage. Sketching will conclude if this coverage is reached before the end of the input file (estimated by average k-mer multiplicity). Implies \fB\-r\fR.
+.TP
+\fB\-g\fR \fIsize\fR
+Genome size (raw bases or with K/M/G/T). If specified, will be used for p-value calculation instead of an estimated size from k-mer content. Implies \fB\-r\fR.
+.SS SKETCHING (ALPHABET)
+.TP
+\fB\-n\fR
+Preserve strand (by default, strand is ignored by using canonical DNA k-mers, which are alphabetical minima of forward-reverse pairs). Implied if an alphabet is specified with \fB\-a\fR or \fB\-z\fR.
+.TP
+\fB\-a\fR
+Use amino acid alphabet (A-Z, except BJOUXZ). Implies \fB\-n\fR, \fB\-k 9\fR.
+.TP
+\fB\-z\fR \fItext\fR
+Alphabet to base hashes on (case ignored by default; see \fB\-Z\fR). K-mers with other characters will be ignored. Implies \fB\-n\fR.
+.TP
+\fB\-Z\fR
+Preserve case in k-mers and alphabet (case is ignored by default). Sequence letters whose case is not in the current alphabet will be skipped when sketching.
+.SH MASH
+Part of the \fBmash\fR(1) program.
+.SS
