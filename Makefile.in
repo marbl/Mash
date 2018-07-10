@@ -30,7 +30,8 @@ SOURCES=\
 	src/mash/mash.cpp \
 	src/mash/Sketch.cpp \
 	src/mash/sketchParameterSetup.cpp \
-	src/mash/Sequence.cpp
+	src/mash/Sequence.cpp \
+	src/mash/Genome.cpp
 
 OBJECTS=$(SOURCES:.cpp=.o) src/mash/capnp/MinHash.capnp.o
 

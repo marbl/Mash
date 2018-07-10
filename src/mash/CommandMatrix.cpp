@@ -34,6 +34,8 @@ struct PairOutput
 };
 
 PairOutput compare(const Sketch & sketchNew, uint64_t indexRefNew, uint64_t indexQueryNew);
+std::vector<double> compute_matrix(const Sketch& sketch, int threads);
+void print_matrix(const std::vector<std::string>& names, const std::vector<double>& matrix);
 
 CommandMatrix::CommandMatrix()
 : Command()
@@ -58,6 +60,7 @@ int CommandMatrix::run() const
     }
     
     int threads = options.at("threads").getArgumentAsNumber();
+    int bootstrap = 0;
     
     Sketch::Parameters parameters;
     
@@ -80,53 +83,80 @@ int CommandMatrix::run() const
         filenames = arguments;
     }
     
-    auto seqs = std::vector<Sequence>{};
-    std::transform(filenames.begin(), filenames.end(), std::back_inserter(seqs),[](std::string file_name){
-        return Sequence::fromFile(file_name);
+    auto genomes = std::vector<Genome>{};
+    std::transform(filenames.begin(), filenames.end(), std::back_inserter(genomes),[](std::string file_name){
+        return Genome::fromFile(file_name);
     });
 
-    auto sketchAll = Sketch(seqs, parameters);
+    auto sketchAll = Sketch(genomes, parameters);
+    auto count = sketchAll.getReferenceCount();
     
-    uint64_t count = sketchAll.getReferenceCount();
+    auto names = std::vector<std::string>();
+    names.reserve(count);
 
-    auto matbase = new double[count*count];
-    auto mat = new double*[count];
+    for (size_t i = 0; i < count; i++) {
+        names.push_back(extract_name(sketchAll.getReference(i).name));
+    }
+
+    auto matrix = compute_matrix(sketchAll, threads);
+    print_matrix(names, matrix);
+
+    if (bootstrap > 0) {
+        // resketch
+        auto sketch = Sketch(genomes, parameters);
+        auto matrix = compute_matrix(sketch, threads);
+        print_matrix(names, matrix);
+    }
+
+    return 0;
+}
+
+
+void print_matrix(const std::vector<std::string>& names, const std::vector<double>& matrix)
+{
+    auto count = names.size();
+    auto mat = [&](const size_t i, const size_t j)->const double & {
+        return matrix[i * count + j];
+    };
+
+    fprintf(stdout, "%zu\n", count);
 
     for ( uint64_t i = 0; i < count; i++ )
     {
-        mat[i] = &matbase[i * count];
+        fprintf(stdout, "%-10s", names[i].c_str());
+
+        for ( uint64_t j = 0; j < count; j++ )
+        {
+            fprintf(stdout, " %1.4e", mat(i,j));
+        }
+        fprintf(stdout, "\n");
     }
+}
+
+std::vector<double> compute_matrix(const Sketch& sketch, int threads)
+{
+    auto ret = std::vector<double>();
+    auto count = sketch.getReferenceCount();
+    std::cerr << "reference count: " << count << std::endl;
+    ret.reserve(count * count);
+    auto mat = [&](const size_t i, const size_t j)->double & {
+        return ret[i * count + j];
+    };
 
     #pragma omp parallel for num_threads(threads)
     for ( uint64_t i = 0; i < count; i++ )
     {
-        mat[i][i] = 0.0;
+        mat(i,i) = 0.0;
 
         for ( uint64_t j = 0; j < i; j++ )
         {
             // run
-            auto output = compare(sketchAll, j, i);
-            mat[j][i] = mat[i][j] = output.distance;
+            auto output = compare(sketch, j, i);
+            mat(j,i) = mat(i,j) = output.distance;
         }
     }
 
-    cout << count << "\n";
-    for ( uint64_t i = 0; i < count; i++ )
-    {
-        auto file_name = sketchAll.getReference(i).name;
-        cout << extract_name(file_name);
-
-        for ( uint64_t j = 0; j < count; j++ )
-        {
-            cout << " " << mat[i][j];
-        }
-        cout << "\n";
-    }
-
-    delete[] mat;
-    delete[] matbase;
-    
-    return 0;
+    return ret;
 }
 
 PairOutput compare(const Sketch & sketch, uint64_t indexRef, uint64_t indexQuery)
@@ -139,7 +169,6 @@ PairOutput compare(const Sketch & sketch, uint64_t indexRef, uint64_t indexQuery
     uint64_t denom = 0;
     const HashList & hashesSortedRef = sketch.getReference(indexRef).hashesSorted;
     const HashList & hashesSortedQry = sketch.getReference(indexQuery).hashesSorted;
-    
     /*
      * The following code should be replaced with std::set_intersection, but
      * some poor design choices of HashList prevent this.

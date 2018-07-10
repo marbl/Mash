@@ -91,13 +91,25 @@ uint64_t Sketch::getReferenceIndex(string id) const
     }
 }
 
-Sketch::Sketch(const std::vector<Sequence>& seqs, Parameters parametersNew) : Sketch()
+Sketch::Sketch(const std::vector<Genome>& genomes, Parameters parametersNew) : Sketch()
 {
-    initFromSequences(seqs, parametersNew);
+    parameters = parametersNew;
+
+    for (const auto &genome: genomes) {
+        SketchOutput *out;
+        if (parametersNew.reads) {
+            out = initFromGenomeReads(genome, parametersNew);
+        } else {
+            out = initFromGenome(genome, parametersNew);
+        }
+        useThreadOutput(out);
+    }
+
+    createIndex();
 }
 
-
-int Sketch::initFromSequences(const std::vector<Sequence>& seqs, const Parameters & parametersNew, int verbosity, bool enforceParameters, bool contain)
+// DO NOT EDIT: // Broken anyways
+/*int Sketch::initFromSequences(const std::vector<Sequence>& seqs, const Parameters & parametersNew, int verbosity, bool enforceParameters, bool contain)
 {
     parameters = parametersNew;
     
@@ -123,43 +135,194 @@ int Sketch::initFromSequences(const std::vector<Sequence>& seqs, const Parameter
     createIndex();
 
     return 0;
-}
+}*/
 
-
-
-int Sketch::initFromSequence(const Sequence& seq, const Parameters & parametersNew, int verbosity, bool enforceParameters, bool contain)
+Sketch::SketchOutput* Sketch::initFromGenome(const Genome& genome, const Parameters & parametersNew)
 {
-    parameters = parametersNew;
+    const Sketch::Parameters & parameters = parametersNew;
+
+    Sketch::SketchOutput * output = new Sketch::SketchOutput();
+
+    output->references.resize(1);
+    Sketch::Reference & reference = output->references[0];
     
-	MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.reads ? parameters.minCov : 1, parameters.memoryBound);
+    reference.name = genome.name;
+    reference.comment = genome.name + ""; // TODO: first sequence comment?
 
-    auto threadPool = ThreadPool<Sketch::SketchInput, Sketch::SketchOutput>(0, parameters.parallelism);
+    MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, 1, parameters.memoryBound);
 
-	for (size_t i=0; i<seq.seqs.size(); i++) {
-		char *will_get_deleted = new char[seq.seqs[i].size() + 1];
-		memcpy(will_get_deleted, seq.seqs[i].c_str(), seq.seqs[i].size() + 1);
+    reference.length = 0;
+    reference.hashesSorted.setUse64(parameters.use64);
+    
+    long count = 0;
+    bool skipped = false;
+    
+    for (auto &seq: genome.sequences)
+    {
+        auto length = seq.sequence.length();
+        if ( length < parameters.kmerSize )
+        {
+            skipped = true;
+            continue;
+        }
 
-		auto in = new SketchInput("", will_get_deleted, seq.seqs[i].size(), seq.names[i], seq.comments[i], parameters);
+        count++;
+        reference.length += length;
 
-		threadPool.runWhenThreadAvailable( in, sketchSequence);
-		// while ( threadPool.outputAvailable() )
-		// {
-		// 	useThreadOutput(threadPool.popOutputWhenAvailable());
-		// }
+        char *why_am_I_doing_this_again = new char[seq.sequence.size() + 1];
+        memcpy(why_am_I_doing_this_again, seq.sequence.c_str(), seq.sequence.size() + 1);
 
-        // auto *out = sketchSequence(&in);
-        // useThreadOutput(out);
+        addMinHashes(minHashHeap, why_am_I_doing_this_again, length, parameters);
+        delete why_am_I_doing_this_again;
+    }
+    
+    if ( count > 0 )
+    {
+        reference.comment += "[" + to_string(count) + "seqs]";
+    }
+    
+    if ( reference.length == 0 )
+    {
+        if ( skipped )
+        {
+            cerr << "\nWARNING: All fasta records in " << genome.name << "were shorter than the k-mer size (" << parameters.kmerSize << ")." << endl;
+        }
+        else
+        {
+            cerr << "\nERROR: Did not find fasta records in \"" << genome.name << "\"." << endl;
+        }
+        
+        exit(1);
+    }
+    
+    if ( ! parameters.windowed )
+    {
+        setMinHashesForReference(reference, minHashHeap);
     }
 
-	while ( threadPool.running() )
-	{
-		useThreadOutput(threadPool.popOutputWhenAvailable());
-	}
-    
-    createIndex();
-
-    return 0;
+    return output;
 }
+
+Sketch::SketchOutput* Sketch::initFromGenomeReads(const Genome& genome, const Parameters & parametersNew)
+{ // parameter.reads == true!
+    const Sketch::Parameters & parameters = parametersNew;
+    
+    Sketch::SketchOutput * output = new Sketch::SketchOutput();
+    
+    output->references.resize(1);
+    Sketch::Reference & reference = output->references[0];
+    
+    reference.name = genome.name;
+    reference.comment = ""; // first sequence comment?
+    
+    MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.minCov, parameters.memoryBound);
+
+    reference.length = 0;
+    reference.hashesSorted.setUse64(parameters.use64);
+    
+    int count = 0;
+    bool skipped = false;
+    
+    for (auto &seq: genome.sequences)
+    {
+        auto length = seq.sequence.length();
+        if ( length < parameters.kmerSize )
+        {
+            skipped = true;
+            continue;
+        }
+
+        count++;
+
+        addMinHashes(minHashHeap, (char*)seq.sequence.c_str(), length, parameters);
+        
+        if ( parameters.targetCov > 0 && minHashHeap.estimateMultiplicity() >= parameters.targetCov )
+        {
+            break;
+        }
+    }
+
+
+    if ( parameters.genomeSize != 0 )
+    {
+        reference.length = parameters.genomeSize;
+    }
+    else
+    {
+        reference.length = minHashHeap.estimateSetSize();
+    }
+
+    if ( count > 1 )
+    {
+        reference.comment.insert(0, " seqs] ");
+        reference.comment.insert(0, to_string(count));
+        reference.comment.insert(0, "[");
+        reference.comment.append(" [...]");
+    }
+
+    if ( reference.length == 0 )
+    {
+        if ( skipped )
+        {
+            cerr << "\nWARNING: All fasta records in " << genome.name << "were shorter than the k-mer size (" << parameters.kmerSize << ")." << endl;
+        }
+        else
+        {
+            cerr << "\nERROR: Did not find fasta records in \"" << genome.name << "\"." << endl;
+        }
+        
+        exit(1);
+    }
+
+    if ( ! parameters.windowed )
+    {
+        setMinHashesForReference(reference, minHashHeap);
+    }
+
+    cerr << "Estimated genome size: " << minHashHeap.estimateSetSize() << endl;
+    cerr << "Estimated coverage:    " << minHashHeap.estimateMultiplicity() << endl;
+
+    if ( parameters.targetCov > 0 )
+    {
+        cerr << "Reads used:            " << count << endl;
+    }
+
+    return output;
+}
+
+// int Sketch::initFromSequence(const Sequence& seq, const Parameters & parametersNew, int verbosity, bool enforceParameters, bool contain)
+// {
+//     parameters = parametersNew;
+    
+// 	MinHashHeap minHashHeap(parameters.use64, parameters.minHashesPerWindow, parameters.reads ? parameters.minCov : 1, parameters.memoryBound);
+
+//     auto threadPool = ThreadPool<Sketch::SketchInput, Sketch::SketchOutput>(0, parameters.parallelism);
+
+// 	for (size_t i=0; i<seq.seqs.size(); i++) {
+// 		char *will_get_deleted = new char[seq.seqs[i].size() + 1];
+// 		memcpy(will_get_deleted, seq.seqs[i].c_str(), seq.seqs[i].size() + 1);
+
+// 		auto in = new SketchInput("", will_get_deleted, seq.seqs[i].size(), seq.names[i], seq.comments[i], parameters);
+
+// 		threadPool.runWhenThreadAvailable( in, sketchSequence);
+// 		// while ( threadPool.outputAvailable() )
+// 		// {
+// 		// 	useThreadOutput(threadPool.popOutputWhenAvailable());
+// 		// }
+
+//         // auto *out = sketchSequence(&in);
+//         // useThreadOutput(out);
+//     }
+
+// 	while ( threadPool.running() )
+// 	{
+// 		useThreadOutput(threadPool.popOutputWhenAvailable());
+// 	}
+    
+//     createIndex();
+
+//     return 0;
+// }
 
 int Sketch::initFromFiles(const vector<string> & files, const Parameters & parametersNew, int verbosity, bool enforceParameters, bool contain)
 {

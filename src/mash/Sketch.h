@@ -17,6 +17,7 @@
 #include "MinHashHeap.h"
 #include "ThreadPool.h"
 #include "Sequence.h"
+#include "Genome.h"
 
 static const char * capnpHeader = "Cap'n Proto";
 static const int capnpHeaderLength = strlen(capnpHeader);
@@ -210,9 +211,14 @@ public:
 
     int initFromSequences(const std::vector<Sequence>& seqs, const Parameters & parametersNew, int verbosity = 0, bool enforceParameters = false, bool contain = false);
     int initFromSequence(const Sequence& seq, const Parameters & parametersNew, int verbosity = 0, bool enforceParameters = false, bool contain = false);
+    int initFromGenomes(const std::vector<Genome>& genomes, const Parameters & parametersNew);
+    SketchOutput* initFromGenome(const Genome& genome, const Parameters & parametersNew);
+    SketchOutput* initFromGenomeReads(const Genome& genome, const Parameters & parametersNew);
     
+
     Sketch() = default;
     Sketch(const std::vector<Sequence>& seqs, Parameters parametersNew);
+    Sketch(const std::vector<Genome>& genomes, Parameters parametersNew);
 
 private:
     

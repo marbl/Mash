@@ -30,6 +30,10 @@ public:
 		}
 	}
 
+	unsigned long size() const {
+		return hashes.size();
+	}
+
 private:
 
 	bool use64;
