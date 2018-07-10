@@ -212,8 +212,8 @@ public:
     int initFromSequences(const std::vector<Sequence>& seqs, const Parameters & parametersNew, int verbosity = 0, bool enforceParameters = false, bool contain = false);
     int initFromSequence(const Sequence& seq, const Parameters & parametersNew, int verbosity = 0, bool enforceParameters = false, bool contain = false);
     int initFromGenomes(const std::vector<Genome>& genomes, const Parameters & parametersNew);
-    SketchOutput* initFromGenome(const Genome& genome, const Parameters & parametersNew);
-    SketchOutput* initFromGenomeReads(const Genome& genome, const Parameters & parametersNew);
+    static SketchOutput* initFromGenome(const Genome& genome);
+    static SketchOutput* initFromGenomeReads(const Genome& genome);
     
 
     Sketch() = default;
@@ -233,6 +233,8 @@ private:
     double kmerSpace;
     std::string file;
 };
+
+extern Sketch::Parameters PARAMETERS;
 
 void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const Sketch::Parameters & parameters);
 void getMinHashPositions(std::vector<Sketch::PositionHash> & loci, char * seq, uint32_t length, const Sketch::Parameters & parameters, int verbosity = 0);

@@ -28,6 +28,9 @@
 #define CHUNK 16384
 KSEQ_INIT(gzFile, gzread)
 
+// global
+Sketch::Parameters PARAMETERS = {};
+
 using namespace std;
 
 typedef map < Sketch::hash_t, vector<Sketch::PositionHash> > LociByHash_map;
@@ -91,18 +94,35 @@ uint64_t Sketch::getReferenceIndex(string id) const
     }
 }
 
+Sketch::SketchOutput* useme(const Genome* genome) {
+    return Sketch::initFromGenome(*genome);
+}
+
+
 Sketch::Sketch(const std::vector<Genome>& genomes, Parameters parametersNew) : Sketch()
 {
     parameters = parametersNew;
 
+    auto threadPool = ThreadPool<const Genome, Sketch::SketchOutput>(0, parameters.parallelism);
+
+    // #pragma omp parallel
     for (const auto &genome: genomes) {
-        SketchOutput *out;
-        if (parametersNew.reads) {
-            out = initFromGenomeReads(genome, parametersNew);
-        } else {
-            out = initFromGenome(genome, parametersNew);
-        }
-        useThreadOutput(out);
+        // SketchOutput *out;
+        // if (parametersNew.reads) {
+        //     out = initFromGenomeReads(genome);
+        // } else {
+        //     out = initFromGenome(genome);
+        // }
+        // #pragma omp critical
+        // useThreadOutput(out);
+
+        auto g = new Genome(genome);
+        threadPool.runWhenThreadAvailable( g, useme);
+    }
+
+    while ( threadPool.running() )
+    {
+        useThreadOutput(threadPool.popOutputWhenAvailable());
     }
 
     createIndex();
@@ -137,9 +157,9 @@ Sketch::Sketch(const std::vector<Genome>& genomes, Parameters parametersNew) : S
     return 0;
 }*/
 
-Sketch::SketchOutput* Sketch::initFromGenome(const Genome& genome, const Parameters & parametersNew)
+Sketch::SketchOutput* Sketch::initFromGenome(const Genome& genome)
 {
-    const Sketch::Parameters & parameters = parametersNew;
+    const Sketch::Parameters & parameters = PARAMETERS;
 
     Sketch::SketchOutput * output = new Sketch::SketchOutput();
 
@@ -203,9 +223,9 @@ Sketch::SketchOutput* Sketch::initFromGenome(const Genome& genome, const Paramet
     return output;
 }
 
-Sketch::SketchOutput* Sketch::initFromGenomeReads(const Genome& genome, const Parameters & parametersNew)
+Sketch::SketchOutput* Sketch::initFromGenomeReads(const Genome& genome)
 { // parameter.reads == true!
-    const Sketch::Parameters & parameters = parametersNew;
+    const Sketch::Parameters & parameters = PARAMETERS;
     
     Sketch::SketchOutput * output = new Sketch::SketchOutput();
     

@@ -68,6 +68,8 @@ int CommandMatrix::run() const
     {
         return 1;
     }
+
+    PARAMETERS = parameters; // set global value
     
     vector<string> filenames;
 
