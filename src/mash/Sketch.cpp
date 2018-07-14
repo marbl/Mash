@@ -796,21 +796,25 @@ void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const 
 		}
 
 		for (uint64_t i = it - seq; i < range_end - seq - kmerSize; i++) {
-			// TODO: we are assuming canonical bases for now.
+			// TODO: we are assuming canonical for now.
 
+			/* The following code compares the forward kmer and the reverse
+			 * complement *lexicographically* and only computes the hash for
+			 * the lesser of the two. See also
+			 * https://github.com/marbl/Mash/issues/91
+			 */
 			const char *kmer_fwd = seq + i;
 			const char *kmer_rev = seqRev + length - i - kmerSize;
+			int t = memcmp(kmer_fwd, kmer_rev, kmerSize);
+			const char *kmer = t <= 0 ? kmer_fwd : kmer_rev;
 
-			hash_u hash_fwd = getHash(kmer_fwd, kmerSize, seed, use64);
-			hash_u hash_rev = getHash(kmer_rev, kmerSize, seed, use64);
-
-			minHashHeap.tryInsert(hash_fwd);
-			minHashHeap.tryInsert(hash_rev);
+			hash_u hash = getHash(kmer, kmerSize, seed, use64);
+			minHashHeap.tryInsert(hash);
 		}
 
 		it = next_valid(range_end, end);
 	}
-    
+
     if ( canonical )
     {
         delete [] seqRev;
