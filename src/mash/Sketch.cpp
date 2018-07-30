@@ -257,6 +257,14 @@ uint64_t Sketch::initParametersFromCapnp(const char * file)
     
     void * data = mmap(NULL, fileInfo.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     
+    if (data == MAP_FAILED)
+    {
+        uint64_t fileSize = fileInfo.st_size;
+        std::cerr << "Error: could not memory-map file " << file << " of size " << fileSize;
+        std::cerr << std::endl;
+        exit(1);
+    }
+
     capnp::ReaderOptions readerOptions;
     
     readerOptions.traversalLimitInWords = 1000000000000;
