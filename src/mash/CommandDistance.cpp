@@ -383,9 +383,14 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput * output, const 
     {
         //distance = log(double(common + 1) / (denom + 1)) / log(1. / (denom + 1));
         distance = -log(2 * jaccard / (1. + jaccard)) / kmerSize;
+        
+        if ( distance > 1 )
+        {
+        	distance = 1;
+        }
     }
     
-    if ( distance > maxDistance && maxDistance < 1. )
+    if ( distance > maxDistance )
     {
         return;
     }
