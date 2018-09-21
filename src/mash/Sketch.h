@@ -141,9 +141,9 @@ public:
     
     struct SketchInput
     {
-    	SketchInput(std::string fileNameNew, char * seqNew, uint64_t lengthNew, const std::string & nameNew, const std::string & commentNew, const Sketch::Parameters & parametersNew)
+    	SketchInput(std::vector<std::string> fileNamesNew, char * seqNew, uint64_t lengthNew, const std::string & nameNew, const std::string & commentNew, const Sketch::Parameters & parametersNew)
     	:
-    	fileName(fileNameNew),
+    	fileNames(fileNamesNew),
     	seq(seqNew),
     	length(lengthNew),
     	name(nameNew),
@@ -159,7 +159,7 @@ public:
 	    	}
     	}
     	
-    	std::string fileName;
+    	std::vector<std::string> fileNames;
     	
     	char * seq;
     	
@@ -200,7 +200,10 @@ public:
     bool hasHashCounts() const {return references.size() > 0 && references.at(0).counts.size() > 0;}
     bool hasLociByHash(hash_t hash) const {return lociByHash.count(hash);}
     int initFromFiles(const std::vector<std::string> & files, const Parameters & parametersNew, int verbosity = 0, bool enforceParameters = false, bool contain = false);
+    void initFromReads(const std::vector<std::string> & files, const Parameters & parametersNew);
     uint64_t initParametersFromCapnp(const char * file);
+    void setReferenceName(int i, const std::string name) {references[i].name = name;}
+    void setReferenceComment(int i, const std::string comment) {references[i].comment = comment;}
 	bool sketchFileBySequence(FILE * file, ThreadPool<Sketch::SketchInput, Sketch::SketchOutput> * threadPool);
 	void useThreadOutput(SketchOutput * output);
     void warnKmerSize(uint64_t lengthMax, const std::string & lengthMaxName, double randomChance, int kMin, int warningCount) const;
