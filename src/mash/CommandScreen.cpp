@@ -175,6 +175,12 @@ int CommandScreen::run() const
 		else
 		{
 			fps[f - 1] = gzopen(arguments[f].c_str(), "r");
+			
+			if ( fps[f - 1] == 0 )
+			{
+				cerr << "ERROR: could not open " << arguments[f] << endl;
+				exit(1);
+			}
 		}
 		
 		kseqs.push_back(kseq_init(fps[f - 1]));
@@ -470,7 +476,6 @@ double estimateIdentity(uint64_t common, uint64_t denom, int kmerSize, double km
 	}
 	else
 	{
-		//distance = log(double(common + 1) / (denom + 1)) / log(1. / (denom + 1));
 		identity = pow(jaccard, 1. / kmerSize);
 	}
 	

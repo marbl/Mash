@@ -1191,6 +1191,12 @@ Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)
 			}
 			
 			fps[f] = gzopen(input->fileNames[f].c_str(), "r");
+			
+			if ( fps[f] == 0 )
+			{
+				cerr << "ERROR: could not open " << input->fileNames[f] << endl;
+				exit(1);
+			}
 		}
 		
 		kseqs.push_back(kseq_init(fps[f]));
