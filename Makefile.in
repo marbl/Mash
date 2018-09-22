@@ -16,6 +16,7 @@ SOURCES=\
 	src/mash/CommandContain.cpp \
 	src/mash/CommandDistance.cpp \
 	src/mash/CommandScreen.cpp \
+	src/mash/CommandTriangle.cpp \
 	src/mash/CommandFind.cpp \
 	src/mash/CommandInfo.cpp \
 	src/mash/CommandPaste.cpp \

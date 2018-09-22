@@ -390,7 +390,7 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput * output, const 
         }
     }
     
-    if ( distance > maxDistance )
+    if ( maxDistance >= 0 && distance > maxDistance )
     {
         return;
     }
@@ -400,7 +400,7 @@ void compareSketches(CommandDistance::CompareOutput::PairOutput * output, const 
     output->distance = distance;
     output->pValue = pValue(common, refRef.length, refQry.length, kmerSpace, denom);
     
-    if ( output->pValue > maxPValue )
+    if ( maxPValue >= 0 && output->pValue > maxPValue )
     {
         return;
     }
