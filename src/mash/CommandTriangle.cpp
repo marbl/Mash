@@ -110,7 +110,7 @@ int CommandTriangle::run() const
 	}
     
     cout << '\t' << sketch.getReferenceCount() << endl;
-    cout << sketch.getReference(0).name << endl;
+    cout << (comment ? sketch.getReference(0).comment : sketch.getReference(0).name) << endl;
     
     ThreadPool<TriangleInput, TriangleOutput> threadPool(compare, threads);
     
@@ -144,7 +144,7 @@ void CommandTriangle::writeOutput(TriangleOutput * output, bool comment, double 
 	const Sketch & sketch = output->sketch;
 	const Sketch::Reference & ref = sketch.getReference(output->index);
 	
-	cout << (comment ? ref.comment : ref.name );
+	cout << (comment ? ref.comment : ref.name);
 	
     for ( uint64_t i = 0; i < output->index; i++ )
     {
