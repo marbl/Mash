@@ -23,6 +23,7 @@ Steps:
                [--with-boost=...]
    make
    [sudo] make install
+   [make test]
 
 
 Products:
