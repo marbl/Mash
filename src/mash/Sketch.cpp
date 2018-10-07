@@ -24,6 +24,7 @@
 #include <sys/mman.h>
 #include <math.h>
 #include <list>
+#include <string.h>
 
 #define SET_BINARY_MODE(file)
 #define CHUNK 16384
@@ -592,10 +593,12 @@ void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const 
             if ( debug ) cout << endl;
         }
         
-        const char * kmer = useRevComp ? seqRev + length - i - kmerSize : seq + i;
+        const char *kmer_fwd = seq + i;
+        const char *kmer_rev = seqRev + length - i - kmerSize;
+        const char * kmer = memcmp(kmer_fwd, kmer_rev, kmerSize) <= 0 ? kmer_fwd : kmer_rev;
         bool filter = false;
         
-        hash_u hash = getHash(useRevComp ? seqRev + length - i - kmerSize : seq + i, kmerSize, parameters.seed, parameters.use64);
+        hash_u hash = getHash(kmer, kmerSize, parameters.seed, parameters.use64);
         
         if ( debug ) cout << endl;
         
