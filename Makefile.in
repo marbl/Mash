@@ -91,10 +91,10 @@ testSketch : mash test/genomes.msh test/reads.msh
 	diff test/genomes.json test/ref/genomes.json
 	diff test/reads.json test/ref/reads.json
 
-test/genomes.msh :
+test/genomes.msh : mash
 	cd test ; ../mash sketch -o genomes.msh genome1.fna genome2.fna genome3.fna
 
-test/reads.msh :
+test/reads.msh : mash
 	cd test ; ../mash sketch -r -I reads reads1.fastq reads2.fastq -o reads.msh
 
 testDist : mash test/genomes.msh test/reads.msh
