@@ -33,9 +33,9 @@ then
 	AC_MSG_ERROR([Cap'n Proto compiler (capnp) not found.])
 fi
 
-CPPFLAGS="-I$with_capnp/include -std=c++11"
+CPPFLAGS="-I$with_capnp/include -std=c++14"
 
-AC_CHECK_HEADER(capnp/common.h, [result=1], [result=0])
+AC_CHECK_HEADER($with_capnp/include/capnp/common.h, [result=1], [result=0])
 
 if test $result == 0
 then
@@ -75,5 +75,7 @@ else
 fi
 
 AC_SUBST(capnp, $with_capnp)
+AC_SUBST(capnpinc, $with_capnp/include)
+AC_SUBST(capnplib, "-L$with_capnp/lib -lcapnp -lkj")
 
 AC_OUTPUT(Makefile)

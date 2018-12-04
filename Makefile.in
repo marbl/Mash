@@ -1,4 +1,4 @@
-CXXFLAGS += -O3 -std=c++11 -Isrc -I@capnp@/include -I@mathinc@
+CXXFLAGS += -O3 -std=c++14 -Isrc -I@capnpinc@ -I@mathinc@
 CPPFLAGS += @amcppflags@
 
 UNAME_S=$(shell uname -s)
@@ -37,7 +37,7 @@ OBJECTS=$(SOURCES:.cpp=.o) src/mash/capnp/MinHash.capnp.o
 all : mash libmash.a
 
 mash : libmash.a src/mash/memcpyWrap.o
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o mash src/mash/memcpyWrap.o libmash.a @capnp@/lib/libcapnp.a @capnp@/lib/libkj.a @mathlib@ -lstdc++ -lz -lm -lpthread
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o mash src/mash/memcpyWrap.o libmash.a @capnplib@ -lcapnp -lkj @mathlib@ -lstdc++ -lz -lm -lpthread
 
 libmash.a : $(OBJECTS)
 	ar -cr libmash.a $(OBJECTS)
@@ -55,7 +55,7 @@ src/mash/memcpyWrap.o : src/mash/memcpyWrap.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 src/mash/capnp/MinHash.capnp.c++ src/mash/capnp/MinHash.capnp.h : src/mash/capnp/MinHash.capnp
-	cd src/mash/capnp;export PATH=@capnp@/bin/:${PATH};capnp compile -I @capnp@/include -oc++ MinHash.capnp
+	cd src/mash/capnp;export PATH=@capnp@/bin/:${PATH};capnp compile -I@capnpinc@ -oc++ MinHash.capnp
 
 install : mash
 	mkdir -p @prefix@/bin/
