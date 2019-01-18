@@ -33,7 +33,7 @@ then
 	AC_MSG_ERROR([Cap'n Proto compiler (capnp) not found.])
 fi
 
-CPPFLAGS="-I$with_capnp/include -std=c++11"
+CPPFLAGS="-I$with_capnp/include -std=c++14"
 
 AC_CHECK_HEADER(capnp/common.h, [result=1], [result=0])
 

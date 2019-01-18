@@ -1,4 +1,4 @@
-CXXFLAGS += -O3 -std=c++11 -Isrc -I@capnp@/include -I@mathinc@
+CXXFLAGS += -O3 -std=c++14 -Isrc -I@capnp@/include -I@mathinc@
 CPPFLAGS += @amcppflags@
 
 UNAME_S=$(shell uname -s)
