@@ -536,13 +536,10 @@ void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const 
     
     for ( uint64_t i = 0; i < length - kmerSize + 1; i++ )
     {
-        bool useRevComp = false;
-        bool debug = false;
-        
 		// repeatedly skip kmers with bad characters
-		
+		//
 		bool bad = false;
-		
+		//
 		for ( uint64_t j = i; j < i + kmerSize && i + kmerSize <= length; j++ )
 		{
 			if ( ! parameters.alphabet[seq[j]] )
@@ -552,55 +549,24 @@ void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const 
 				break;
 			}
 		}
-		
+		//
 		if ( bad )
 		{
 			continue;
 		}
-	
+		//	
 		if ( i + kmerSize > length )
 		{
 			// skipped to end
 			break;
 		}
             
-        if ( ! noncanonical )
-        {
-            useRevComp = true;
-            bool prefixEqual = true;
-        
-            if ( debug ) {for ( uint64_t j = i; j < i + kmerSize; j++ ) { cout << *(seq + j); } cout << endl;}
-        
-            for ( uint64_t j = 0; j < kmerSize; j++ )
-            {
-                char base = seq[i + j];
-                char baseMinus = seqRev[length - i - kmerSize + j];
-            
-                if ( debug ) cout << baseMinus;
-            
-                if ( prefixEqual && baseMinus > base )
-                {
-                    useRevComp = false;
-                    break;
-                }
-            
-                if ( prefixEqual && baseMinus < base )
-                {
-                    prefixEqual = false;
-                }
-            }
-        
-            if ( debug ) cout << endl;
-        }
-        
         const char *kmer_fwd = seq + i;
         const char *kmer_rev = seqRev + length - i - kmerSize;
-        const char * kmer = memcmp(kmer_fwd, kmer_rev, kmerSize) <= 0 ? kmer_fwd : kmer_rev;
+        const char * kmer = (noncanonical || memcmp(kmer_fwd, kmer_rev, kmerSize) <= 0) ? kmer_fwd : kmer_rev;
         bool filter = false;
         
         hash_u hash = getHash(kmer, kmerSize, parameters.seed, parameters.use64);
-        
-        if ( debug ) cout << endl;
         
 		minHashHeap.tryInsert(hash);
     }
