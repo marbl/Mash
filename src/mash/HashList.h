@@ -15,7 +15,7 @@ class HashList
 public:
     
     HashList() {use64 = true;}
-    HashList(int kmerSize) {use64 = kmerSize > 16;}
+    HashList(bool use64new) {use64 = use64new;}
     
     hash_u at(int index) const;
     void clear();
