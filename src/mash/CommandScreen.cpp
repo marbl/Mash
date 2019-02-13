@@ -291,7 +291,7 @@ int CommandScreen::run() const
 	
 	for ( unordered_set<MinHashHeap *>::const_iterator i = minHashHeaps.begin(); i != minHashHeaps.end(); i++ )
 	{
-		HashList hashList(parameters.kmerSize);
+		HashList hashList(parameters.use64);
 		
 		(*i)->toHashList(hashList);
 		
@@ -550,54 +550,14 @@ CommandScreen::HashOutput * hashSequence(CommandScreen::HashInput * input)
 				break;
 			}
 			
-			//kmersTotal++; TODO
-			
-			if ( ! noncanonical )
-			{
-				bool debug = false;
-				useRevComp = true;
-				bool prefixEqual = true;
-	
-				if ( debug ) {for ( uint64_t k = j; k < j + kmerSize; k++ ) { cout << *(seq + k); } cout << endl;}
-				
-				for ( uint64_t k = 0; k < kmerSize; k++ )
-				{
-					char base = seq[j + k];
-					char baseMinus = seqRev[l - j - kmerSize + k];
-		
-					if ( debug ) cout << baseMinus;
-		
-					if ( prefixEqual && baseMinus > base )
-					{
-						useRevComp = false;
-						break;
-					}
-		
-					if ( prefixEqual && baseMinus < base )
-					{
-						prefixEqual = false;
-					}
-				}
-	
-				if ( debug ) cout << endl;
-			}
-	
-			const char * kmer;
-			
-			if ( trans )
-			{
-				kmer = seqTrans + j;
-			}
-			else
-			{
-				kmer = useRevComp ? seqRev + l - j - kmerSize : seq + j;
-			}
+			const char *kmer_fwd = seq + j;
+			const char *kmer_rev = seqRev + length - j - kmerSize;
+			const char * kmer = (noncanonical || memcmp(kmer_fwd, kmer_rev, kmerSize) <= 0) ? kmer_fwd : kmer_rev;
 			
 			//cout << kmer << '\t' << kmerSize << endl;
 			hash_u hash = getHash(kmer, kmerSize, seed, use64);
 			//cout << kmer << '\t' << hash.hash64 << endl;
 			input->minHashHeap->tryInsert(hash);
-			
 			uint64_t key = use64 ? hash.hash64 : hash.hash32;
 			
 			if ( input->hashCounts.count(key) == 1 )
