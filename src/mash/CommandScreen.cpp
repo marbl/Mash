@@ -550,9 +550,18 @@ CommandScreen::HashOutput * hashSequence(CommandScreen::HashInput * input)
 				break;
 			}
 			
-			const char *kmer_fwd = seq + j;
-			const char *kmer_rev = seqRev + length - j - kmerSize;
-			const char * kmer = (noncanonical || memcmp(kmer_fwd, kmer_rev, kmerSize) <= 0) ? kmer_fwd : kmer_rev;
+			const char * kmer;
+			
+			if ( trans )
+			{
+				kmer = seqTrans + j;
+			}
+			else
+			{
+				const char *kmer_fwd = seq + j;
+				const char *kmer_rev = seqRev + length - j - kmerSize;
+				kmer = (noncanonical || memcmp(kmer_fwd, kmer_rev, kmerSize) <= 0) ? kmer_fwd : kmer_rev;
+			}
 			
 			//cout << kmer << '\t' << kmerSize << endl;
 			hash_u hash = getHash(kmer, kmerSize, seed, use64);
