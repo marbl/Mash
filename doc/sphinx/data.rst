@@ -33,6 +33,10 @@ Mash Sketch databases for RefSeq release 88:
 
 `art.fastq.gz <https://obj.umiacs.umd.edu/mash/screen/art.fastq.gz>`_: Simulated reads for Shakya experiment
 
+Figure 5:
+ * `fig5.html <https://obj.umiacs.umd.edu/mash/screen/fig5/fig5.html>`_: Interactive version
+ * `fig5.tsv <https://obj.umiacs.umd.edu/mash/screen/fig5/fig5.tsv>`_: Source data
+
 Public data sources
 ~~~~~~~~~~~~~~~~~~~
 
@@ -72,7 +76,7 @@ They are provided for two screen modes:
 * ``80idy_3x``: 80% Mash Containment Score, at least 3x median k-mer multiplicity.
   Useful for finding related, but novel, sequences.
 
-The files are tab separate, with each line beginning with a RefSeq assembly accession, followed by SRA accessions, for example:
+The files are tab separated, with each line beginning with a RefSeq assembly accession, followed by SRA accessions, for example:
 
 ::
   
