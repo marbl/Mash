@@ -37,24 +37,6 @@ Figure 5:
  * `fig5.html <https://obj.umiacs.umd.edu/mash/screen/fig5/fig5.html>`_: Interactive version
  * `fig5.tsv <https://obj.umiacs.umd.edu/mash/screen/fig5/fig5.tsv>`_: Source data
 
-Public data sources
-~~~~~~~~~~~~~~~~~~~
-
-The BLAST ``nr`` database was downloaded from ``ftp://ftp.ncbi.nlm.nih.gov/blast/db/nr.*``.
-
-HMP data were downloaded from ``ftp://public-ftp.ihmpdcc.org/``, reads from the ``Ilumina/`` directory
-and coding sequences from the ``HMGI/`` directory. Within these folders, sample SRS015937 resides in
-``tongue_dorsum/`` and SRS020263 in ``right_retroauricular_crease/``.
-
-SRA runs downloaded with the `SRA Toolkit <https://www.ncbi.nlm.nih.gov/sra/docs/toolkitsoft/>`_.
-
-RefSeq genomes downloaded from the ``genomes/refseq/`` directory of ``ftp.ncbi.nlm.nih.gov``.
-
-Public data products
-~~~~~~~~~~~~~~~~~~~~
-
-Quebec Polyomavirus is submitted to GenBank as BK010702.
-
 Screen of SRA metagenomes vs. RefSeq
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -83,3 +65,22 @@ The files are tab separated, with each line beginning with a RefSeq assembly acc
   GCF_000001215.4	SRR3401361	SRR3540373
   GCF_000001405.36	SRR5127794	ERR1539652	SRR413753	ERR206081
   GCF_000001405.38	SRR5127794	ERR1539652	ERR1711677	SRR413753	ERR206081
+
+Public data sources
+~~~~~~~~~~~~~~~~~~~
+
+The BLAST ``nr`` database was downloaded from ``ftp://ftp.ncbi.nlm.nih.gov/blast/db/nr.*``.
+
+HMP data were downloaded from ``ftp://public-ftp.ihmpdcc.org/``, reads from the ``Ilumina/`` directory
+and coding sequences from the ``HMGI/`` directory. Within these folders, sample SRS015937 resides in
+``tongue_dorsum/`` and SRS020263 in ``right_retroauricular_crease/``.
+
+SRA runs downloaded with the `SRA Toolkit <https://www.ncbi.nlm.nih.gov/sra/docs/toolkitsoft/>`_.
+
+RefSeq genomes downloaded from the ``genomes/refseq/`` directory of ``ftp.ncbi.nlm.nih.gov``.
+
+Public data products
+~~~~~~~~~~~~~~~~~~~~
+
+Quebec Polyomavirus is submitted to GenBank as BK010702.
+
