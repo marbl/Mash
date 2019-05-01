@@ -19,6 +19,15 @@
 
 namespace mash {
 
+struct HashTableEntry
+{
+	HashTableEntry() : count(0) {}
+	
+	uint32_t count;
+	std::unordered_set<uint64_t> indices;
+};
+
+//typedef std::unordered_map< uint64_t, HashTableEntry > HashTable;
 typedef std::unordered_map< uint64_t, std::unordered_set<uint64_t> > HashTable;
 
 static const std::unordered_map< std::string, char > codons =

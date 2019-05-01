@@ -37,6 +37,7 @@ CommandDistance::CommandDistance()
     //addOption("log", Option(Option::Boolean, "L", "Output", "Log scale distances and divide by k-mer size to provide a better analog to phylogenetic distance. The special case of zero shared min-hashes will result in a distance of 1.", ""));
     addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report.", "1.0", 0., 1.));
     addOption("distance", Option(Option::Number, "d", "Output", "Maximum distance to report.", "1.0", 0., 1.));
+    addOption("comment", Option(Option::Boolean, "C", "Output", "Show comment fields with reference/query names (denoted with ':').", "1.0", 0., 1.));
     useSketchOptions();
 }
 
@@ -51,6 +52,7 @@ int CommandDistance::run() const
     int threads = options.at("threads").getArgumentAsNumber();
     bool list = options.at("list").active;
     bool table = options.at("table").active;
+    bool comment = options.at("comment").active;
     //bool log = options.at("log").active;
     double pValueMax = options.at("pvalue").getArgumentAsNumber();
     double distanceMax = options.at("distance").getArgumentAsNumber();
@@ -225,13 +227,13 @@ int CommandDistance::run() const
         
         while ( threadPool.outputAvailable() )
         {
-            writeOutput(threadPool.popOutputWhenAvailable(), table);
+            writeOutput(threadPool.popOutputWhenAvailable(), table, comment);
         }
     }
     
     while ( threadPool.running() )
     {
-        writeOutput(threadPool.popOutputWhenAvailable(), table);
+        writeOutput(threadPool.popOutputWhenAvailable(), table, comment);
     }
     
     if ( warningCount > 0 && ! parameters.reads )
@@ -242,7 +244,7 @@ int CommandDistance::run() const
     return 0;
 }
 
-void CommandDistance::writeOutput(CompareOutput * output, bool table) const
+void CommandDistance::writeOutput(CompareOutput * output, bool table, bool comment) const
 {
     uint64_t i = output->indexQuery;
     uint64_t j = output->indexRef;
@@ -267,7 +269,21 @@ void CommandDistance::writeOutput(CompareOutput * output, bool table) const
         }
         else if ( pair->pass )
         {
-            cout << output->sketchRef.getReference(j).name << '\t' << output->sketchQuery.getReference(i).name << '\t' << pair->distance << '\t' << pair->pValue << '\t' << pair->numer << '/' << pair->denom << endl;
+            cout << output->sketchRef.getReference(j).name;
+            
+            if ( comment )
+            {
+                cout << ':' << output->sketchRef.getReference(j).comment;
+            }
+            
+            cout << '\t' << output->sketchQuery.getReference(i).name;
+            
+            if ( comment )
+            {
+                cout << ':' << output->sketchQuery.getReference(i).comment;
+            }
+            
+            cout << '\t' << pair->distance << '\t' << pair->pValue << '\t' << pair->numer << '/' << pair->denom << endl;
         }
     
         j++;
