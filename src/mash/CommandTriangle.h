@@ -61,7 +61,7 @@ private:
     double pValueMax;
     bool comment;
     
-    void writeOutput(TriangleOutput * output, bool comment, double & pValueMax) const;
+    void writeOutput(TriangleOutput * output, bool comment, bool edge, double & pValueMax) const;
 };
 
 CommandTriangle::TriangleOutput * compare(CommandTriangle::TriangleInput * input);
