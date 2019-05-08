@@ -35,7 +35,7 @@ CommandTriangle::CommandTriangle()
     useOption("help");
     addOption("list", Option(Option::Boolean, "l", "Input", "List input. Lines in each <query> specify paths to sequence files, one per line. The reference file is not affected.", ""));
     addOption("comment", Option(Option::Boolean, "C", "Output", "Use comment fields for sequence names instead of IDs.", ""));
-    addOption("edge", Option(Option::Boolean, "E", "Output", "Output edge list with fields [seq1, seq2, dist, p-val, shared-hashes].", ""));
+    addOption("edge", Option(Option::Boolean, "E", "Output", "Output edge list instead of Phylip matrix, with fields [seq1, seq2, dist, p-val, shared-hashes].", ""));
     //addOption("log", Option(Option::Boolean, "L", "Output", "Log scale distances and divide by k-mer size to provide a better analog to phylogenetic distance. The special case of zero shared min-hashes will result in a distance of 1.", ""));
     useSketchOptions();
 }
@@ -164,7 +164,7 @@ void CommandTriangle::writeOutput(TriangleOutput * output, bool comment, bool ed
         if ( edge )
         {
             const Sketch::Reference & qry = sketch.getReference(i);
-            cout << (comment ? qry.comment : qry.name) << '\t'<< (comment ? ref.comment : ref.name) << '\t' << pair->distance << endl;// << '\t' << pair->pValue << '\t' << pair->numer << '/' << pair->denom << endl;
+            cout << (comment ? ref.comment : ref.name) << '\t'<< (comment ? qry.comment : qry.name) << '\t' << pair->distance << endl;// << '\t' << pair->pValue << '\t' << pair->numer << '/' << pair->denom << endl;
         }
 	    else
 	    {
