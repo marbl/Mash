@@ -19,16 +19,20 @@ public:
     
     struct TriangleInput
     {
-        TriangleInput(const Sketch & sketchNew, uint64_t indexNew, const Sketch::Parameters & parametersNew)
+        TriangleInput(const Sketch & sketchNew, uint64_t indexNew, const Sketch::Parameters & parametersNew, double maxDistanceNew, double maxPValueNew)
             :
             sketch(sketchNew),
             index(indexNew),
-            parameters(parametersNew)
+            parameters(parametersNew),
+            maxDistance(maxDistanceNew),
+            maxPValue(maxPValueNew)
             {}
         
         const Sketch & sketch;
         uint64_t index;
         const Sketch::Parameters & parameters;
+        double maxDistance;
+        double maxPValue;
     };
     
     struct TriangleOutput
@@ -61,7 +65,7 @@ private:
     double pValueMax;
     bool comment;
     
-    void writeOutput(TriangleOutput * output, bool comment, bool edge, double & pValueMax) const;
+    void writeOutput(TriangleOutput * output, bool comment, bool edge, double & pValuePeakToSet) const;
 };
 
 CommandTriangle::TriangleOutput * compare(CommandTriangle::TriangleInput * input);

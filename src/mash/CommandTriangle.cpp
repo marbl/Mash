@@ -36,6 +36,8 @@ CommandTriangle::CommandTriangle()
     addOption("list", Option(Option::Boolean, "l", "Input", "List input. Lines in each <query> specify paths to sequence files, one per line. The reference file is not affected.", ""));
     addOption("comment", Option(Option::Boolean, "C", "Output", "Use comment fields for sequence names instead of IDs.", ""));
     addOption("edge", Option(Option::Boolean, "E", "Output", "Output edge list instead of Phylip matrix, with fields [seq1, seq2, dist, p-val, shared-hashes].", ""));
+    addOption("pvalue", Option(Option::Number, "v", "Output", "Maximum p-value to report in edge list. Implies -" + getOption("edge").identifier + ".", "1.0", 0., 1.));
+    addOption("distance", Option(Option::Number, "d", "Output", "Maximum distance to report in edge list. Implies -" + getOption("edge").identifier + ".", "1.0", 0., 1.));
     //addOption("log", Option(Option::Boolean, "L", "Output", "Log scale distances and divide by k-mer size to provide a better analog to phylogenetic distance. The special case of zero shared min-hashes will result in a distance of 1.", ""));
     useSketchOptions();
 }
@@ -51,9 +53,16 @@ int CommandTriangle::run() const
     int threads = options.at("threads").getArgumentAsNumber();
     bool list = options.at("list").active;
     //bool log = options.at("log").active;
-    double pValueMax = 0;
     bool comment = options.at("comment").active;
     bool edge = options.at("edge").active;
+    double pValueMax = options.at("pvalue").getArgumentAsNumber();
+    double distanceMax = options.at("distance").getArgumentAsNumber();
+    double pValuePeakToSet = 0;
+    
+    if ( options.at("pvalue").active || options.at("distance").active )
+    {
+        edge = true;
+    }
     
     Sketch::Parameters parameters;
     
@@ -121,22 +130,22 @@ int CommandTriangle::run() const
     
     for ( uint64_t i = 1; i < sketch.getReferenceCount(); i++ )
     {
-        threadPool.runWhenThreadAvailable(new TriangleInput(sketch, i, parameters));
+        threadPool.runWhenThreadAvailable(new TriangleInput(sketch, i, parameters, distanceMax, pValueMax));
         
         while ( threadPool.outputAvailable() )
         {
-            writeOutput(threadPool.popOutputWhenAvailable(), comment, edge, pValueMax);
+            writeOutput(threadPool.popOutputWhenAvailable(), comment, edge, pValuePeakToSet);
         }
     }
     
     while ( threadPool.running() )
     {
-        writeOutput(threadPool.popOutputWhenAvailable(), comment, edge, pValueMax);
+        writeOutput(threadPool.popOutputWhenAvailable(), comment, edge, pValuePeakToSet);
     }
     
     if ( !edge )
     {
-        cerr << "Max p-value: " << pValueMax << endl;
+        cerr << "Max p-value: " << pValuePeakToSet << endl;
     }
     
     if ( warningCount > 0 && ! parameters.reads )
@@ -147,34 +156,37 @@ int CommandTriangle::run() const
     return 0;
 }
 
-void CommandTriangle::writeOutput(TriangleOutput * output, bool comment, bool edge, double & pValueMax) const
+void CommandTriangle::writeOutput(TriangleOutput * output, bool comment, bool edge, double & pValuePeakToSet) const
 {
-	const Sketch & sketch = output->sketch;
-	const Sketch::Reference & ref = sketch.getReference(output->index);
-	
+    const Sketch & sketch = output->sketch;
+    const Sketch::Reference & ref = sketch.getReference(output->index);
+    
     if ( !edge )
     {
         cout << (comment ? ref.comment : ref.name);
     }
-	
+    
     for ( uint64_t i = 0; i < output->index; i++ )
     {
         const CommandDistance::CompareOutput::PairOutput * pair = &output->pairs[i];
         
         if ( edge )
         {
-            const Sketch::Reference & qry = sketch.getReference(i);
-            cout << (comment ? ref.comment : ref.name) << '\t'<< (comment ? qry.comment : qry.name) << '\t' << pair->distance << endl;// << '\t' << pair->pValue << '\t' << pair->numer << '/' << pair->denom << endl;
+            if ( pair->pass )
+            {
+                const Sketch::Reference & qry = sketch.getReference(i);
+                cout << (comment ? ref.comment : ref.name) << '\t'<< (comment ? qry.comment : qry.name) << '\t' << pair->distance << '\t' << pair->pValue << '\t' << pair->numer << '/' << pair->denom << endl;
+            }
         }
-	    else
-	    {
-	        cout << '\t' << pair->distance;
-	    }
-	    
-	    if ( pair->pValue > pValueMax )
-	    {
-	        pValueMax = pair->pValue;
-	    }
+        else
+        {
+            cout << '\t' << pair->distance;
+        }
+        
+        if ( pair->pValue > pValuePeakToSet )
+        {
+            pValuePeakToSet = pair->pValue;
+        }
     }
     
     if ( !edge )
@@ -195,7 +207,7 @@ CommandTriangle::TriangleOutput * compare(CommandTriangle::TriangleInput * input
     
     for ( uint64_t i = 0; i < input->index; i++ )
     {
-    	compareSketches(&output->pairs[i], sketch.getReference(input->index), sketch.getReference(i), sketchSize, sketch.getKmerSize(), sketch.getKmerSpace(), -1., -1.);
+        compareSketches(&output->pairs[i], sketch.getReference(input->index), sketch.getReference(i), sketchSize, sketch.getKmerSize(), sketch.getKmerSpace(), input->maxDistance, input->maxPValue);
     }
     
     return output;
