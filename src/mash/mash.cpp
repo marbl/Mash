@@ -10,6 +10,7 @@
 #include "CommandFind.h"
 #include "CommandDistance.h"
 #include "CommandScreen.h"
+#include "CommandTaxScreen.h"
 #include "CommandTriangle.h"
 #include "CommandContain.h"
 #include "CommandInfo.h"
@@ -23,6 +24,7 @@ int main(int argc, const char ** argv)
     //commandList.addCommand(new CommandFind());
     commandList.addCommand(new mash::CommandDistance());
     commandList.addCommand(new mash::CommandScreen());
+    commandList.addCommand(new mash::CommandTaxScreen());
     commandList.addCommand(new mash::CommandTriangle());
 #ifdef COMMAND_WITHIN
     commandList.addCommand(new mash::CommandContain());
