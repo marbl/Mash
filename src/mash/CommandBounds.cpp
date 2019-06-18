@@ -85,7 +85,8 @@ int CommandBounds::run() const
 				
 				if ( cont )
 				{
-					m2j = exp(-k * dists[j]);
+					//m2j = exp(-k * dists[j]);
+					m2j = pow(1.0 - dists[j], k); // binomial model
 				}
 				else
 				{
@@ -114,7 +115,8 @@ int CommandBounds::run() const
 				
 				if ( cont )
 				{
-					j2m = -1.0 / k * log(je);
+					//j2m = -1.0 / k * log(je);
+					j2m = 1.0 - pow(je, 1. / k);
 				}
 				else
 				{
