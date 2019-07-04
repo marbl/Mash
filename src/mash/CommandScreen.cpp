@@ -39,9 +39,9 @@ CommandScreen::CommandScreen()
 : Command()
 {
 	name = "screen";
-	summary = "Determine whether query sequences are within a larger pool of sequences.";
-	description = "Determine how well query sequences are contained within a pool of sequences. The queries must be formatted as a single Mash sketch file (.msh), created with the `mash sketch` command. The <pool> files can be contigs or reads, in fasta or fastq, gzipped or not, and \"-\" can be given for <pool> to read from standard input. The <pool> sequences are assumed to be nucleotides, and will be 6-frame translated if the <queries> are amino acids. The output fields are [identity, shared-hashes, median-multiplicity, p-value, query-ID, query-comment], where median-multiplicity is computed for shared hashes, based on the number of observations of those hashes within the pool.";
-    argumentString = "<queries>.msh <pool> [<pool>] ...";
+	summary = "Determine whether query sequences are within a larger mixture of sequences.";
+	description = "Determine how well query sequences are contained within a mixture of sequences. The queries must be formatted as a single Mash sketch file (.msh), created with the `mash sketch` command. The <mixture> files can be contigs or reads, in fasta or fastq, gzipped or not, and \"-\" can be given for <mixture> to read from standard input. The <mixture> sequences are assumed to be nucleotides, and will be 6-frame translated if the <queries> are amino acids. The output fields are [identity, shared-hashes, median-multiplicity, p-value, query-ID, query-comment], where median-multiplicity is computed for shared hashes, based on the number of observations of those hashes within the mixture.";
+    argumentString = "<queries>.msh <mixture> [<mixture>] ...";
 	
 	useOption("help");
 	useOption("threads");
@@ -322,7 +322,7 @@ int CommandScreen::run() const
 	*/
 	
 	uint64_t setSize = minHashHeap.estimateSetSize();
-	cerr << "   Estimated distinct" << (trans ? " (translated)" : "") << " k-mers in pool: " << setSize << endl;
+	cerr << "   Estimated distinct" << (trans ? " (translated)" : "") << " k-mers in mixture: " << setSize << endl;
 	
 	if ( setSize == 0 )
 	{
