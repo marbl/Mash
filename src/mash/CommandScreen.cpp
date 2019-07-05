@@ -606,7 +606,7 @@ double pValueWithin(uint64_t x, uint64_t setSize, double kmerSpace, uint64_t ske
         return 1.;
     }
     
-    double r = 1. / (1. + kmerSpace / setSize);
+    double r = double(setSize) / kmerSpace;
     
 #ifdef USE_BOOST
     return cdf(complement(binomial(sketchSize, r), x - 1));
