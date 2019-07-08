@@ -533,23 +533,28 @@ void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const 
     	seqRev = new char[length];
         reverseComplement(seq, seqRev, length);
     }
-    
+
+    auto containsBadCharacters = [goodPosition = (uint64_t)0, kmerSize = kmerSize, length = length, &parameters, seq = seq] (uint64_t i) mutable {
+        // Avoid rechecking good positions. Bad characters are rare,
+        // so they are less important (performance wise).
+        uint64_t j = std::max(i, goodPosition);
+        for ( ; j < i + kmerSize && i + kmerSize <= length; j++ )
+        {
+            if ( ! parameters.alphabet[seq[j]] )
+            {
+                return true;
+            }
+            goodPosition = j;
+        }
+        return false;
+    };
+
     for ( uint64_t i = 0; i < length - kmerSize + 1; i++ )
     {
 		// repeatedly skip kmers with bad characters
 		//
-		bool bad = false;
-		//
-		for ( uint64_t j = i; j < i + kmerSize && i + kmerSize <= length; j++ )
-		{
-			if ( ! parameters.alphabet[seq[j]] )
-			{
-				i = j; // skip to past the bad character
-				bad = true;
-				break;
-			}
-		}
-		//
+		bool bad = containsBadCharacters(i);
+
 		if ( bad )
 		{
 			continue;
