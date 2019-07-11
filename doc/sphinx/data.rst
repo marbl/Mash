@@ -66,6 +66,8 @@ The files are tab separated, with each line beginning with a RefSeq assembly acc
   GCF_000001405.36	SRR5127794	ERR1539652	SRR413753	ERR206081
   GCF_000001405.38	SRR5127794	ERR1539652	ERR1711677	SRR413753	ERR206081
 
+We also provide simple scripts for searching these files: `search.tar <https://obj.umiacs.umd.edu/mash/screen/search.tar>`_
+
 Public data sources
 ~~~~~~~~~~~~~~~~~~~
 
