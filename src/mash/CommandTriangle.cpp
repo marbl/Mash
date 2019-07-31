@@ -71,7 +71,7 @@ int CommandTriangle::run() const
     	return 1;
     }
     
-    if ( arguments.size() == 1 )
+    if ( arguments.size() == 1 && !list )
     {
     	parameters.concatenated = false;
     }
