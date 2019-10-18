@@ -534,17 +534,19 @@ void addMinHashes(MinHashHeap & minHashHeap, char * seq, uint64_t length, const 
         reverseComplement(seq, seqRev, length);
     }
     
+    uint64_t j = 0;
+    
     for ( uint64_t i = 0; i < length - kmerSize + 1; i++ )
     {
 		// repeatedly skip kmers with bad characters
 		//
 		bool bad = false;
 		//
-		for ( uint64_t j = i; j < i + kmerSize && i + kmerSize <= length; j++ )
+		for ( ; j < i + kmerSize && i + kmerSize <= length; j++ )
 		{
 			if ( ! parameters.alphabet[seq[j]] )
 			{
-				i = j; // skip to past the bad character
+				i = j++; // skip to past the bad character
 				bad = true;
 				break;
 			}
