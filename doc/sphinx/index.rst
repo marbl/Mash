@@ -13,8 +13,8 @@ Fast genome and metagenome distance estimation using MinHash
 
 |
 
-Publication
-===========
+Publications
+============
 `Mash: fast genome and metagenome distance estimation using MinHash. Ondov BD, Treangen TJ, Melsted P, Mallonee AB, Bergman NH, Koren S, Phillippy AM. Genome Biol. 2016 Jun 20;17(1):132. doi: 10.1186/s13059-016-0997-x. <http://genomebiology.biomedcentral.com/articles/10.1186/s13059-016-0997-x>`_
 
 `Mash Screen: High-throughput sequence containment estimation for genome discovery. Ondov BD, Starrett GJ, Sappington A, Kostic A, Koren S, Buck CB, Phillippy AM. BioRxiv. 2019 Mar. doi: 10.1101/557314 <https://doi.org/10.1101/557314>`_
