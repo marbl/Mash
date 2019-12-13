@@ -1,0 +1,81 @@
+'\" t
+.\"     Title: mash-screen
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.10
+.\"      Date: 2019-12-13
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "MASH\-SCREEN" "1" "2019-12-13" "\ \&" "\ \&"
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH "NAME"
+mash\-screen \- determine whether query sequences are within a larger pool of sequences
+.SH "SYNOPSIS"
+.sp
+\fBmash screen\fP [options] <queries>.msh <pool> [<pool>] ...
+.SH "DESCRIPTION"
+.sp
+Determine how well query sequences are contained within a pool of sequences.
+The queries must be formatted as a single Mash sketch file (.msh), created
+with the \f(CRmash sketch\fP command. The <pool> files can be contigs or reads, in
+fasta or fastq, gzipped or not, and "\-" can be given for <pool> to read from
+standard input. The <pool> sequences are assumed to be nucleotides, and will
+be 6\-frame translated if the <queries> are amino acids. The output fields are
+[identity, shared\-hashes, median\-multiplicity, p\-value, query\-ID, query\-comment],
+where median\-multiplicity is computed for shared hashes, based on the number of
+observations of those hashes within the pool.
+.SH "OPTIONS"
+.sp
+\fB\-h\fP
+.RS 4
+Help
+.RE
+.sp
+\fB\-p\fP <int>
+.RS 4
+Parallelism. This many threads will be spawned for processing.
+.RE
+.sp
+\fB\-w\fP
+.RS 4
+Winner\-takes\-all strategy for identity estimates. After counting
+hashes for each query, hashes that appear in multiple queries will
+be removed from all except the one with the best identity (ties
+broken by larger query), and other identities will be reduced. This
+removes output redundancy, providing a rough compositional outline.
+.RE
+.SS "Output"
+.sp
+\fB\-i\fP <num>
+.RS 4
+Minimum identity to report. Inclusive unless set to zero, in which
+case only identities greater than zero (i.e. with at least one
+shared hash) will be reported. Set to \-1 to output everything.
+.RE
+.sp
+\fB\-v\fP <num>
+.RS 4
+Maximum p\-value to report.
+.RE
+.SH "SEE ALSO"
+.sp
+mash(1)
