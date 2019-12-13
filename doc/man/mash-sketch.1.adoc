@@ -1,0 +1,103 @@
+# mash-sketch(1)
+
+## NAME
+
+mash-sketch - create sketches (reduced representations for fast operations)
+
+## SYNOPSIS
+
+*mash sketch* [options] fast(a|q)[.gz] ...
+
+## DESCRIPTION
+
+Create a sketch file, which is a reduced representation of a sequence or set
+of sequences (based on min-hashes) that can be used for fast distance
+estimations. Input can be fasta or fastq files (gzipped or not), and "-" can
+be given to read from standard input. Input files can also be files of file
+names (see *-l*). For output, one sketch file will be generated, but it can have
+multiple sketches within it, divided by sequences or files (see *-i*). By
+default, the output file name will be the first input file with a '.msh'
+extension, or 'stdin.msh' if standard input is used (see *-o*).
+
+## OPTIONS
+
+*-h*::
+  Help
+
+*-p* <int>::
+  Parallelism. This many threads will be spawned for processing. [1]
+
+### Input
+
+*-l*::
+  List input. Each file contains a list of sequence files, one per line.
+
+### Output
+
+*-o* <path>::
+  Output prefix (first input file used if unspecified). The suffix
+  '.msh' will be appended.
+
+### Sketching
+
+*-k* <int>::
+  K-mer size. Hashes will be based on strings of this many
+  nucleotides. Canonical nucleotides are used by default (see
+  Alphabet options below). (1-32) [21]
+
+*-s* <int>::
+  Sketch size. Each sketch will have at most this many non-redundant
+  min-hashes. [1000]
+
+*-i*::
+  Sketch individual sequences, rather than whole files.
+
+*-w* <num>::
+  Probability threshold for warning about low k-mer size. (0-1) [0.01]
+
+*-r*::
+  Input is a read set. See Reads options below. Incompatible with *-i*.
+
+### Sketching (reads)
+
+*-b* <size>::
+  Use a Bloom filter of this size (raw bytes or with K/M/G/T) to
+  filter out unique k-mers. This is useful if exact filtering with *-m*
+  uses too much memory. However, some unique k-mers may pass
+  erroneously, and copies cannot be counted beyond 2. Implies *-r*.
+
+*-m* <int>::
+  Minimum copies of each k-mer required to pass noise filter for
+  reads. Implies *-r*. [1]
+
+*-c* <num>::
+  Target coverage. Sketching will conclude if this coverage is
+  reached before the end of the input file (estimated by average
+  k-mer multiplicity). Implies *-r*.
+
+*-g* <size>::
+  Genome size. If specified, will be used for p-value calculation
+  instead of an estimated size from k-mer content. Implies *-r*.
+
+### Sketching (alphabet)
+
+*-n*::
+  Preserve strand (by default, strand is ignored by using canonical
+  DNA k-mers, which are alphabetical minima of forward-reverse
+  pairs). Implied if an alphabet is specified with *-a* or *-z*.
+
+*-a*::
+  Use amino acid alphabet (A-Z, except BJOUXZ). Implies *-n*, *-k* 9.
+
+*-z* <text>::
+  Alphabet to base hashes on (case ignored by default; see *-Z*).
+  K-mers with other characters will be ignored. Implies *-n*.
+
+*-Z*::
+  Preserve case in k-mers and alphabet (case is ignored by default).
+  Sequence letters whose case is not in the current alphabet will be
+  skipped when sketching.
+
+## SEE ALSO
+
+mash(1)
