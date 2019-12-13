@@ -33,6 +33,9 @@ functionality is provided by the subtools ('commands'):
 *sketch*::
   Create sketches (reduced representations for fast operations).
 
+*triangle*::
+  Estimate a lower-triangular distance matrix.
+
 ## SEE ALSO
 
-mash-dist(1), mash-info(1), mash-paste(1), mash-screen(1), mash-sketch(1)
+mash-dist(1), mash-info(1), mash-paste(1), mash-screen(1), mash-sketch(1), mash-triangle(1)

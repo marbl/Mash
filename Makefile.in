@@ -63,7 +63,8 @@ MANPAGES=\
 	mash-info.1 \
 	mash-paste.1 \
 	mash-screen.1 \
-	mash-sketch.1
+	mash-sketch.1 \
+	mash-triangle.1
 
 %.1: doc/man/%.1.adoc
 	asciidoctor -D. -b manpage $^
