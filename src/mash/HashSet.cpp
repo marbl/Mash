@@ -78,14 +78,14 @@ void HashSet::toCounts(std::vector<uint32_t> & counts) const
 {
     if ( use64 )
     {
-        for ( std::unordered_map<hash64_t, uint32_t>::const_iterator i = hashes64.begin(); i != hashes64.end(); i++ )
+        for ( auto i = hashes64.begin(); i != hashes64.end(); i++ )
         {
             counts.push_back(i->second);
         }
     }
     else
     {
-        for ( std::unordered_map<hash32_t, uint32_t>::const_iterator i = hashes32.begin(); i != hashes32.end(); i++ )
+        for ( auto i = hashes32.begin(); i != hashes32.end(); i++ )
         {
             counts.push_back(i->second);
         }
@@ -96,14 +96,14 @@ void HashSet::toHashList(HashList & hashList) const
 {
     if ( use64 )
     {
-        for ( std::unordered_map<hash64_t, uint32_t>::const_iterator i = hashes64.begin(); i != hashes64.end(); i++ )
+        for ( auto i = hashes64.begin(); i != hashes64.end(); i++ )
         {
             hashList.push_back64(i->first);
         }
     }
     else
     {
-        for ( std::unordered_map<hash32_t, uint32_t>::const_iterator i = hashes32.begin(); i != hashes32.end(); i++ )
+        for ( auto i = hashes32.begin(); i != hashes32.end(); i++ )
         {
             hashList.push_back32(i->first);
         }

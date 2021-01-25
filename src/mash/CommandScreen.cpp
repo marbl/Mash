@@ -12,7 +12,7 @@
 #include <zlib.h>
 #include "ThreadPool.h"
 #include <math.h>
-#include <set>
+#include "robin_hood.h"
 
 #ifdef USE_BOOST
 	#include <boost/math/distributions/binomial.hpp>
@@ -29,8 +29,6 @@ using std::cout;
 using std::endl;
 using std::list;
 using std::string;
-using std::unordered_map;
-using std::unordered_set;
 using std::vector;
 
 namespace mash {
@@ -93,8 +91,8 @@ int CommandScreen::run() const
 	parameters.minHashesPerWindow = sketch.getMinHashesPerWindow();
 	
 	HashTable hashTable;
-	unordered_map<uint64_t, std::atomic<uint32_t>> hashCounts;
-	unordered_map<uint64_t, list<uint32_t> > saturationByIndex;
+	robin_hood::unordered_map<uint64_t, std::atomic<uint32_t>> hashCounts;
+	robin_hood::unordered_map<uint64_t, list<uint32_t> > saturationByIndex;
 	
 	cerr << "Loading " << arguments[0] << "..." << endl;
 	
@@ -117,7 +115,7 @@ int CommandScreen::run() const
 	
 	cerr << "   " << hashTable.size() << " distinct hashes." << endl;
 	
-	unordered_set<MinHashHeap *> minHashHeaps;
+	robin_hood::unordered_set<MinHashHeap *> minHashHeaps;
 	
 	bool trans = (alphabet == alphabetProtein);
 	
@@ -289,7 +287,7 @@ int CommandScreen::run() const
 	
 	MinHashHeap minHashHeap(sketch.getUse64(), sketch.getMinHashesPerWindow());
 	
-	for ( unordered_set<MinHashHeap *>::const_iterator i = minHashHeaps.begin(); i != minHashHeaps.end(); i++ )
+	for ( auto i = minHashHeaps.begin(); i != minHashHeaps.end(); i++ )
 	{
 		HashList hashList(parameters.use64);
 		
@@ -337,13 +335,13 @@ int CommandScreen::run() const
 	
 	memset(shared, 0, sizeof(uint64_t) * sketch.getReferenceCount());
 	
-	for ( unordered_map<uint64_t, std::atomic<uint32_t> >::const_iterator i = hashCounts.begin(); i != hashCounts.end(); i++ )
+	for ( auto i = hashCounts.begin(); i != hashCounts.end(); i++ )
 	{
 		if ( i->second >= minCov )
 		{
-			const unordered_set<uint64_t> & indeces = hashTable.at(i->first);
+			const auto & indeces = hashTable.at(i->first);
 
-			for ( unordered_set<uint64_t>::const_iterator k = indeces.begin(); k != indeces.end(); k++ )
+			for ( auto k = indeces.begin(); k != indeces.end(); k++ )
 			{
 				shared[*k]++;
 				depths[*k].push_back(i->second);
@@ -381,12 +379,12 @@ int CommandScreen::run() const
 				continue;
 			}
 			
-			const unordered_set<uint64_t> & indeces = i->second;
+			const auto & indeces = i->second;
 			double maxScore = 0;
 			uint64_t maxLength = 0;
 			uint64_t maxIndex;
 			
-			for ( unordered_set<uint64_t>::const_iterator k = indeces.begin(); k != indeces.end(); k++ )
+			for ( auto k = indeces.begin(); k != indeces.end(); k++ )
 			{
 				if ( scores[*k] > maxScore )
 				{
@@ -456,6 +454,7 @@ int CommandScreen::run() const
 		}
 	}
 	
+	delete [] depths;
 	delete [] shared;
 	
 	return 0;
@@ -809,7 +808,7 @@ char aaFromCodon(const char * codon)
 	return aa;//(aa == '*') ? 0 : aa;
 }
 
-void useThreadOutput(CommandScreen::HashOutput * output, unordered_set<MinHashHeap *> & minHashHeaps)
+void useThreadOutput(CommandScreen::HashOutput * output, robin_hood::unordered_set<MinHashHeap *> & minHashHeaps)
 {
 	minHashHeaps.emplace(output->minHashHeap);
 	delete output;

@@ -17,6 +17,10 @@ Open Bloom Filter
   https://code.google.com/p/bloom/source/browse/trunk/bloom_filter.hpp
   Common Public License
 
+Robin_Hood Unordered Map and Set
+  https://github.com/martinus/robin-hood-hashing
+  MIT License
+
 COPYRIGHT LICENSE
 
 Copyright © 2015, Battelle National Biodefense Institute (BNBI);

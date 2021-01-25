@@ -13,8 +13,7 @@
 #include <string>
 #include <vector>
 #include <atomic>
-#include <unordered_set>
-#include <unordered_map>
+#include "robin_hood.h"
 #include "MinHashHeap.h"
 
 namespace mash {
@@ -24,13 +23,13 @@ struct HashTableEntry
 	HashTableEntry() : count(0) {}
 	
 	uint32_t count;
-	std::unordered_set<uint64_t> indices;
+	robin_hood::unordered_set<uint64_t> indices;
 };
 
-//typedef std::unordered_map< uint64_t, HashTableEntry > HashTable;
-typedef std::unordered_map< uint64_t, std::unordered_set<uint64_t> > HashTable;
+//typedef robin_hood::unordered_map< uint64_t, HashTableEntry > HashTable;
+typedef robin_hood::unordered_map< uint64_t, robin_hood::unordered_set<uint64_t> > HashTable;
 
-static const std::unordered_map< std::string, char > codons =
+static const robin_hood::unordered_map< std::string, char > codons =
 {
 	{"AAA",	'K'},
 	{"AAC",	'N'},
@@ -104,7 +103,7 @@ public:
     
     struct HashInput
     {
-    	HashInput(std::unordered_map<uint64_t, std::atomic<uint32_t> > & hashCountsNew, MinHashHeap * minHashHeapNew, char * seqNew, uint64_t lengthNew, const Sketch::Parameters & parametersNew, bool transNew)
+    	HashInput(robin_hood::unordered_map<uint64_t, std::atomic<uint32_t> > & hashCountsNew, MinHashHeap * minHashHeapNew, char * seqNew, uint64_t lengthNew, const Sketch::Parameters & parametersNew, bool transNew)
     	:
     	hashCounts(hashCountsNew),
     	minHashHeap(minHashHeapNew),
@@ -129,7 +128,7 @@ public:
     	bool trans;
     	
     	Sketch::Parameters parameters;
-		std::unordered_map<uint64_t, std::atomic<uint32_t> > & hashCounts;
+		robin_hood::unordered_map<uint64_t, std::atomic<uint32_t> > & hashCounts;
 		MinHashHeap * minHashHeap;
     };
     
@@ -165,7 +164,7 @@ double estimateIdentity(uint64_t common, uint64_t denom, int kmerSize, double km
 CommandScreen::HashOutput * hashSequence(CommandScreen::HashInput * input);
 double pValueWithin(uint64_t x, uint64_t setSize, double kmerSpace, uint64_t sketchSize);
 void translate(const char * src, char * dst, uint64_t len);
-void useThreadOutput(CommandScreen::HashOutput * output, std::unordered_set<MinHashHeap *> & minHashHeaps);
+void useThreadOutput(CommandScreen::HashOutput * output, robin_hood::unordered_set<MinHashHeap *> & minHashHeaps);
 
 } // namespace mash
 

@@ -8,8 +8,7 @@
 #define Sketch_h
 
 #include "mash/capnp/MinHash.capnp.h"
-#include <unordered_map>
-#include <unordered_set>
+#include "robin_hood.h"
 #include <map>
 #include <vector>
 #include <string>
@@ -126,8 +125,6 @@ public:
         uint32_t position;
     };
     
-    typedef std::unordered_set<hash_t> Hash_set;
-    
     struct Reference
     {
         // no sequence for now
@@ -215,9 +212,9 @@ private:
     void createIndex();
     
     std::vector<Reference> references;
-    std::unordered_map<std::string, int> referenceIndecesById;
+    robin_hood::unordered_map<std::string, int> referenceIndecesById;
     std::vector<std::vector<PositionHash>> positionHashesByReference;
-    std::unordered_map<hash_t, std::vector<Locus>> lociByHash;
+    robin_hood::unordered_map<hash_t, std::vector<Locus>> lociByHash;
     
     Parameters parameters;
     double kmerSpace;
