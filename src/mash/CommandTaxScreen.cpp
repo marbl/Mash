@@ -96,7 +96,7 @@ int CommandTaxScreen::run() const
 	parameters.minHashesPerWindow = sketch.getMinHashesPerWindow();
 
 	HashTable hashTable;
-	unordered_map<uint64_t, std::atomic<uint32_t>> hashCounts;
+	robin_hood::unordered_map<uint64_t, std::atomic<uint32_t>> hashCounts;
 	unordered_map<uint64_t, TaxID> hashTaxIDs;
 	unordered_map<uint64_t, list<uint32_t> > saturationByIndex;
 
@@ -189,7 +189,7 @@ int CommandTaxScreen::run() const
 
 	cerr << "   " << hashTable.size() << " distinct hashes." << endl;
 
-	unordered_set<MinHashHeap *> minHashHeaps;
+	robin_hood::unordered_set<MinHashHeap *> minHashHeaps;
 
 	bool trans = (alphabet == alphabetProtein);
 
@@ -362,7 +362,7 @@ int CommandTaxScreen::run() const
 
 	MinHashHeap minHashHeap(sketch.getUse64(), sketch.getMinHashesPerWindow());
 
-	for ( unordered_set<MinHashHeap *>::const_iterator i = minHashHeaps.begin(); i != minHashHeaps.end(); i++ )
+	for ( robin_hood::unordered_set<MinHashHeap *>::const_iterator i = minHashHeaps.begin(); i != minHashHeaps.end(); i++ )
 	{
 		HashList hashList(parameters.use64);
 
@@ -412,13 +412,13 @@ int CommandTaxScreen::run() const
 	unordered_map<TaxID, TaxCounts> counts;
 	unordered_set<TaxID> allTaxIDs;
 
-	for ( unordered_map<uint64_t, std::atomic<uint32_t> >::const_iterator i = hashCounts.begin(); i != hashCounts.end(); i++ )
+	for ( robin_hood::unordered_map<uint64_t, std::atomic<uint32_t> >::const_iterator i = hashCounts.begin(); i != hashCounts.end(); i++ )
 	{
 		// indices of all the references - map them to taxonomy IDs
-		const unordered_set<uint64_t> & indeces = hashTable.at(i->first);
+		const robin_hood::unordered_set<uint64_t> & indeces = hashTable.at(i->first);
 
 		TaxID taxID = 0;
-		for ( unordered_set<uint64_t>::const_iterator k = indeces.begin(); k != indeces.end(); k++ )
+		for ( robin_hood::unordered_set<uint64_t>::const_iterator k = indeces.begin(); k != indeces.end(); k++ )
 		{
 			taxID = taxdb.getLowestCommonAncestor(referenceTaxIDs[*k], taxID);
 			shared[*k]++;

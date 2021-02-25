@@ -34,8 +34,6 @@ namespace mash {
 
 using TaxID = uint64_t;
 
-typedef std::unordered_map< uint64_t, std::unordered_set<uint64_t> > HashTable;
-
 class CommandTaxScreen : public Command
 {
 public:
