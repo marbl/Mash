@@ -15,6 +15,7 @@ SOURCES=\
 	src/mash/CommandBounds.cpp \
 	src/mash/CommandContain.cpp \
 	src/mash/CommandDistance.cpp \
+	src/mash/CommandTaxScreen.cpp \
 	src/mash/CommandScreen.cpp \
 	src/mash/CommandTriangle.cpp \
 	src/mash/CommandFind.cpp \
