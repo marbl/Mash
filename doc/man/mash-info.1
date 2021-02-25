@@ -1,0 +1,69 @@
+'\" t
+.\"     Title: mash-info
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.10
+.\"      Date: 2019-12-13
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "MASH\-INFO" "1" "2019-12-13" "\ \&" "\ \&"
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH "NAME"
+mash\-info \- display information about sketch files
+.SH "SYNOPSIS"
+.sp
+\fBmash info\fP [options] <sketch>
+.SH "DESCRIPTION"
+.sp
+Displays information about sketch files.
+.SH "OPTIONS"
+.sp
+\fB\-h\fP
+.RS 4
+Help
+.RE
+.sp
+\fB\-H\fP
+.RS 4
+Only show header info. Do not list each sketch. Incompatible with \fB\-t\fP
+and \fB\-c\fP.
+.RE
+.sp
+\fB\-t\fP
+.RS 4
+Tabular output (rather than padded), with no header. Incompatible with
+\fB\-H\fP and \fB\-c\fP.
+.RE
+.sp
+\fB\-c\fP
+.RS 4
+Show hash count histograms for each sketch. Incompatible with \fB\-H\fP and
+\fB\-t\fP.
+.RE
+.sp
+\fB\-d\fP
+.RS 4
+Dump sketches in JSON format. Incompatible with \fB\-H\fP, \fB\-t\fP, and \fB\-c\fP.
+.RE
+.SH "SEE ALSO"
+.sp
+mash(1)

@@ -1,0 +1,162 @@
+'\" t
+.\"     Title: mash-dist
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.10
+.\"      Date: 2019-12-13
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "MASH\-DIST" "1" "2019-12-13" "\ \&" "\ \&"
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH "NAME"
+mash\-dist \- estimate the distance of query sequences to references
+.SH "SYNOPSIS"
+.sp
+\fBmash dist\fP [options] <reference> <query> [<query>] ...
+.SH "DESCRIPTION"
+.sp
+Estimate the distance of each query sequence to the reference. Both the
+reference and queries can be fasta or fastq, gzipped or not, or Mash sketch
+files (.msh) with matching k\-mer sizes. Query files can also be files of file
+names (see \fB\-l\fP). Whole files are compared by default (see \fB\-i\fP). The output
+fields are [reference\-ID, query\-ID, distance, p\-value, shared\-hashes].
+.SH "OPTIONS"
+.sp
+\fB\-h\fP
+.RS 4
+Help
+.RE
+.sp
+\fB\-p\fP <int>
+.RS 4
+Parallelism. This many threads will be spawned for processing. [1]
+.RE
+.SS "Input"
+.sp
+\fB\-l\fP
+.RS 4
+List input. Each query file contains a list of sequence files, one
+per line. The reference file is not affected.
+.RE
+.SS "Output"
+.sp
+\fB\-t\fP
+.RS 4
+Table output (will not report p\-values, but fields will be blank if
+they do not meet the p\-value threshold).
+.RE
+.sp
+\fB\-v\fP <num>
+.RS 4
+Maximum p\-value to report. (0\-1) [1.0]
+.RE
+.sp
+\fB\-d\fP <num>
+.RS 4
+Maximum distance to report. (0\-1) [1.0]
+.RE
+.SS "Sketching"
+.sp
+\fB\-k\fP <int>
+.RS 4
+K\-mer size. Hashes will be based on strings of this many
+nucleotides. Canonical nucleotides are used by default (see
+Alphabet options below). (1\-32) [21]
+.RE
+.sp
+\fB\-s\fP <int>
+.RS 4
+Sketch size. Each sketch will have at most this many non\-redundant
+min\-hashes. [1000]
+.RE
+.sp
+\fB\-i\fP
+.RS 4
+Sketch individual sequences, rather than whole files.
+.RE
+.sp
+\fB\-w\fP <num>
+.RS 4
+Probability threshold for warning about low k\-mer size. (0\-1) [0.01]
+.RE
+.sp
+\fB\-r\fP
+.RS 4
+Input is a read set. See Reads options below. Incompatible with \fB\-i\fP.
+.RE
+.SS "Sketching (reads)"
+.sp
+\fB\-b\fP <size>
+.RS 4
+Use a Bloom filter of this size (raw bytes or with K/M/G/T) to
+filter out unique k\-mers. This is useful if exact filtering with \fB\-m\fP
+uses too much memory. However, some unique k\-mers may pass
+erroneously, and copies cannot be counted beyond 2. Implies \fB\-r\fP.
+.RE
+.sp
+\fB\-m\fP <int>
+.RS 4
+Minimum copies of each k\-mer required to pass noise filter for
+reads. Implies \fB\-r\fP. [1]
+.RE
+.sp
+\fB\-c\fP <num>
+.RS 4
+Target coverage. Sketching will conclude if this coverage is
+reached before the end of the input file (estimated by average
+k\-mer multiplicity). Implies \fB\-r\fP.
+.RE
+.sp
+\fB\-g\fP <size>
+.RS 4
+Genome size. If specified, will be used for p\-value calculation
+instead of an estimated size from k\-mer content. Implies \fB\-r\fP.
+.RE
+.SS "Sketching (alphabet)"
+.sp
+\fB\-n\fP
+.RS 4
+Preserve strand (by default, strand is ignored by using canonical
+DNA k\-mers, which are alphabetical minima of forward\-reverse
+pairs). Implied if an alphabet is specified with \fB\-a\fP or \fB\-z\fP.
+.RE
+.sp
+\fB\-a\fP
+.RS 4
+Use amino acid alphabet (A\-Z, except BJOUXZ). Implies \fB\-n\fP, \fB\-k\fP 9.
+.RE
+.sp
+\fB\-z\fP <text>
+.RS 4
+Alphabet to base hashes on (case ignored by default; see \fB\-Z\fP).
+K\-mers with other characters will be ignored. Implies \fB\-n\fP.
+.RE
+.sp
+\fB\-Z\fP
+.RS 4
+Preserve case in k\-mers and alphabet (case is ignored by default).
+Sequence letters whose case is not in the current alphabet will be
+skipped when sketching.
+.RE
+.SH "SEE ALSO"
+.sp
+mash(1)

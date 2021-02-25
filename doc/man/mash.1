@@ -1,0 +1,77 @@
+'\" t
+.\"     Title: mash
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.10
+.\"      Date: 2019-12-13
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "MASH" "1" "2019-12-13" "\ \&" "\ \&"
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH "NAME"
+mash \- fast genome and metagenome distance estimation using MinHash
+.SH "SYNOPSIS"
+.sp
+\fBmash\fP <command> [options] [arguments ...]
+.SH "DESCRIPTION"
+.sp
+\fBmash\fP is the main executable for the \fBMash\fP software. The actual
+functionality is provided by the subtools (\(aqcommands\(aq):
+.SS "Commands"
+.sp
+\fBbounds\fP
+.RS 4
+Print a table of Mash error bounds.
+.RE
+.sp
+\fBdist\fP
+.RS 4
+Estimate the distance of query sequences to references.
+.RE
+.sp
+\fBinfo\fP
+.RS 4
+Display information about sketch files.
+.RE
+.sp
+\fBpaste\fP
+.RS 4
+Create a single sketch file from multiple sketch files.
+.RE
+.sp
+\fBscreen\fP
+.RS 4
+Determine whether query sequences are within a larger pool of sequences.
+.RE
+.sp
+\fBsketch\fP
+.RS 4
+Create sketches (reduced representations for fast operations).
+.RE
+.sp
+\fBtriangle\fP
+.RS 4
+Estimate a lower\-triangular distance matrix.
+.RE
+.SH "SEE ALSO"
+.sp
+mash\-dist(1), mash\-info(1), mash\-paste(1), mash\-screen(1), mash\-sketch(1), mash\-triangle(1)

@@ -57,7 +57,12 @@ src/mash/memcpyWrap.o : src/mash/memcpyWrap.c
 src/mash/capnp/MinHash.capnp.c++ src/mash/capnp/MinHash.capnp.h : src/mash/capnp/MinHash.capnp
 	cd src/mash/capnp;export PATH=@capnp@/bin/:${PATH};capnp compile -I @capnp@/include -oc++ MinHash.capnp
 
-install : mash
+.PHONY: install-man install
+install-man:
+	mkdir -p @prefix@/share/man/man1
+	cp `pwd`/doc/man/*.1 @prefix@/share/man/man1
+
+install : mash install-man
 	mkdir -p @prefix@/bin/
 	mkdir -p @prefix@/lib/
 	mkdir -p @prefix@/include/
@@ -68,11 +73,14 @@ install : mash
 	cp `pwd`/src/mash/*.h @prefix@/include/mash/
 	cp `pwd`/src/mash/capnp/MinHash.capnp.h @prefix@/include/mash/capnp/
 
-.PHONY: uninstall
-uninstall:
+.PHONY: uninstall uninstall-man
+uninstall: uninstall-man
 	rm -f @prefix@/bin/mash
 	rm -f @prefix@/lib/libmash.a
 	rm -rf @prefix@/include/mash
+
+uninstall-man:
+	rm -f @prefix@/share/man/man1/mash*.1
 
 clean :
 	-rm mash
