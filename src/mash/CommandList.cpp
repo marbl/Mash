@@ -118,6 +118,10 @@ MurmurHash3\n\
 Open Bloom Filter\n\
   https://code.google.com/p/bloom/source/browse/trunk/bloom_filter.hpp\n\
   Common Public License\n\
+\n\
+Robin_Hood Unordered Map and Set\n\
+  https://github.com/martinus/robin-hood-hashing\n\
+  MIT License\n\
 \n";
 #ifdef DIST_LICENSE
 	cout << "\n\
