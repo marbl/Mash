@@ -174,7 +174,7 @@ Command::Command()
     addAvailableOption("silent", Option(Option::Boolean, "s", "Output", "Silent", ""));
     addAvailableOption("individual", Option(Option::Boolean, "i", "Sketch", "Sketch individual sequences, rather than whole files, e.g. for multi-fastas of single-chromosome genomes or pair-wise gene comparisons.", ""));
     addAvailableOption("warning", Option(Option::Number, "w", "Sketch", "Probability threshold for warning about low k-mer size.", "0.01", 0, 1));
-    addAvailableOption("reads", Option(Option::Boolean, "r", "Sketch", "Input is a read set. See Reads options below. Incompatible with -i.", ""));
+    addAvailableOption("reads", Option(Option::Boolean, "r", "Sketch", "Input is a read set. See Reads options below. Implies -M. Incompatible with -i.", ""));
     addAvailableOption("seed", Option(Option::Integer, "S", "Sketch", "Seed to provide to the hash function.", "42", 0, 0xFFFFFFFF));
     addAvailableOption("memory", Option(Option::Size, "b", "Reads", "Use a Bloom filter of this size (raw bytes or with K/M/G/T) to filter out unique k-mers. This is useful if exact filtering with -m uses too much memory. However, some unique k-mers may pass erroneously, and copies cannot be counted beyond 2. Implies -r."));
     addAvailableOption("minCov", Option(Option::Integer, "m", "Reads", "Minimum copies of each k-mer required to pass noise filter for reads. Implies -r.", "1"));

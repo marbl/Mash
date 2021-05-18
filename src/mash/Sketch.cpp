@@ -301,6 +301,7 @@ uint64_t Sketch::initParametersFromCapnp(const char * file)
     capnp::List<capnp::MinHash::ReferenceList::Reference>::Reader referencesReader = referenceListReader.getReferences();
     uint64_t referenceCount = referencesReader.size();
     
+    parameters.counts = referencesReader[0].hasCounts32();
    	parameters.seed = reader.getHashSeed();
     
     if ( reader.hasAlphabet() )
@@ -428,7 +429,7 @@ int Sketch::writeToCapnp(const char * file) const
                 }
             }
             
-            if ( references[i].counts.size() > 0 && parameters.reads )
+            if ( references[i].counts.size() > 0 && parameters.counts )
             {
             	const vector<uint32_t> & counts = references[i].counts;
             	
@@ -438,6 +439,8 @@ int Sketch::writeToCapnp(const char * file) const
 				{
 					countsBuilder.set(j, counts.at(j));
 				}
+				
+				referenceBuilder.setCounts32Sorted(true);
 			}
         }
     }
@@ -1001,6 +1004,8 @@ Sketch::SketchOutput * loadCapnp(Sketch::SketchInput * input)
 				reference.counts[j] = countsReader[j];
 			}
         }
+        
+        reference.countsSorted = referenceReader.getCounts32Sorted();
     }
     
     capnp::MinHash::LocusList::Reader locusListReader = reader.getLocusList();
@@ -1135,9 +1140,8 @@ void setMinHashesForReference(Sketch::Reference & reference, const MinHashHeap &
 {
     HashList & hashList = reference.hashesSorted;
     hashList.clear();
-    hashes.toHashList(hashList);
-    hashes.toCounts(reference.counts);
-    hashList.sort();
+    hashes.toHashList(hashList, reference.counts);
+    reference.countsSorted = true;
 }
 
 Sketch::SketchOutput * sketchFile(Sketch::SketchInput * input)

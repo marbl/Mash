@@ -49,17 +49,6 @@ MinHashHeap::~MinHashHeap()
 	}
 }
 
-void MinHashHeap::computeStats()
-{
-	vector<uint32_t> counts;
-	hashes.toCounts(counts);
-	
-	for ( int i = 0; i < counts.size(); i++ )
-	{
-		cout << counts.at(i) << endl;
-	}
-}
-
 void MinHashHeap::clear()
 {
 	hashes.clear();

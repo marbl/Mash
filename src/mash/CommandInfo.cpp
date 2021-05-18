@@ -196,7 +196,7 @@ int CommandInfo::printCounts(const Sketch & sketch) const
 	
 	if ( ! sketch.hasHashCounts() )
 	{
-		cerr << "ERROR: Sketch file does not have hash counts. Re-sketch with counting enabled to use this feature." << endl;
+		cerr << "ERROR: Sketch file does not have hash counts. Re-sketch with -M to use this feature." << endl;
 		return 1;
 	}
 	
@@ -261,6 +261,26 @@ int CommandInfo::writeJson(const Sketch & sketch) const
 		}
 		
 		cout << "			]" << endl;
+		
+		if ( ref.countsSorted )
+		{
+			cout << "			\"counts\" :" << endl;
+			cout << "			[" << endl;
+		
+			for ( int j = 0; j < ref.counts.size(); j++ )
+			{
+				cout << "				" << ref.counts.at(j);
+			
+				if ( j < ref.hashesSorted.size() - 1 )
+				{
+					cout << ',';
+				}
+			
+				cout << endl;
+			}
+		
+			cout << "			]" << endl;
+		}
 		
 		if ( i < sketch.getReferenceCount() - 1 )
 		{

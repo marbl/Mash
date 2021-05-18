@@ -22,8 +22,8 @@ public:
     uint32_t count(hash_u hash) const;
     void erase(hash_u hash);
     void insert(hash_u hash, uint32_t count = 1);
+    void toHashList(HashList & hashList, std::vector<uint32_t> & counts) const;
     void toHashList(HashList & hashList) const;
-    void toCounts(std::vector<uint32_t> & counts) const;
     
 private:
     

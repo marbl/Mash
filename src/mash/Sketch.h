@@ -52,7 +52,8 @@ public:
             memoryBound(0),
             minCov(1),
             targetCov(0),
-            genomeSize(0)
+            genomeSize(0),
+            counts(false)
         {
         	memset(alphabet, 0, 256);
         }
@@ -76,7 +77,8 @@ public:
             memoryBound(other.memoryBound),
             minCov(other.minCov),
             targetCov(other.targetCov),
-            genomeSize(other.genomeSize)
+            genomeSize(other.genomeSize),
+            counts(other.counts)
 		{
 			memcpy(alphabet, other.alphabet, 256);
 		}
@@ -100,6 +102,7 @@ public:
         uint32_t minCov;
         double targetCov;
         uint64_t genomeSize;
+        bool counts;
     };
     
     struct PositionHash
@@ -127,13 +130,12 @@ public:
     
     struct Reference
     {
-        // no sequence for now
-        
         std::string name;
         std::string comment;
         uint64_t length;
         HashList hashesSorted;
         std::vector<uint32_t> counts;
+        bool countsSorted;
     };
     
     struct SketchInput

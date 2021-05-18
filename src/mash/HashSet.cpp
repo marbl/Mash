@@ -5,6 +5,7 @@
 // See the LICENSE.txt file included with this software for license information.
 
 #include "HashSet.h"
+#include <utility>
 
 uint32_t HashSet::count(hash_u hash) const
 {
@@ -74,19 +75,43 @@ void HashSet::insert(hash_u hash, uint32_t count)
     }
 }
 
-void HashSet::toCounts(std::vector<uint32_t> & counts) const
+void HashSet::toHashList(HashList & hashList, std::vector<uint32_t> & counts) const
 {
     if ( use64 )
     {
+    	typedef std::pair<hash64_t, uint32_t> hashCount64;
+    	
+    	std::vector <hashCount64> sortList;
+    	
         for ( auto i = hashes64.begin(); i != hashes64.end(); i++ )
         {
+            sortList.push_back(hashCount64(i->first, i->second));
+        }
+        
+        std::sort(sortList.begin(), sortList.end(), [](hashCount64 a, hashCount64 b){return a.first < b.first;});
+        
+        for ( auto i = sortList.begin(); i != sortList.end(); i++ )
+        {
+            hashList.push_back64(i->first);
             counts.push_back(i->second);
         }
     }
     else
     {
+    	typedef std::pair<hash32_t, uint32_t> hashCount32;
+    	
+    	std::vector <hashCount32> sortList;
+    	
         for ( auto i = hashes32.begin(); i != hashes32.end(); i++ )
         {
+            sortList.push_back(hashCount32(i->first, i->second));
+        }
+        
+        std::sort(sortList.begin(), sortList.end(), [](hashCount32 a, hashCount32 b){return a.first < b.first;});
+        
+        for ( auto i = sortList.begin(); i != sortList.end(); i++ )
+        {
+            hashList.push_back32(i->first);
             counts.push_back(i->second);
         }
     }

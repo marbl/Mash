@@ -24,6 +24,7 @@ struct MinHash
 			hashes32 @5 : List(UInt32);
 			hashes64 @6 : List(UInt64);
 			counts32 @8 : List(UInt32);
+			counts32Sorted @9 : Bool;
 		}
 		
 		references @0 : List(Reference);

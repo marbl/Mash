@@ -29,6 +29,7 @@ CommandSketch::CommandSketch()
     addOption("prefix", Option(Option::File, "o", "Output", "Output prefix (first input file used if unspecified). The suffix '.msh' will be appended.", ""));
     addOption("id", Option(Option::File, "I", "Sketch", "ID field for sketch of reads (instead of first sequence ID).", ""));
     addOption("comment", Option(Option::File, "C", "Sketch", "Comment for a sketch of reads (instead of first sequence comment).", ""));
+    addOption("counts", Option(Option::Boolean, "M", "Sketch", "Store multiplicity of each k-mer in each sketch.", ""));
     useSketchOptions();
 }
 
@@ -44,6 +45,8 @@ int CommandSketch::run() const
     bool list = options.at("list").active;
     
     Sketch::Parameters parameters;
+    
+    parameters.counts = options.at("counts").active;
     
     if ( sketchParameterSetup(parameters, *(Command *)this) )
     {
