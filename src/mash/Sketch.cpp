@@ -311,7 +311,7 @@ uint64_t Sketch::initParametersFromCapnp(const char * file)
     {
     	setAlphabetFromString(parameters, alphabetNucleotide);
     }
-	munmap(fd, fileInfo.st_size);
+	munmap(data, fileInfo.st_size);
 	close(fd);
 	
 	try
