@@ -215,7 +215,7 @@ void TaxDB::writeReport(FILE* FP,
 			return;
 		}
 		TaxEntry const * taxon = getEntry(taxID);
-		fprintf(FP, "%.4f\t%i\t%i\t%i\t%i\t%s\t%llu\t%s%s\n",
+		fprintf(FP, "%.4f\t%i\t%i\t%i\t%i\t%s\t%lu\t%s%s\n",
 				100*cladeCount/double(totalCounts), 
         cladeCount, 
         taxCount, 
