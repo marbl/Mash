@@ -1,13 +1,13 @@
 '\" t
 .\"     Title: mash-triangle
 .\"    Author: [see the "AUTHOR(S)" section]
-.\" Generator: Asciidoctor 2.0.10
-.\"      Date: 2019-12-13
+.\" Generator: doc/generate_commands.py
+.\"      Date: 2025-09-15
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "MASH\-TRIANGLE" "1" "2019-12-13" "\ \&" "\ \&"
+.TH "MASH\-TRIANGLE" "1" "2025-09-15" "\ \&" "\ \&"
 .ie \n(.g .ds Aq \(aq
 .el       .ds Aq '
 .ss \n[.ss] 0
@@ -35,11 +35,11 @@ mash\-triangle \- estimate a lower\-triangular distance matrix
 .SH "DESCRIPTION"
 .sp
 Estimate the distance of each input sequence to every other input
-sequence.  Outputs a lower\-triangular distance matrix in relaxed Phylip
+sequence. Outputs a lower\-triangular distance matrix in relaxed Phylip
 format. The input sequences can be fasta or fastq, gzipped or not, or
-Mash sketch files (.msh) with matching k\-mer sizes. Input files can also
-be files of file names (see \-l). If more than one input file is provided,
-whole files are compared by default (see \-i).
+Mash sketch files (.msh) with matching k\-mer sizes. Input files can
+also be files of file names (see \-l). If more than one input file is
+provided, whole files are compared by default (see \-i).
 .SH "OPTIONS"
 .sp
 \fB\-h\fP
@@ -55,7 +55,7 @@ Parallelism. This many threads will be spawned for processing. [1]
 .sp
 \fB\-l\fP
 .RS 4
-List input. Each query file contains a list of sequence files, one
+List input. Lines in each <query> specify paths to sequence files, one
 per line. The reference file is not affected.
 .RE
 .SS "Output"
@@ -84,9 +84,9 @@ Maximum distance to report in edge list. Implies \-E. (0\-1) [1.0]
 .sp
 \fB\-k\fP <int>
 .RS 4
-K\-mer size. Hashes will be based on strings of this many
-nucleotides. Canonical nucleotides are used by default (see
-Alphabet options below). (1\-32) [21]
+K\-mer size. Hashes will be based on strings of this many nucleotides.
+Canonical nucleotides are used by default (see Alphabet options below).
+(1\-32) [21]
 .RE
 .sp
 \fB\-s\fP <int>
@@ -98,7 +98,13 @@ min\-hashes. [1000]
 \fB\-i\fP
 .RS 4
 Sketch individual sequences, rather than whole files, e.g. for
-multi\-fastas of single\-chromosome genomes or pair\-wise gene comparisons.
+multi\-fastas of single\-chromosome genomes or pair\-wise gene
+comparisons.
+.RE
+.sp
+\fB\-S\fP <int>
+.RS 4
+Seed to provide to the hash function. (0\-4294967296) [42]
 .RE
 .sp
 \fB\-w\fP <num>
@@ -108,54 +114,56 @@ Probability threshold for warning about low k\-mer size. (0\-1) [0.01]
 .sp
 \fB\-r\fP
 .RS 4
-Input is a read set. See Reads options below. Incompatible with \fB\-i\fP.
+Input is a read set. See Reads options below. Implies \-M. Incompatible
+with \-i.
 .RE
 .SS "Sketching (reads)"
 .sp
 \fB\-b\fP <size>
 .RS 4
-Use a Bloom filter of this size (raw bytes or with K/M/G/T) to
-filter out unique k\-mers. This is useful if exact filtering with \fB\-m\fP
-uses too much memory. However, some unique k\-mers may pass
-erroneously, and copies cannot be counted beyond 2. Implies \fB\-r\fP.
+Use a Bloom filter of this size (raw bytes or with K/M/G/T) to filter
+out unique k\-mers. This is useful if exact filtering with \-m uses too
+much memory. However, some unique k\-mers may pass erroneously, and
+copies cannot be counted beyond 2. Implies \-r.
 .RE
 .sp
 \fB\-m\fP <int>
 .RS 4
-Minimum copies of each k\-mer required to pass noise filter for
-reads. Implies \fB\-r\fP. [1]
+Minimum copies of each k\-mer required to pass noise filter for reads.
+Implies \-r. [1]
 .RE
 .sp
 \fB\-c\fP <num>
 .RS 4
-Target coverage. Sketching will conclude if this coverage is
-reached before the end of the input file (estimated by average
-k\-mer multiplicity). Implies \fB\-r\fP.
+Target coverage. Sketching will conclude if this coverage is reached
+before the end of the input file (estimated by average k\-mer
+multiplicity). Implies \-r.
 .RE
 .sp
 \fB\-g\fP <size>
 .RS 4
-Genome size. If specified, will be used for p\-value calculation
-instead of an estimated size from k\-mer content. Implies \fB\-r\fP.
+Genome size (raw bases or with K/M/G/T). If specified, will be used for
+p\-value calculation instead of an estimated size from k\-mer content.
+Implies \-r.
 .RE
 .SS "Sketching (alphabet)"
 .sp
 \fB\-n\fP
 .RS 4
-Preserve strand (by default, strand is ignored by using canonical
-DNA k\-mers, which are alphabetical minima of forward\-reverse
-pairs). Implied if an alphabet is specified with \fB\-a\fP or \fB\-z\fP.
+Preserve strand (by default, strand is ignored by using canonical DNA
+k\-mers, which are alphabetical minima of forward\-reverse pairs).
+Implied if an alphabet is specified with \-a or \-z.
 .RE
 .sp
 \fB\-a\fP
 .RS 4
-Use amino acid alphabet (A\-Z, except BJOUXZ). Implies \fB\-n\fP, \fB\-k\fP 9.
+Use amino acid alphabet (A\-Z, except BJOUXZ). Implies \-n, \-k 9.
 .RE
 .sp
 \fB\-z\fP <text>
 .RS 4
-Alphabet to base hashes on (case ignored by default; see \fB\-Z\fP).
-K\-mers with other characters will be ignored. Implies \fB\-n\fP.
+Alphabet to base hashes on (case ignored by default; see \-Z). K\-mers
+with other characters will be ignored. Implies \-n.
 .RE
 .sp
 \fB\-Z\fP

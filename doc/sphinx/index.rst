@@ -41,4 +41,5 @@ Documentation
    tutorials
    sketches
    distances
+   commands
 

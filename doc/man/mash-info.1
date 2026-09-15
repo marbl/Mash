@@ -1,13 +1,13 @@
 '\" t
 .\"     Title: mash-info
 .\"    Author: [see the "AUTHOR(S)" section]
-.\" Generator: Asciidoctor 2.0.10
-.\"      Date: 2019-12-13
+.\" Generator: doc/generate_commands.py
+.\"      Date: 2025-09-15
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "MASH\-INFO" "1" "2019-12-13" "\ \&" "\ \&"
+.TH "MASH\-INFO" "1" "2025-09-15" "\ \&" "\ \&"
 .ie \n(.g .ds Aq \(aq
 .el       .ds Aq '
 .ss \n[.ss] 0
@@ -34,7 +34,7 @@ mash\-info \- display information about sketch files
 \fBmash info\fP [options] <sketch>
 .SH "DESCRIPTION"
 .sp
-Displays information about sketch files.
+Display information about sketch files.
 .SH "OPTIONS"
 .sp
 \fB\-h\fP
@@ -44,25 +44,25 @@ Help
 .sp
 \fB\-H\fP
 .RS 4
-Only show header info. Do not list each sketch. Incompatible with \fB\-t\fP
-and \fB\-c\fP.
+Only show header info. Do not list each sketch. Incompatible with \-d,
+\-t and \-c.
 .RE
 .sp
 \fB\-t\fP
 .RS 4
 Tabular output (rather than padded), with no header. Incompatible with
-\fB\-H\fP and \fB\-c\fP.
+\-d, \-H and \-c.
 .RE
 .sp
 \fB\-c\fP
 .RS 4
-Show hash count histograms for each sketch. Incompatible with \fB\-H\fP and
-\fB\-t\fP.
+Show hash count histograms for each sketch. Incompatible with \-d, \-H
+and \-t.
 .RE
 .sp
 \fB\-d\fP
 .RS 4
-Dump sketches in JSON format. Incompatible with \fB\-H\fP, \fB\-t\fP, and \fB\-c\fP.
+Dump sketches in JSON format. Incompatible with \-H, \-t, and \-c.
 .RE
 .SH "SEE ALSO"
 .sp
