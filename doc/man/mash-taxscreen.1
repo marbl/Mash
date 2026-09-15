@@ -1,0 +1,84 @@
+'\" t
+.\"     Title: mash-taxscreen
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: doc/generate_commands.py
+.\"      Date: 2025-09-15
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "MASH\-TAXSCREEN" "1" "2025-09-15" "\ \&" "\ \&"
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH "NAME"
+mash\-taxscreen \- create Kraken\-style taxonomic report based on mash screen
+.SH "SYNOPSIS"
+.sp
+\fBmash taxscreen\fP [options] <queries>.msh <pool> [<pool>] ...
+.SH "DESCRIPTION"
+.sp
+Create Kraken\-style taxonomic report based on how well query sequences
+are contained within a pool of sequences. The queries must be formatted
+as a single Mash sketch file (.msh), created with the `mash sketch`
+command. The <pool> files can be contigs or reads, in fasta or fastq,
+gzipped or not, and "\-" can be given for <pool> to read from standard
+input. The <pool> sequences are assumed to be nucleotides, and will be
+6\-frame translated if the <queries> are amino acids. The output fields
+are [total percent of hashes, number of contained hashes in the clade,
+number of contained hashes in the taxon, total number of hashes in the
+clade, total number of hashes in the taxon, rank, taxonomy ID, padded
+name].
+.SH "OPTIONS"
+.sp
+\fB\-h\fP
+.RS 4
+Help
+.RE
+.sp
+\fB\-p\fP <int>
+.RS 4
+Parallelism. This many threads will be spawned for processing. [1]
+.RE
+.sp
+\fB\-m\fP <text>
+.RS 4
+Mapping file from reference name to taxonomy ID
+.RE
+.sp
+\fB\-t\fP <text>
+.RS 4
+Directory containing NCBI taxonomy dump [.]
+.RE
+.SS "Output"
+.sp
+\fB\-i\fP <num>
+.RS 4
+Minimum identity to report. Inclusive unless set to zero, in which case
+only identities greater than zero (i.e. with at least one shared hash)
+will be reported. Set to \-1 to output everything. (\-1\-1) [0]
+.RE
+.sp
+\fB\-v\fP <num>
+.RS 4
+Maximum p\-value to report. (0\-1) [1.0]
+.RE
+.SH "SEE ALSO"
+.sp
+mash(1)

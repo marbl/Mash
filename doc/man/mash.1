@@ -1,13 +1,13 @@
 '\" t
 .\"     Title: mash
 .\"    Author: [see the "AUTHOR(S)" section]
-.\" Generator: Asciidoctor 2.0.10
-.\"      Date: 2019-12-13
+.\" Generator: doc/generate_commands.py
+.\"      Date: 2025-09-15
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "MASH" "1" "2019-12-13" "\ \&" "\ \&"
+.TH "MASH" "1" "2025-09-15" "\ \&" "\ \&"
 .ie \n(.g .ds Aq \(aq
 .el       .ds Aq '
 .ss \n[.ss] 0
@@ -34,8 +34,8 @@ mash \- fast genome and metagenome distance estimation using MinHash
 \fBmash\fP <command> [options] [arguments ...]
 .SH "DESCRIPTION"
 .sp
-\fBmash\fP is the main executable for the \fBMash\fP software. The actual
-functionality is provided by the subtools (\(aqcommands\(aq):
+mash is the main executable for the Mash software. The actual
+functionality is provided by the subtools ('commands'):
 .SS "Commands"
 .sp
 \fBbounds\fP
@@ -60,12 +60,18 @@ Create a single sketch file from multiple sketch files.
 .sp
 \fBscreen\fP
 .RS 4
-Determine whether query sequences are within a larger pool of sequences.
+Determine whether query sequences are within a larger mixture of
+sequences.
 .RE
 .sp
 \fBsketch\fP
 .RS 4
 Create sketches (reduced representations for fast operations).
+.RE
+.sp
+\fBtaxscreen\fP
+.RS 4
+Create Kraken\-style taxonomic report based on mash screen.
 .RE
 .sp
 \fBtriangle\fP
@@ -74,4 +80,11 @@ Estimate a lower\-triangular distance matrix.
 .RE
 .SH "SEE ALSO"
 .sp
-mash\-dist(1), mash\-info(1), mash\-paste(1), mash\-screen(1), mash\-sketch(1), mash\-triangle(1)
+mash\-bounds(1),
+mash\-dist(1),
+mash\-info(1),
+mash\-paste(1),
+mash\-screen(1),
+mash\-sketch(1),
+mash\-taxscreen(1),
+mash\-triangle(1)

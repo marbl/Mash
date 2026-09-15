@@ -1,13 +1,13 @@
 '\" t
 .\"     Title: mash-sketch
 .\"    Author: [see the "AUTHOR(S)" section]
-.\" Generator: Asciidoctor 2.0.10
-.\"      Date: 2019-12-13
+.\" Generator: doc/generate_commands.py
+.\"      Date: 2025-09-15
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "MASH\-SKETCH" "1" "2019-12-13" "\ \&" "\ \&"
+.TH "MASH\-SKETCH" "1" "2025-09-15" "\ \&" "\ \&"
 .ie \n(.g .ds Aq \(aq
 .el       .ds Aq '
 .ss \n[.ss] 0
@@ -31,17 +31,18 @@
 mash\-sketch \- create sketches (reduced representations for fast operations)
 .SH "SYNOPSIS"
 .sp
-\fBmash sketch\fP [options] fast(a|q)[.gz] ...
+\fBmash sketch\fP [options] <input> [<input>] ...
 .SH "DESCRIPTION"
 .sp
-Create a sketch file, which is a reduced representation of a sequence or set
-of sequences (based on min\-hashes) that can be used for fast distance
-estimations. Input can be fasta or fastq files (gzipped or not), and "\-" can
-be given to read from standard input. Input files can also be files of file
-names (see \fB\-l\fP). For output, one sketch file will be generated, but it can have
-multiple sketches within it, divided by sequences or files (see \fB\-i\fP). By
-default, the output file name will be the first input file with a \(aq.msh\(aq
-extension, or \(aqstdin.msh\(aq if standard input is used (see \fB\-o\fP).
+Create a sketch file, which is a reduced representation of a sequence or
+set of sequences (based on min\-hashes) that can be used for fast
+distance estimations. Inputs can be fasta or fastq files (gzipped or
+not), and "\-" can be given to read from standard input. Input files can
+also be files of file names (see \-l). For output, one sketch file will
+be generated, but it can have multiple sketches within it, divided by
+sequences or files (see \-i). By default, the output file name will be
+the first input file with a '.msh' extension, or 'stdin.msh' if standard
+input is used (see \-o).
 .SH "OPTIONS"
 .sp
 \fB\-h\fP
@@ -57,22 +58,38 @@ Parallelism. This many threads will be spawned for processing. [1]
 .sp
 \fB\-l\fP
 .RS 4
-List input. Each file contains a list of sequence files, one per line.
+List input. Lines in each <input> specify paths to sequence files, one
+per line.
 .RE
 .SS "Output"
 .sp
 \fB\-o\fP <path>
 .RS 4
-Output prefix (first input file used if unspecified). The suffix
-\(aq.msh\(aq will be appended.
+Output prefix (first input file used if unspecified). The suffix '.msh'
+will be appended.
 .RE
 .SS "Sketching"
 .sp
+\fB\-I\fP <path>
+.RS 4
+ID field for sketch of reads (instead of first sequence ID).
+.RE
+.sp
+\fB\-C\fP <path>
+.RS 4
+Comment for a sketch of reads (instead of first sequence comment).
+.RE
+.sp
+\fB\-M\fP
+.RS 4
+Store multiplicity of each k\-mer in each sketch.
+.RE
+.sp
 \fB\-k\fP <int>
 .RS 4
-K\-mer size. Hashes will be based on strings of this many
-nucleotides. Canonical nucleotides are used by default (see
-Alphabet options below). (1\-32) [21]
+K\-mer size. Hashes will be based on strings of this many nucleotides.
+Canonical nucleotides are used by default (see Alphabet options below).
+(1\-32) [21]
 .RE
 .sp
 \fB\-s\fP <int>
@@ -83,7 +100,14 @@ min\-hashes. [1000]
 .sp
 \fB\-i\fP
 .RS 4
-Sketch individual sequences, rather than whole files.
+Sketch individual sequences, rather than whole files, e.g. for
+multi\-fastas of single\-chromosome genomes or pair\-wise gene
+comparisons.
+.RE
+.sp
+\fB\-S\fP <int>
+.RS 4
+Seed to provide to the hash function. (0\-4294967296) [42]
 .RE
 .sp
 \fB\-w\fP <num>
@@ -93,54 +117,56 @@ Probability threshold for warning about low k\-mer size. (0\-1) [0.01]
 .sp
 \fB\-r\fP
 .RS 4
-Input is a read set. See Reads options below. Incompatible with \fB\-i\fP.
+Input is a read set. See Reads options below. Implies \-M. Incompatible
+with \-i.
 .RE
 .SS "Sketching (reads)"
 .sp
 \fB\-b\fP <size>
 .RS 4
-Use a Bloom filter of this size (raw bytes or with K/M/G/T) to
-filter out unique k\-mers. This is useful if exact filtering with \fB\-m\fP
-uses too much memory. However, some unique k\-mers may pass
-erroneously, and copies cannot be counted beyond 2. Implies \fB\-r\fP.
+Use a Bloom filter of this size (raw bytes or with K/M/G/T) to filter
+out unique k\-mers. This is useful if exact filtering with \-m uses too
+much memory. However, some unique k\-mers may pass erroneously, and
+copies cannot be counted beyond 2. Implies \-r.
 .RE
 .sp
 \fB\-m\fP <int>
 .RS 4
-Minimum copies of each k\-mer required to pass noise filter for
-reads. Implies \fB\-r\fP. [1]
+Minimum copies of each k\-mer required to pass noise filter for reads.
+Implies \-r. [1]
 .RE
 .sp
 \fB\-c\fP <num>
 .RS 4
-Target coverage. Sketching will conclude if this coverage is
-reached before the end of the input file (estimated by average
-k\-mer multiplicity). Implies \fB\-r\fP.
+Target coverage. Sketching will conclude if this coverage is reached
+before the end of the input file (estimated by average k\-mer
+multiplicity). Implies \-r.
 .RE
 .sp
 \fB\-g\fP <size>
 .RS 4
-Genome size. If specified, will be used for p\-value calculation
-instead of an estimated size from k\-mer content. Implies \fB\-r\fP.
+Genome size (raw bases or with K/M/G/T). If specified, will be used for
+p\-value calculation instead of an estimated size from k\-mer content.
+Implies \-r.
 .RE
 .SS "Sketching (alphabet)"
 .sp
 \fB\-n\fP
 .RS 4
-Preserve strand (by default, strand is ignored by using canonical
-DNA k\-mers, which are alphabetical minima of forward\-reverse
-pairs). Implied if an alphabet is specified with \fB\-a\fP or \fB\-z\fP.
+Preserve strand (by default, strand is ignored by using canonical DNA
+k\-mers, which are alphabetical minima of forward\-reverse pairs).
+Implied if an alphabet is specified with \-a or \-z.
 .RE
 .sp
 \fB\-a\fP
 .RS 4
-Use amino acid alphabet (A\-Z, except BJOUXZ). Implies \fB\-n\fP, \fB\-k\fP 9.
+Use amino acid alphabet (A\-Z, except BJOUXZ). Implies \-n, \-k 9.
 .RE
 .sp
 \fB\-z\fP <text>
 .RS 4
-Alphabet to base hashes on (case ignored by default; see \fB\-Z\fP).
-K\-mers with other characters will be ignored. Implies \fB\-n\fP.
+Alphabet to base hashes on (case ignored by default; see \-Z). K\-mers
+with other characters will be ignored. Implies \-n.
 .RE
 .sp
 \fB\-Z\fP

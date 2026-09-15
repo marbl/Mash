@@ -58,6 +58,15 @@ src/mash/memcpyWrap.o : src/mash/memcpyWrap.c
 src/mash/capnp/MinHash.capnp.c++ src/mash/capnp/MinHash.capnp.h : src/mash/capnp/MinHash.capnp
 	cd src/mash/capnp;export PATH=@capnp@/bin/:${PATH};capnp compile -I @capnp@/include -oc++ MinHash.capnp
 
+# Regenerate doc/sphinx/commands.rst and doc/man/*.1 from src/mash/Command*.cpp.
+# Only needed when options change; the generated files are committed.
+.PHONY: docs check-docs
+docs:
+	python3 doc/generate_commands.py
+
+check-docs:
+	python3 doc/generate_commands.py --check
+
 .PHONY: install-man install
 install-man:
 	mkdir -p @prefix@/share/man/man1
