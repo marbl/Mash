@@ -11,6 +11,7 @@
 
 #include "Command.h"
 #include "version.h"
+#include <cstdint>
 
 using std::cout;
 using std::cerr;
